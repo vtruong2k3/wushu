@@ -4,6 +4,17 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
 
 ---
 
+## 2026-11-14 — P0.04 First commit and push to GitHub (DONE)
+
+- Remote: `origin` = `https://github.com/vtruong2k3/wushu.git`; branch `main` tracks `origin/main`
+- Commit `8fae211` (initial, 92 files): everything recorded in this changelog up to P8.02. Earlier entries that say
+  "Commit: not committed" are included in this commit
+- Added: `.gitattributes` (LF normalization), `CONTRIBUTING.md`
+- Verification: secret scan clean, no data/weights/clones/datasets/venv/node_modules/dist in the tree, remote HEAD ==
+  local HEAD
+- Commit: `8fae211` + this follow-up commit (records the push verification)
+- Plan: `Docs/tasks/P0.04.md`
+
 ## 2026-11-14 — P8.02 Web scaffold: React + Vite + TypeScript (DONE)
 
 - Added: `taiji_ai/web/` — Vite 8 + React 19 + TS 6, React Router 8, TanStack Query 5; typed API client

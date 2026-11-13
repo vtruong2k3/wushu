@@ -9,7 +9,7 @@ Update this file whenever a task changes status. Statuses: `TODO`, `ANALYZING`, 
 
 | Phase | Tasks | DONE | In progress | BLOCKED | TODO |
 |---|---:|---:|---:|---:|---:|
-| P0 Nền tảng code (còn lại) | 7 | 3 | 0 | 0 | 4 |
+| P0 Nền tảng code (còn lại) | 7 | 4 | 0 | 0 | 3 |
 | P1 Discovery, ontology, protocol (v3 P00) | 10 | 0 | 0 | 0 | 10 |
 | P2 Ingest và đồng bộ camera (W1, W2) | 7 | 0 | 0 | 0 | 7 |
 | P3 Pose và khóa người tập (W4, W5) | 9 | 0 | 0 | 0 | 9 |
@@ -21,7 +21,7 @@ Update this file whenever a task changes status. Statuses: `TODO`, `ANALYZING`, 
 | P9 Thu dữ liệu pilot và gán nhãn (v3 P02) | 9 | 0 | 0 | 0 | 9 |
 | P10 Kiểm chứng metric và so sánh (v3 P03 / G03) | 7 | 0 | 0 | 0 | 7 |
 | P11 Pilot giá trị và quyết định (v3 P05 / G05) | 5 | 0 | 0 | 0 | 5 |
-| **Total** | **100** | **5** | **0** | **0** | **95** |
+| **Total** | **100** | **6** | **0** | **0** | **94** |
 
 ## Ad-hoc tasks (`X.NN`)
 
@@ -39,7 +39,7 @@ Update this file whenever a task changes status. Statuses: `TODO`, `ANALYZING`, 
 | P0.01 | Dựng cấu trúc package, `pyproject.toml`, `uv.lock` | A | — | — | DONE | — | 2026-11-13 | Recorded retroactively; see CHANGELOG 2026-11-13 |
 | P0.02 | Tải và đăng ký model, GPU smoke test | A | — | — | DONE | — | 2026-11-13 | Recorded retroactively; see CHANGELOG 2026-11-13 |
 | P0.03 | `io/probe`, `io/frames`, `store/*`, migration 0001 | A | — | — | DONE | — | 2026-11-13 | Recorded retroactively; see CHANGELOG 2026-11-13 |
-| P0.04 | Commit đầu tiên; quy ước nhánh và PR; file `CONTRIBUTING.md` ngắn | B | 0,25 | — | IN_REVIEW | `Docs/tasks/P0.04.md` | 2026-11-14 | Initial commit created; push verification pending |
+| P0.04 | Commit đầu tiên; quy ước nhánh và PR; file `CONTRIBUTING.md` ngắn | B | 0,25 | — | DONE | `Docs/tasks/P0.04.md` | 2026-11-14 | Initial commit 8fae211 pushed to origin/main (github.com/vtruong2k3/wushu); CONTRIBUTING.md, .gitattributes |
 | P0.05 | Script kiểm tra một lệnh `tools/check.ps1`: ruff check + format check + pytest (bỏ qua test `gpu` nếu `-NoGpu`) | B | 0,25 | P0.04 | TODO | — |  | Must also run `pnpm lint`, `pnpm typecheck`, `pnpm test` in `taiji_ai/web` (added by P8.02) |
 | P0.06 | Logging thống nhất (`logging` + file log theo run), không log đường dẫn chứa tên thật | A | 0,5 | — | TODO | — |  |  |
 | P0.07 | Bộ sinh skeleton tổng hợp cho test (mục 14.3) | A | 1 | — | TODO | — |  |  |
