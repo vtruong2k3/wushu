@@ -9,6 +9,7 @@ Quy tắc sử dụng: `AGENTS.md` §9.4. Giá trị "Mục đích được phé
 | ID | Dataset | Bài | Nhãn chất lượng | Truy cập | License | Mục đích được phép | Vai trò trong dự án | Trạng thái |
 |---|---|---|---|---|---|---|---|---|
 | D08 | Taiji24-Local (tự quay) | 24 thức (variant HLV xác nhận) | Nhãn HLV theo rubric dự án | Nội bộ | Theo consent từng người | `dev-test`, `benchmark`; `train` chỉ với `consent_train = 1` | Nguồn chính cho mọi phase | Chưa quay (P9) |
+| D14 | S3GCN Tai Chi (Hengonda / BUAA, ICIP 2024) | Thái cực quyền (bài cụ thể chưa rõ) | Điểm liên tục do chuyên gia chấm | Gửi đơn PDF có chữ ký qua email nhóm tác giả (theo README repo SSSGCN) | Chỉ nghiên cứu khoa học, cấm thương mại (theo README) | `not-usable` cho tới khi được cấp; sau đó `benchmark` (nghiên cứu) | Ứng viên cho chấm chất lượng (E03) | Chưa gửi yêu cầu; quy mô và bài chưa rõ |
 | D06 | TaiChi-AQA | 24 thức | Có theo bài báo, chưa kiểm tra file nhãn | Gửi form qua email | Chưa rõ, xem thỏa thuận khi được cấp | `not-usable` cho tới khi được cấp; sau đó theo thỏa thuận | Nhận diện thức, đánh giá chất lượng | Chưa gửi yêu cầu |
 | D10 | TaiChi-24 (BSU) | 24 thức | Có score theo survey AQA, thang điểm chưa rõ | Ký thỏa thuận và email | Chưa rõ | `not-usable` cho tới khi được cấp; sau đó theo thỏa thuận | Nhận diện và đánh giá dựa trên skeleton | Chưa gửi yêu cầu |
 | D11 | PSU-TMM100 | 24 thức giản hóa | Không, đây là dữ liệu đo chuyển động | Dataset Request Form | Theo điều kiện cấp (IRB STUDY8085) | `not-usable` cho tới khi được cấp; dự kiến `benchmark` | Kiểm chứng số đo 2D bằng mocap và áp lực bàn chân | Chưa gửi yêu cầu |
@@ -29,6 +30,12 @@ Chưa có bằng chứng TaiChi-AQA và TaiChi-24 là cùng nguồn. Khi nhận 
 ### D10 — TaiChi-24
 - [Trang dự án BSU](https://bsu3dvlab.github.io/TaiChi24/index.html): 1.408 mẫu, RGB-D và skeleton 3D. Bài báo: *Tai Chi Action Quality Assessment and Visual Analysis with a Consumer RGB-D Camera*, IEEE MMSP 2022.
 - Chưa rõ số người, thang điểm và license.
+
+### D14 — S3GCN Tai Chi (Hengonda / BUAA)
+- Bài báo: *S³GCN: Sport Scoring Siamese Graph Convolution Network*, Y. Lu, Z. Zhang, S. Lin, D. Zhang, H. Ma, Z. Qin — ICIP 2024, DOI 10.1109/ICIP51287.2024.10647800.
+- Theo README của [divided7/SSSGCN](https://github.com/divided7/SSSGCN): video Thái cực quyền thật, điểm **liên tục** do chuyên gia thể thao chấm; dữ liệu "chỉ cho mục đích khoa học, cấm thương mại"; xin bằng đơn PDF có chữ ký gửi nhóm tác giả (địa chỉ trong README).
+- Chưa rõ: bài nào (24 thức?), số video/người, thang điểm, cách chia tập. Trang IEEE chặn truy cập tự động (418); chưa đọc được toàn văn.
+- Code trong repo: không có license, dở dang → không dùng.
 
 ### D11 — PSU-TMM100
 - Trang chính thức: [vision.cse.psu.edu/data/data.shtml](https://vision.cse.psu.edu/data/data.shtml). Mô tả nghiên cứu: [taijiDataset](https://vision.cse.psu.edu/research/taijiDataset/content.html).

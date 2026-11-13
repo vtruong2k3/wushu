@@ -645,7 +645,7 @@ Báo ba tỷ lệ cho từng metric × camera (theo v3 mục 8.3): tỷ lệ th�
 | E01 Nhận diện thức | mmaction2 1.2.0: STGCN++ 2D (`layout` dạng dict cho HALPE_26, `num_person=1`), PoseC3D đối chứng; sliding window + lớp nền; chuyển nhãn qua DTW với bài mẫu (open-begin) làm baseline | Môi trường `env-mmaction` riêng. Chia tập theo người. Báo cả kết quả có và không có prior thứ tự bài |
 | E02 Platform | (FastAPI đã có từ MVP) PostgreSQL, hàng đợi (RQ/Celery hoặc Postgres-based), object storage (MinIO/S3), auth theo tổ chức | Khi có nhiều người dùng hoặc nhiều job đồng thời |
 | E03 Learned AQA | scikit-learn (Ridge/GBM) trên keyframe × metric sau căn DTW; SHAP để giải thích; calibration | Nhãn đủ và đạt độ thống nhất. Chia theo người. Không lấy trọng số ensemble từ dự đoán test |
-| E04 Luật/trọng tài | Ruleset registry có nguồn và trang, test xung đột luật | Chuyên gia xác nhận edition luật |
+| E04 Luật/trọng tài | Ruleset registry có nguồn và trang, test xung đột luật; điểm xuất phát: bảng mã lỗi IWUF 2024 dạng JSON trong `repos/taolu/tpz` (MPL-2.0) | Chuyên gia xác nhận edition luật; đối chiếu JSON với bản luật IWUF chính thức trước khi dùng làm `criterion_id` |
 | E05 3D | OpenCV calibration (checkerboard) + triangulation 2 camera; cân nhắc Pose2Sim cho triangulation; GVHMR/SMPL chỉ cho nghiên cứu | License SMPL phi thương mại. Cần ground truth (PSU-TMM100) |
 | E06 Theo dõi dài hạn | Lưu metric theo version; trend chỉ trên cùng camera, model và rubric | Không nối chuỗi metric qua các lần đổi model |
 

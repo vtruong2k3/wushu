@@ -4,6 +4,24 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
 
 ---
 
+## 2026-11-14 — X.06 Usable repositories recorded in the docs (IN_REVIEW → DONE after push)
+
+- Usable items from X.05 (already cloned, git-ignored): `repos/taolu/tpz` (MPL-2.0, E04 reference) and
+  `repos/taolu/_no-license/wushu_vision` (ideas only)
+- Changed: `repos/taolu/REPOS.md` (summary: rubric row + new E04 row), `Docs/TECH_WORKFLOW_V1.md` §11 E04,
+  `taiji_ai/THIRD_PARTY_NOTICES.md` §6
+- Commit: X.05 + X.06 documentation commit, then a follow-up commit recording the push verification
+- Plan: `Docs/tasks/X.06.md`
+
+## 2026-11-14 — X.05 Survey of additional Wushu repositories (DONE)
+
+- Reviewed 17 GitHub repositories + 3 external links (static reading only); verdicts in `repos/taolu/REPOS.md`
+- Cloned (git-ignored): `repos/taolu/tpz` (MPL-2.0; IWUF 2024 deduction/nandu JSON, IWUF rule PDFs) and
+  `repos/taolu/_no-license/wushu_vision` (reference only)
+- Registered dataset D14 (S3GCN Tai Chi with expert scores, research-only, on request) in `Docs/DATASET_REGISTRY_TAIJI.md`
+- Commit: not committed
+- Plan: `Docs/tasks/X.05.md`
+
 ## 2026-11-14 — P0.04 First commit and push to GitHub (DONE)
 
 - Remote: `origin` = `https://github.com/vtruong2k3/wushu.git`; branch `main` tracks `origin/main`

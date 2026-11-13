@@ -164,6 +164,50 @@ Xem `../sanda/REPOS.md` (mục mmaction2). Với Taolu:
 - Graph `nturgb+d` đọc trực tiếp UMONS Kinect 25 khớp. HALPE_26 cần khai báo layout dạng dict.
 - Chỉ dùng khi bước sang nhận diện thức (E01).
 
+## Khảo sát bổ sung (14/11/2026, task X.05)
+
+Danh sách do maintainer cung cấp. Chỉ đọc tĩnh qua GitHub API và README/cây file; không chạy code nào.
+
+### Clone thêm
+
+| Repo | Commit | License | Vai trò |
+|---|---|---|---|
+| [achushu/tpz](https://github.com/achushu/tpz) → `tpz/` | `e6df070e41257bb4882d5cc32333ca7c08d227dc` (2025-12-23) | MPL-2.0 (code) | Tham khảo cho **E04 (luật/trọng tài)**: phần mềm chấm IWUF tổ A/B/C (Go). `app/judge/iwuf2024_deductions.json`: 77 mã lỗi trừ điểm có mô tả Anh/Trung và số điểm (ví dụ 50–59 tấn, 59 gối và mũi chân chân trụ lệch / kéo lê chân, 70A thân lắc lư, 70B lê chân, 79 quên động tác, 81 thiếu hoặc thừa bước trong bài quy định). `iwuf2024_nandu*.json`: độ khó. `ref/` chứa PDF luật IWUF 2005/2019/2024 và bảng trừ điểm CQ/NQ/**TJ**. |
+| [klsnkmaria/wushu_vision](https://github.com/klsnkmaria/wushu_vision) → `_no-license/wushu_vision/` | `82b99f0f67be326aa9b070f78f738ee46f37f879` (2026-04-06) | **không có** | Chỉ học ý tưởng: kiểm tra từng thế tấn (mã bộ, cung bộ, phó bộ, hư bộ, độc lập bộ) gắn với mã lỗi IWUF 50–53, 26. |
+
+**Lưu ý:**
+- PDF trong `tpz/ref/` là tài liệu của IWUF. Khi dùng chính thức phải lấy bản từ IWUF; không phân phối lại.
+- `IWUF-TJ-DEDUCTION-TABLES.pdf` (4 trang) là **ảnh scan, không có lớp chữ**. Cần OCR hoặc bản gốc. Làm ở P1.07/E04.
+- JSON mã lỗi là dữ liệu MPL-2.0 dẫn xuất từ luật IWUF. Phải đối chiếu với bản luật chính thức trước khi dùng làm `criterion_id`.
+- `wushu_vision`:
+  - Ngưỡng góc cố định không có nguồn (12°, 22°, 38°, 42°…).
+  - Dùng tọa độ Z của MediaPipe để biết chân trước/sau, không tin cậy.
+  - Random Forest train trên ảnh tĩnh.
+  - **Không** dùng ngưỡng của repo này.
+
+### Không clone — kết luận từng mục
+
+| Mục | License | Nội dung | Kết luận |
+|---|---|---|---|
+| Alan42x/wushu-pose-scoring | không có | Bát đoạn cẩm / Ngũ cầm hí: MMPose body26 (HALPE_26), resample 600 frame, Transformer phân loại 15 lớp + hồi quy điểm; có weights, dữ liệu cuộc thi không kèm | Tham khảo ý tưởng. Resample cố định 600 frame làm mất thông tin nhịp. Khí công, không phải Thái cực quyền |
+| divided7/SSSGCN | không có | S3GCN (ICIP 2024): Siamese GCN chấm điểm, so người học với mẫu; code dở dang (6 file); demo Nam quyền | Code không dùng. **Bộ dữ liệu Thái cực quyền có điểm liên tục của chuyên gia** (Hengonda) → đăng ký D14 trong `Docs/DATASET_REGISTRY_TAIJI.md` |
+| cheng-cheng-x/Action-Recognition-and-Scoring-wushu- | không có | Notebook, kèm `.venv`, **file `.exe`/DLL không rõ nguồn** (MiguPoseCompare) | Không dùng. Không chạy binary |
+| Zhangpuppy1119/wushu-pose-challenge | không có | Trang HTML/JS/CSS đơn giản | Không dùng |
+| hamataro0710/kempo_motion_analysis | không có (OpenPose phi thương mại) | Kempo, tf-pose-estimation, ước lượng trọng tâm (2019) | Không dùng. Ước lượng CoM từ 2D trái với nguyên tắc của dự án |
+| shyam-thakkar/karate_kata_evaluation | không có | Karate, MoveNet + DNN trên ảnh, dataset 1,5 GB ảnh | Không dùng |
+| ALH477/KataForge | KataForge License (dựa trên Elastic License v2, source-available) | "Bảo tồn võ thuật", tự nhận tính lực/công suất từ video MediaPipe | Không dùng. License cấm cung cấp dạng dịch vụ; tuyên bố đo lực từ video 2D không đáng tin |
+| dntod/wushu-judge | GPL-2.0 | Chỉ LICENSE + README | Không có code (đã biết) |
+| roozbeh-gholami/WushuScoringSoftware | GPL-2.0 | App chấm điểm cho trọng tài, commit cả venv (8.197 file) | Không dùng (copyleft mạnh, không phải AI) |
+| ricardosetti/wushu_scoring_new | không có | Vue + Node, chấm điểm cho trọng tài | Không dùng |
+| wendelbonfa/tournament | không có | Quản lý giải | Không dùng |
+| nompute/kritos | không có | Ruby on Rails, 2009 | Không dùng |
+| keenlim/wushu-prediction-ranking | không có | Dự đoán thứ hạng từ PDF kết quả thi | Không liên quan |
+| cloudsbird/OpenWushu | AGPL-3.0 / CC BY-SA | Đã clone và phân tích trước đó | Như mục OpenWushu ở trên |
+| PercyShenJackson/wushu | — | GitHub trả 404 | Không truy cập được |
+| Kaggle "wushu-kung-fu-taolu-a-score-analysis" | ? | Trang cần JS/đăng nhập, không đọc được nội dung | Theo tiêu đề là phân tích điểm thi, không phải pose. Chưa xác minh |
+| HF Jojocodex/wushu-action-v7 LoRA | "other" (không ghi điều khoản) | LoRA cho MiniMax-H3 (khoảng 34 GB) sinh video động tác, 924 clip 1,3–3 s | Không dùng cho MVP. Dữ liệu sinh ra không thay được dữ liệu thật và không có nhãn chất lượng; license không rõ |
+| IWUF 2026 YOG page | — | IWUF đang phát triển "Wushu AI Judging System / i-Judging", gắn với Dakar 2026 (Trường quyền + Thái cực quyền toàn năng) | Bối cảnh: chưa có chi tiết kỹ thuật hay dữ liệu |
+
 ## Tổng kết: dùng được gì
 
 | Nhu cầu trong v3 | Dùng | Không dùng |
@@ -176,7 +220,8 @@ Xem `../sanda/REPOS.md` (mục mmaction2). Với Taolu:
 | So sánh mẫu | Tự viết constrained DTW; tham khảo FastDTW/ACDTW (QAQA), ý tưởng chuẩn hóa/mask (Motion Embedding) | Code QAQA, embedding Motion Embedding |
 | Phân đoạn tự động (sau) | Chuyển nhãn qua warping path (ý tưởng Zhang 2022); mmaction2 STGCN++ | Notebook Zhang 2022 |
 | Chấm chất lượng (sau) | Ý tưởng: căn DTW → keyframe × metric, SHAP, so với ICC giữa trọng tài | Dữ liệu và code Pang 2025 |
-| Ontology, rubric | OpenWushu (lược đồ + danh mục, CC BY-SA); TaiForm deduction criteria | Coi nội dung OpenWushu là chuẩn đã duyệt |
+| Ontology, rubric | OpenWushu (lược đồ + danh mục, CC BY-SA); TaiForm deduction criteria; ý tưởng kiểm tra từng thế tấn gắn mã lỗi IWUF (wushu_vision) | Coi nội dung OpenWushu là chuẩn đã duyệt; ngưỡng góc cố định của wushu_vision |
+| Luật / trọng tài (E04) | `tpz/app/judge/iwuf2024_deductions.json`, `iwuf2024_nandu*.json` (MPL-2.0) làm điểm xuất phát cho bảng mã lỗi; cách tính điểm tổ A/B/C trong code Go của tpz làm tham khảo | Dùng JSON khi chưa đối chiếu với luật IWUF chính thức; phân phối lại PDF trong `tpz/ref/` (bản quyền IWUF) |
 
 ## Chưa clone
 

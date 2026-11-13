@@ -28,6 +28,8 @@ Update this file whenever a task changes status. Statuses: `TODO`, `ANALYZING`, 
 | ID | Task | Reason | Owner | Status | Plan | Updated | Evidence / notes |
 |---|---|---|---|---|---|---|---|
 | X.01 | Repository working rules + tracking files | Maintainer request 2026-11-13 | agent | DONE | — | 2026-11-13 | `AGENTS.md`, `CLAUDE.md`, `Docs/tracking/*`; CHANGELOG 2026-11-13 |
+| X.06 | Record usable repos from X.05 in docs, commit and push | Maintainer request 2026-11-14 | agent | IN_REVIEW | `Docs/tasks/X.06.md` | 2026-11-14 | REPOS.md summary (E04 row), TECH_WORKFLOW §11 E04, THIRD_PARTY_NOTICES §6; push pending |
+| X.05 | Survey additional Wushu / martial-arts repositories | Maintainer list 2026-11-14 | agent | DONE | `Docs/tasks/X.05.md` | 2026-11-14 | 20 items reviewed; cloned tpz (MPL-2.0) + wushu_vision (reference); dataset D14 registered |
 | X.04 | Switch UI stack Streamlit → React + Vite + FastAPI (decision + re-plan P8) | Maintainer chose React + Vite + FastAPI 2026-11-14 | agent | DONE | `Docs/tasks/X.04.md` | 2026-11-14 | DEC-0008; TECH_WORKFLOW v1.1; P8 re-planned (16 tasks, 13.75 d; total ≈ 54 d); T-API/T-WEB/T-E2E tests; BUG-0002 closed |
 | X.03 | Rules for third-party code, models and datasets | Maintainer approved 2026-11-13; AGENTS.md only had 3 short rules | agent | DONE | `Docs/tasks/X.03.md` | 2026-11-14 | AGENTS.md §9, `taiji_ai/THIRD_PARTY_NOTICES.md`, registry allowed-use column, `dataset` marker; BUG-0001 fixed; DEC-0007 |
 | X.02 | Move git repository root to workspace (`wushu/`) | Maintainer approved 2026-11-13; docs/rules were outside git | agent | DONE | `Docs/tasks/X.02.md` | 2026-11-13 | 52 files staged in dry run (≈ 484 KB), no forbidden files, no personal data; 12 tests pass; DEC-0006 |

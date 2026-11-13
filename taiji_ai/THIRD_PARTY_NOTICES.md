@@ -110,3 +110,5 @@ QAQA FastDTW windowing / ACDTW step penalty as algorithm references (Apache-2.0,
 | Zhang et al. 2022 (Long Fist localization) | none | Label transfer through the DTW warping path; temporal IoU + boundary error reporting |
 | OpenWushu | code AGPL-3.0, content CC BY-SA 4.0 | Routine data schema and movement lists as ontology input (content use requires attribution + share-alike) |
 | TaiForm deduction criteria | CC BY 4.0 (Zenodo metadata; peer-review sample) | Structure of measurable deduction criteria |
+| achushu/tpz @ e6df070 | MPL-2.0 (code); `ref/` PDFs © IWUF | IWUF 2024 deduction/nandu code tables (JSON) and A/B/C panel scoring logic as references for E04. If a JSON file is reused as is, it stays under MPL-2.0 (file-level) with its notice |
+| klsnkmaria/wushu_vision @ 82b99f0 | none | Idea of per-stance checks mapped to IWUF deduction codes (50–53, 26); its thresholds are not used |
