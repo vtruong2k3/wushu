@@ -4,13 +4,13 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
 
 ---
 
-## 2026-11-14 — X.06 Usable repositories recorded in the docs (IN_REVIEW → DONE after push)
+## 2026-11-14 — X.06 Usable repositories recorded in the docs (DONE)
 
 - Usable items from X.05 (already cloned, git-ignored): `repos/taolu/tpz` (MPL-2.0, E04 reference) and
   `repos/taolu/_no-license/wushu_vision` (ideas only)
 - Changed: `repos/taolu/REPOS.md` (summary: rubric row + new E04 row), `Docs/TECH_WORKFLOW_V1.md` §11 E04,
   `taiji_ai/THIRD_PARTY_NOTICES.md` §6
-- Commit: X.05 + X.06 documentation commit, then a follow-up commit recording the push verification
+- Commit: `ce859b4` (X.05 + X.06 documentation, pushed) + follow-up commit recording the push verification
 - Plan: `Docs/tasks/X.06.md`
 
 ## 2026-11-14 — X.05 Survey of additional Wushu repositories (DONE)

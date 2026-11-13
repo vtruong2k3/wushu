@@ -2,13 +2,13 @@
 
 | Field | Value |
 |---|---|
-| Status | IN_REVIEW |
+| Status | DONE |
 | Owner | agent (Claude Code) |
 | Phase | ad-hoc |
 | Estimate | 0.1 day |
 | Depends on | X.05 (DONE) |
 | Plan confirmed by | Maintainer 2026-11-14: "cái có dùng được thì clone về và cập nhật docs rồi commit lên" (commit + push requested) |
-| Started / Done | 2026-11-14 / — |
+| Started / Done | 2026-11-14 / 2026-11-14 |
 
 ## 1. Analysis
 
@@ -30,7 +30,7 @@
 
 **Acceptance criteria:**
 - [x] The three docs mention tpz / wushu_vision consistently with X.05.
-- [ ] Commit pushed; remote HEAD == local HEAD; no clone or data files in the commit.
+- [x] Commit pushed; remote HEAD == local HEAD; no clone or data files in the commit.
 
 ## 3. Plan re-read (before coding)
 
@@ -49,7 +49,7 @@
 ## 5. Verification
 
 - Dry run before commit: only documentation files; no `repos/*/*` clone content, no data (see command output in the session).
-- Push: pending at the time of this commit; verified and recorded by the follow-up commit.
+- Push: commit `ce859b4` pushed (`0ba768b..ce859b4 main -> main`); remote `refs/heads/main` == local HEAD `ce859b4`.
 - **Process deviation:** the push criterion and DONE status were first ticked before pushing; reset to IN_REVIEW before committing.
 
 ## 6. Self-review
@@ -64,6 +64,6 @@
 
 ## 8. Close-out
 
-- [ ] Acceptance criteria met (push pending)
+- [x] Acceptance criteria met
 - [x] TASK_STATUS.md updated
 - [x] CHANGELOG.md entry added
