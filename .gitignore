@@ -1,0 +1,58 @@
+# Root .gitignore for the wushu workspace (see AGENTS.md §5.9, §8).
+# taiji_ai/.gitignore adds project-specific rules (data/, models/*.onnx, caches).
+
+# --- Third-party repositories: read-only clones, never tracked (keep only our notes) ---
+/repos/*/*
+!/repos/*/REPOS.md
+
+# --- Downloaded datasets: license-restricted, never tracked (keep only our provenance README) ---
+/datasets/*/*
+!/datasets/*/README.md
+
+# --- Python environments and caches (any depth) ---
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+
+# --- Safety net: media, model weights, archives, arrays never belong in git ---
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.wav
+*.onnx
+*.pt
+*.pth
+*.ckpt
+*.zip
+*.rar
+*.7z
+*.npz
+*.npy
+*.parquet
+*.sqlite3
+*.sqlite3-*
+
+# --- Node / web build ---
+node_modules/
+/taiji_ai/web/dist/
+*.tsbuildinfo
+/taiji_ai/web/coverage/
+/taiji_ai/web/test-results/
+/taiji_ai/web/playwright-report/
+
+# --- Temp files ---
+*.tmp
+*.log
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/

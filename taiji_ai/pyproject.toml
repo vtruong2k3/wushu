@@ -1,0 +1,75 @@
+[project]
+name = "taiji-ai"
+version = "0.1.0"
+description = "Taijiquan video analysis MVP: pose, quality masks, metrics, reference comparison, coach review"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    # Video I/O (PTS-accurate frame reading; FFmpeg CLI is a system dependency)
+    "av>=19.0.2",
+    # Numerics
+    "numpy>=2.1",
+    "scipy>=1.14",
+    "pandas>=2.2",
+    "pyarrow>=18",
+    # Schemas / config
+    "pydantic>=2.9",
+    # Pose: rtmlib (YOLOX + RTMPose HALPE_26 via ONNX). Its CPU onnxruntime and
+    # two OpenCV wheels are replaced below; see [tool.uv] override-dependencies.
+    "rtmlib==0.0.16",
+    "onnxruntime-gpu[cuda,cudnn]==1.32.0",
+    # rtmlib 0.0.16 was developed against OpenCV 4.x; stay on 4.x until verified on 5.x.
+    "opencv-python-headless>=4.10,<5",
+    "tqdm>=4.66",
+    # API (serves /api and the React build in web/dist; DEC-0008)
+    "fastapi>=0.162",
+    "uvicorn>=0.54",
+    # Static HTML report
+    "plotly>=5.24",
+    "jinja2>=3.1",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "ruff>=0.8",
+    "mypy>=1.13",
+    "httpx2>=2.16",  # HTTP client used by starlette/fastapi TestClient (httpx is deprecated there)
+]
+
+[tool.uv]
+# rtmlib declares onnxruntime (CPU), opencv-python and opencv-contrib-python.
+# - onnxruntime CPU and onnxruntime-gpu both provide the `onnxruntime` module -> keep GPU only.
+# - opencv-python and opencv-contrib-python both provide `cv2` -> use headless only
+#   (rtmlib only needs core + dnn, no contrib modules, no GUI).
+override-dependencies = [
+    "onnxruntime; sys_platform == 'never'",
+    "opencv-python; sys_platform == 'never'",
+    "opencv-contrib-python; sys_platform == 'never'",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/taiji_ai"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+markers = [
+    "gpu: requires CUDA-capable GPU and downloaded models",
+    "dataset: requires a locally downloaded dataset under ../datasets (skips when absent; AGENTS.md 9.4)",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "NPY"]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true

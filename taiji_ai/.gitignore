@@ -1,0 +1,19 @@
+# Environment
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Participant data and generated artifacts: never commit
+data/*
+!data/.gitkeep
+
+# Model weights (fetched with tools/fetch_models.py; registry.json IS committed)
+models/*.onnx
+models/*.tmp
+
+# Local inventories / scratch
+hardware_inventory.local.md
+*.tmp

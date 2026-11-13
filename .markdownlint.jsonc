@@ -1,0 +1,9 @@
+{
+  // Project docs use compact tables (`|---|`) and long prose/table lines on purpose.
+  // MD060 (table pipe style) and MD013 (80-char line length) flood the editor on every edit and hide real issues.
+  // A workspace config replaces the editor's own markdownlint settings, so every rule we rely on stays enabled here
+  // by default; only these two are turned off. (tasks X.04, BUG-0003)
+  "default": true,
+  "MD013": false,
+  "MD060": false
+}

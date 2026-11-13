@@ -1,0 +1,20 @@
+# Normalize line endings: LF in the repository and in checkouts on every OS (task P0.04).
+* text=auto eol=lf
+
+# Windows scripts keep CRLF
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binaries (none should be committed, see .gitignore; this only guards against corruption if one is)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.xlsx binary
+*.onnx binary
+*.mp4 binary
+*.zip binary
+*.rar binary

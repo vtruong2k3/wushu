@@ -1,0 +1,56 @@
+:root {
+  --bg: #fafaf7;
+  --fg: #1f2328;
+  --muted: #59636e;
+  --line: #d8dee4;
+  --good: #1a7f37;
+  --bad: #cf222e;
+  font-family: system-ui, "Segoe UI", Roboto, sans-serif;
+  color: var(--fg);
+  background: var(--bg);
+}
+
+body {
+  margin: 0;
+}
+
+.app-header {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--line);
+  background: #fff;
+}
+
+.brand {
+  font-weight: 700;
+}
+
+.app-header nav a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.app-header nav a.active {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.app-main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1.25rem;
+}
+
+.good {
+  color: var(--good);
+}
+
+.bad {
+  color: var(--bad);
+}
+
+code {
+  font-size: 0.9em;
+}
