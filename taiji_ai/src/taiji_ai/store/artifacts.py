@@ -46,9 +46,20 @@ def atomic_write_json(path: str | Path, obj: Any) -> Path:
 
 
 def atomic_save_npz(path: str | Path, **arrays: np.ndarray) -> Path:
-    """Save arrays as compressed .npz atomically. NaN values are preserved as-is."""
+    """Save arrays as compressed .npz atomically. NaN values are preserved as-is.
+
+    Array names 'file' and 'allow_pickle' are reserved (they collide with np.savez keywords) and raise ValueError;
+    object arrays are refused with ValueError because np.load will not read pickles by default.
+    """
+    reserved = {"file", "allow_pickle"}
+    clash = reserved.intersection(arrays)
+    if clash:
+        raise ValueError(f"Reserved array names cannot be saved in .npz: {sorted(clash)}")
+    for name, arr in arrays.items():
+        if getattr(arr, "dtype", None) == np.dtype(object):
+            raise ValueError(f"Object arrays cannot be saved without pickle: {name!r}")
     buf = io.BytesIO()
-    np.savez_compressed(buf, **arrays)
+    np.savez_compressed(buf, allow_pickle=False, **arrays)
     return atomic_write_bytes(path, buf.getvalue())
 
 

@@ -37,6 +37,20 @@ def test_atomic_writes_leave_no_tmp_and_keep_nan(tmp_path):
     assert not list(tmp_path.rglob("*.tmp"))
 
 
+@pytest.mark.parametrize("name", ["allow_pickle", "file"])
+def test_bug_0006_reserved_key_raises(tmp_path, name):
+    with pytest.raises(ValueError, match="Reserved"):
+        atomic_save_npz(tmp_path / "x.npz", **{name: np.array([1, 2])})
+    assert not (tmp_path / "x.npz").exists(), "a rejected save must leave no file"
+
+
+def test_bug_0006_object_array_rejected(tmp_path):
+    obj_arr = np.array(["hello", {"a": 1}], dtype=object)
+    with pytest.raises(ValueError, match="Object arrays"):
+        atomic_save_npz(tmp_path / "obj.npz", data=obj_arr)
+    assert not (tmp_path / "obj.npz").exists(), "a rejected save must leave no file"
+
+
 # --- db -------------------------------------------------------------------------------------
 def test_migrations_apply_once_and_enforce_constraints(tmp_path):
     conn = connect(tmp_path / "app.sqlite3", MIGRATIONS)

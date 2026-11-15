@@ -8,7 +8,8 @@ All repository rules live in AGENTS.md and are mandatory:
 
 - **Lifecycle is not optional.** For every task: analyze → write the plan in `Docs/tasks/<TASK-ID>.md` →
   update `Docs/tracking/TASK_STATUS.md` → **Read the task file again right before the first code edit** →
-  implement → run checks → re-read your own changes → register bugs → close. Do not skip steps for "small" tasks.
+  implement → run checks (`powershell -NoProfile -ExecutionPolicy Bypass -File tools\check.ps1`) →
+  re-read your own changes → register bugs → close. Do not skip steps for "small" tasks.
 - If the user asks for work that has no task ID, create an ad-hoc task (`X.<NN>`, AGENTS.md §2.2) first and say so.
 - Keep a todo list mirroring the plan's numbered steps while implementing; tick them as you go.
 - Self-review means actually re-reading the changed files or the diff, not summarizing from memory.

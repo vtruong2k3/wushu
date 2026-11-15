@@ -22,15 +22,22 @@ cd web; pnpm install --frozen-lockfile; cd ..
 
 ## Checks before a pull request
 
+Run the one-command quality gate from `taiji_ai/`:
+
 ```powershell
-cd taiji_ai
-.venv\Scripts\python.exe -m ruff check src tests tools
-.venv\Scripts\python.exe -m ruff format --check src tests tools
-.venv\Scripts\python.exe -m pytest
-cd web; pnpm lint; pnpm typecheck; pnpm test; pnpm build
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\check.ps1
 ```
 
-(`tools/check.ps1`, task P0.05, will wrap these.)
+(Machine without a supported GPU: append `-NoGpu`).
+
+Under the hood, the gate runs:
+- `uv lock --check`
+- `.venv\Scripts\python.exe -m ruff check src tests tools`
+- `.venv\Scripts\python.exe -m ruff format --check src tests tools`
+- `.venv\Scripts\python.exe -m mypy src`
+- `.venv\Scripts\python.exe -m pytest -rs` (all tests)
+- `cd web; pnpm lint; pnpm typecheck; pnpm test; pnpm build`
+- `.venv\Scripts\python.exe tools\repo_hygiene.py`
 
 ## Branches, commits, pull requests
 
