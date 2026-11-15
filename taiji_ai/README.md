@@ -70,6 +70,7 @@ src/taiji_ai/
 web/                   React + Vite + TypeScript UI: src/{api,components,pages}, tests/ (Vitest)
 tools/                 check.ps1, repo_hygiene.py, fetch_models.py, env_check.py
 tests/                 unit/, contract/ (synthetic FFmpeg fixtures; GPU smoke test), api/ (FastAPI TestClient)
+tests/helpers/         synth.py synthetic HALPE_26 skeleton generator (F-SYN, SYN-01..12)
 ```
 
 ## Status
@@ -83,6 +84,7 @@ tests/                 unit/, contract/ (synthetic FFmpeg fixtures; GPU smoke te
 | api (app factory, /api/health, errors, SPA serving) | done, tested (T-API-01..04) |
 | web (React + Vite: router, react-query, typed API client, status page) | done, tested (Vitest, real-browser smoke) |
 | tooling (check.ps1 gate, repo_hygiene) | done, tested (T-TOOL-01..05) |
+| test helpers (F-SYN skeleton generator, SYN-01..12) | done, tested (T-SYN-01..04) |
 | track, quality, metrics, compare, pipeline, report | not started |
 
 ## Logging

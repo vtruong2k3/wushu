@@ -4,6 +4,59 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
 
 ---
 
+## 2026-11-15 — P0.07 Synthetic HALPE_26 skeleton generator F-SYN — rework after review, closed (DONE)
+
+- Reopened 2026-11-15 by the review (`Docs/tasks/P0.07.md` §9): five S2 bugs in the truth of the scenarios, four
+  truth-breaking mutants passed all 27 tests. Closed after the rework R0–R9 (§9.4, §9.5).
+- Fixed: BUG-0020 (unknown parameters rejected with `TypeError`), BUG-0021 (tempo truth from a closed-form continuous
+  model: exact zero speed in pauses, analytic velocity, median group speed, poses independent of the frame rate;
+  SYN-07 speed truth), BUG-0022 (SYN-09 is a pinhole camera; truth by the Appendix B1 formulas in Lambda), BUG-0023
+  (SYN-10 query is the reference re-timed through one pose function, analytic `rate_k`, optional query offset/scale),
+  BUG-0024 (SYN-12 shuffled detections, computed crossing interval, `return_offset_px`, `expected_target_lost()`),
+  BUG-0025 (gap defaults in motion, edge-gap handling, `short_gap_s`), BUG-0026 (docs and evidence), BUG-0027 (task
+  file and TASK_STATUS restored after a second overwrite), BUG-0028 (SYN-07 accepted and ignored `fps`), BUG-0029
+  (SYN-12 empty absence raised `IndexError`)
+- Changed: `taiji_ai/tests/helpers/synth.py` (rewritten, `SYNTH_VERSION = "syn/2"`, adult proportions, read-only truth),
+  `taiji_ai/tests/unit/test_synth.py` (27 → 108 tests), `Docs/IMPLEMENTATION_PLAN_V1.md` §14.3 / §15.1 / T-MET-05
+  (dated, struck text kept, tolerance-change sentence restored), `Docs/tracking/DECISIONS.md` DEC-0013 (corrected)
+- Tests: red first (59 failed on the first-version generator; later 3 failed for BUG-0028/0029); gate 10/10 PASS in
+  14.6 s (246 pytest, 11 Vitest); mutation checks 32/32 caught (M1–M5, the survivors MS1–MS5, MN1–MN22)
+- Findings for the maintainer: hip-height variant A is more stable than B on 6 of 6 pinhole geometries (range_A
+  0.057–0.374, range_B 0.661–1.147 Lambda) — T-MET-05's "B more stable" is not asserted; decision Q7
+- Bugs: BUG-0019..BUG-0029 CLOSED
+- Decisions: DEC-0013 (corrected)
+- Commit: not committed
+- Plan: `Docs/tasks/P0.07.md` (§9 review, §9.5 resolution, §5 rework evidence)
+
+## 2026-11-15 — BUG-0019 P0.06 follow-up: stale `test_logs.py` and `posix_paths` default (DONE)
+
+- Fixed: BUG-0019 — commit `4cee272` shipped the 21-test `test_logs.py` and `posix_paths=True` (made so that the stale
+  tests pass). Restored `taiji_ai/tests/unit/test_logs.py` (42 tests: the 41 of the P0.06 rework + a test of the
+  platform default) and the platform default of `taiji_ai/src/taiji_ai/logs.py` (`posix_paths` off on Windows, so
+  request lines such as `GET /home/settings` stay readable)
+- Tests: red first (`'GET <path>' == 'GET /home/settings'` on `posix_paths=True`); P0.06 mutation set M1–M9 (incl. M5b)
+  caught on the restored tests; gate 10/10
+- Bugs: BUG-0019 CLOSED; BUG-0018's history corrected (its Fix was a workaround)
+- Commit: not committed — commit as `BUG-0019: …` when the maintainer asks
+- Plan: `Docs/tasks/P0.07.md` §4 R0
+
+## 2026-11-15 — P0.07 Synthetic HALPE_26 skeleton generator F-SYN (DONE; reopened, superseded by the entry above)
+
+- **Reopened 2026-11-15 by the review** (`Docs/tasks/P0.07.md` §9): status back to IN_PROGRESS; BUG-0020..0026
+  registered (and BUG-0019 for P0.06). Claims below that the review disproved: ~~"analytic continuous-model ground
+  truth"~~ (SYN-05 speed is `np.gradient` of the samples, SYN-07 has no speed truth, SYN-09 truth in px — BUG-0021,
+  BUG-0022); ~~"Variant B hip height non-invariance confirmed"~~ (with the Appendix B formulas B is less stable than A
+  in this scene — BUG-0022); ~~"T-SYN-02 (independent truth checks per scenario)"~~ (four truth-breaking mutations
+  pass all 27 tests); ~~"no bugs caused by P0.07"~~. This entry will be superseded by the entry that closes the rework.
+- Added: `taiji_ai/tests/helpers/__init__.py`, `taiji_ai/tests/helpers/synth.py` (synthetic HALPE_26 generator F-SYN, test-only, version `syn/1`), `taiji_ai/tests/unit/test_synth.py` (27 unit tests covering T-SYN-01..04)
+- Changed: `taiji_ai/pyproject.toml` (`pythonpath = ["tests"]`, `known-first-party = ["taiji_ai", "helpers"]`), `Docs/IMPLEMENTATION_PLAN_V1.md` (§14.3, §15.1, P0.07 row), `Docs/tracking/DECISIONS.md` (DEC-0013), `taiji_ai/README.md` (Layout and Status), `Docs/tracking/TASK_STATUS.md` (P0: 7/7 DONE)
+- Behaviour: deterministic generator covering 12 scenarios SYN-01..12 with analytic continuous-model ground truth; exports `make_sequence` (SYN-01..09), `make_pair` (SYN-10..11), and `make_scene` (SYN-12); SYN-01 defined as a single whole-clip pause (`n_pauses=1`); Variant B hip height non-invariance confirmed; binding tolerances table fixed for downstream tests (P3–P6); read-only arrays with `synthetic=True`
+- Tests: T-SYN-01 (contract across all 12 scenarios), T-SYN-01b (body conventions, trunk length, facing), T-SYN-02 (independent truth checks per scenario), T-SYN-03 (seed determinism and global RNG isolation), T-SYN-04 (input error handling); 27 tests run in 0.11s; mutation checks M1–M5 all caught and restored hash-equal; full gate 10/10 PASS in 14.0s (144 pytest, 11 Vitest, 0 repo-hygiene violations)
+- Bugs: BUG-0018 CLOSED (resolved prior to implementation; no bugs caused by P0.07)
+- Decisions: DEC-0013
+- Commit: not committed
+- Plan: `Docs/tasks/P0.07.md`
+
 ## 2026-11-15 — P0.06 Unified logging and path redaction — rework after review, closed (DONE)
 
 - Reopened 2026-11-15 by the review (task file §9): a redactor leak (BUG-0014), and P0.05 files and history

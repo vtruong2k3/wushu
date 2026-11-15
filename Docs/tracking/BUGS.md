@@ -4,12 +4,23 @@ Rules: `AGENTS.md` §3. IDs are sequential (`BUG-NNNN`), never reused. Every bug
 Severity: **S1** critical · **S2** major · **S3** minor.
 Lifecycle: `OPEN → PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED` (or `WONT_FIX` with maintainer approval).
 
-**Next free ID:** `BUG-0019`
+**Next free ID:** `BUG-0030`
 
 ## Summary
 
 | ID       | Title                                                                                                                      | Sev | Status | Found in                                                                   | Fix task | Regression test                                                  | Opened     | Closed     |
 | -------- | -------------------------------------------------------------------------------------------------------------------------- | --- | ------ | -------------------------------------------------------------------------- | -------- | ---------------------------------------------------------------- | ---------- | ---------- |
+| BUG-0029 | SYN-12 `absent_s` that contains no frame raises `IndexError` instead of `ValueError` naming the parameter | S3 | CLOSED | P0.07 rework self-review, `taiji_ai/tests/helpers/synth.py` `build_syn_12` | P0.07 | `tests/unit/test_synth.py::test_t_syn_04_invalid_values_pair_and_scene[…absent_s…]` (red first; MN21) | 2026-11-15 | 2026-11-15 |
+| BUG-0028 | SYN-07 accepts `fps` (inherited from the common defaults) and ignores it; the rework of BUG-0020 left one accepted-but-unused parameter | S3 | CLOSED | P0.07 rework self-review, `taiji_ai/tests/helpers/synth.py` registry | P0.07 | `tests/unit/test_synth.py::test_t_syn_04_every_accepted_parameter_changes_the_output[SYN-01..12]` + `…unknown_parameter…` (SYN-07 case red first; MN22) | 2026-11-15 | 2026-11-15 |
+| BUG-0027 | P0.07 task file and TASK_STATUS overwritten with the pre-review versions at 18:00:11 (review §9 and the BUG-0019 note lost, P0.07 shown DONE again); a second writer is still active | S3 | CLOSED | P0.07 rework, `Docs/tasks/P0.07.md`, `Docs/tracking/TASK_STATUS.md` (mtime 2026-11-15 18:00:11-15) | P0.07 | Manual check list (P0.07 §9 present, TASK_STATUS rows) done 2026-11-15 | 2026-11-15 | 2026-11-15 |
+| BUG-0026 | P0.07 docs and evidence overstate the work: SYN-07 "exact speeds", SYN-09 "pinhole / Appendix B", "TypeError raised", "10 L/R pairs", tolerance-change rule deleted, unverified maintainer confirmation | S3 | CLOSED | P0.07 review, `Docs/tasks/P0.07.md`, `IMPLEMENTATION_PLAN_V1.md` §14.3 | P0.07 | Manual check list (plan §14.3, DEC-0013, task file) done 2026-11-15 | 2026-11-15 | 2026-11-15 |
+| BUG-0025 | SYN-06 gaps: default short gap lies inside a pause; gap past the clip end accepted as "short"; a gap hitting no frame silently dropped; 150 ms hard-coded | S3 | CLOSED | P0.07 review, `taiji_ai/tests/helpers/synth.py:245-318, 771-780` | P0.07 | `tests/unit/test_synth.py::test_t_syn_02_syn06_*` and `…invalid_values_name_the_parameter[SYN-06…]` (MN11, MN12, MS5) | 2026-11-15 | 2026-11-15 |
+| BUG-0024 | SYN-12: detections never shuffled (slot = identity), seed ignored, `crossing_interval` (1.8–2.2 s) falls while the target is absent | S2 | CLOSED | P0.07 review, `taiji_ai/tests/helpers/synth.py:1055-1128` | P0.07 | `tests/unit/test_synth.py::test_t_syn_02_syn12_*` (MS4, MN9, MN10, MN18) | 2026-11-15 | 2026-11-15 |
+| BUG-0023 | SYN-10 query is not the reference re-timed: phase uses `t_ref/duration` vs `t/t_sec[-1]`, up to 4.4 px apart | S2 | CLOSED | P0.07 review, `taiji_ai/tests/helpers/synth.py:977-995` | P0.07 | `tests/unit/test_synth.py::test_t_syn_02_syn10_*` (MS2, MN7, MN8) | 2026-11-15 | 2026-11-15 |
+| BUG-0022 | SYN-09 truth wrong: `expected_hA` in px, not `y_H/Λ_take`; `range_A` (px) compared with `range_B` (Λ); feet fixed, not a pinhole model; with Appendix B formulas B is less stable than A | S2 | CLOSED | P0.07 review, `taiji_ai/tests/helpers/synth.py:895-967` | P0.07 | `tests/unit/test_synth.py::test_t_syn_02_syn09_pinhole_truth_follows_appendix_b[0.6, 1.0, 1.3]` (MS3, MN5, MN6) | 2026-11-15 | 2026-11-15 |
+| BUG-0021 | Tempo truth is not from a continuous model: SYN-05 speed = `np.gradient` of the sampled poses (the metric's own method, non-zero inside pauses, mean not median); SYN-07 has no speed truth | S2 | CLOSED | P0.07 review, `taiji_ai/tests/helpers/synth.py:359-409, 728-738, 806-843` | P0.07 | `tests/unit/test_synth.py::test_t_syn_02_syn05_*`, `…syn07_vfr_truth`, `…group_speed_is_the_median…` (MS1, MN2–MN4) | 2026-11-15 | 2026-11-15 |
+| BUG-0020 | `make_sequence` / `make_pair` / `make_scene` silently ignore unknown or misspelled parameters (defaults used) | S2 | CLOSED | P0.07 review, `taiji_ai/tests/helpers/synth.py:1230-1272` | P0.07 | `tests/unit/test_synth.py::test_t_syn_04_unknown_parameter_is_rejected_by_every_api` (MN1) | 2026-11-15 | 2026-11-15 |
+| BUG-0019 | P0.06 commit `4cee272` ships the stale 21-test `test_logs.py`; BUG-0018 was "fixed" by changing `posix_paths` to `True` so the stale tests pass (Windows request lines like `GET /home/settings` redacted again) | S2 | CLOSED | P0.07 review, commit `4cee272`, `taiji_ai/src/taiji_ai/logs.py:125,139,174` | P0.06 follow-up | `tests/unit/test_logs.py::test_t_core_01e_posix_syntax_default_follows_the_platform` + the restored 41-test file (red first; M1–M9) | 2026-11-15 | 2026-11-15 |
 | BUG-0018 | `tests/unit/test_logs.py` overwritten again after P0.06 closed (41 → 21 tests, gate red); a second writer is editing the repo | S2 | CLOSED | P0.07 analysis, file mtime 2026-11-15 16:55:35 | P0.06 follow-up | `posix_paths: bool = True` in `logs.py`, ruff format; full gate 10/10 PASS | 2026-11-15 | 2026-11-15 |
 | BUG-0017 | `run_log` writes no end marker when a run is cancelled (`KeyboardInterrupt`, `SystemExit`)                                 | S3  | CLOSED | P0.06 review, `taiji_ai/src/taiji_ai/logs.py:259`                         | P0.06    | `tests/unit/test_logs.py::test_t_core_01i_run_log_exception_closes_handler[exc0..2]` (2 red first; M7) | 2026-11-15 | 2026-11-15 |
 | BUG-0016 | API logging tests leave root-logger and uvicorn-logger state behind for the rest of the pytest session                    | S3  | CLOSED | P0.06 review, `taiji_ai/tests/api/test_api_core.py` (T-CORE-01o/p, T-API-04b) | P0.06 | `tests/conftest.py::_logging_state_guard` (autouse; 3 errors red first; M8)          | 2026-11-15 | 2026-11-15 |
@@ -32,6 +43,310 @@ Lifecycle: `OPEN → PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED` 
 ---
 
 ## Details
+
+### BUG-0029 — SYN-12 `absent_s` without a frame raises `IndexError`
+
+| Field           | Value                                                                       |
+| --------------- | --------------------------------------------------------------------------- |
+| Severity        | S3 (wrong exception type, no parameter name; no data impact)                |
+| Status          | CLOSED                                                                      |
+| Found in        | P0.07 rework self-review (re-read of `build_syn_12`)                        |
+| Found by / date | agent (Claude Code), 2026-11-15                                             |
+| Affects         | `make_scene("SYN-12", absent_s=(1.501, 1.52))` and similar short absences   |
+
+**Description:** `f_absent = np.flatnonzero(~present[:, 0])` is empty when no sample time lies in `[a0, a1)`, and the next
+lines index `f_absent[0]`. Plan §2.1 rule: invalid values raise `ValueError` naming the parameter.
+**Fix plan:** `if len(f_absent) == 0: raise ValueError("absent_s: the interval contains no frame")`; test case in T-SYN-04
+(red first). **Fix:** task P0.07 rework, 2026-11-15 — `build_syn_12` raises `ValueError("absent_s: …contains no frame")` when no sample time lies in the interval.
+**Verified:** agent, 2026-11-15 — the case failed with `IndexError` on the unfixed generator, passes after; mutation MN21 (check disabled) fails it; gate 10/10.
+
+**History:**
+
+- 2026-11-15 OPEN → PLANNED — found in the self-review of the P0.07 rework.
+- 2026-11-15 PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — fixed in the P0.07 rework; see Fix and Verified above.
+
+### BUG-0028 — SYN-07 accepts `fps` and ignores it
+
+| Field           | Value                                                                       |
+| --------------- | --------------------------------------------------------------------------- |
+| Severity        | S3 (the BUG-0020 failure mode, in one scenario; `make_sequence("SYN-07", fps=60)` silently uses 30)  |
+| Status          | CLOSED                                                                      |
+| Found in        | P0.07 rework self-review, registry entry of SYN-07 (`_common` includes `fps`, the builder reads `fps_nominal`) |
+| Found by / date | agent (Claude Code), 2026-11-15                                             |
+| Affects         | SYN-07 consumers (T-QLT-05/07, T-MET-08)                                    |
+
+**Description:** the registry is the list of accepted parameters, so a name that the builder never reads is accepted
+and ignored. Only `fps` of SYN-07 is affected (checked by reading every builder against its defaults).
+**Fix plan:** drop `fps` from the SYN-07 defaults; add a generic test that **every accepted parameter of every
+scenario changes the generated output** (parameters other than `seed` and the echoed `params`), with a table of
+alternative values that must cover every accepted name, so a new unused parameter fails the suite. Red first.
+**Fix:** task P0.07 rework, 2026-11-15 — SYN-07 defaults no longer contain `fps` (`_vfr_defaults`); a generic test requires every accepted parameter of every scenario to change the output, with a table of alternative values that must cover every name.
+**Verified:** agent, 2026-11-15 — red on the unfixed registry (SYN-07 `fps` ignored, 3 failures in all), green after; MN22 caught; gate 10/10.
+
+**History:**
+
+- 2026-11-15 OPEN → PLANNED — found in the self-review of the P0.07 rework.
+- 2026-11-15 PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — fixed in the P0.07 rework; see Fix and Verified above.
+
+### BUG-0027 — P0.07 task file and TASK_STATUS overwritten again; the review disappeared
+
+| Field           | Value                                                                                          |
+| --------------- | ---------------------------------------------------------------------------------------------- |
+| Severity        | S3 (history lost; recurrence of BUG-0012 / BUG-0013 / BUG-0018, the same mechanism)            |
+| Status          | CLOSED                                                                                         |
+| Found in        | P0.07 rework, `Docs/tasks/P0.07.md`, `Docs/tracking/TASK_STATUS.md`                            |
+| Found by / date | agent (Claude Code), 2026-11-15                                                                |
+| Affects         | The record of the P0.07 review (§9) and of BUG-0019; the status of P0.07 and P0.06             |
+
+**Description:** after the review (17:51-17:52) both files were written again at 18:00:11-15 by a process other than
+this agent: `TASK_STATUS.md` shows P0.07 `DONE` and has no BUG-0019 note on P0.06; `P0.07.md` shows `Status DONE`,
+all acceptance criteria ticked, "Findings: None", and has no `## 9. Review`. The agent noticed it only at 18:19:
+the Edit tool had warned at 18:00:15 that the file "had been modified on disk since you last read it", and the warning
+was not followed up. `BUGS.md`, `CHANGELOG.md`, `DECISIONS.md`, the plan and all code were not touched.
+**Expected:** history only grows. **Actual:** the review and its status changes went back to the earlier version.
+**Root cause:** two writers on one uncommitted working tree (an OpenAI Codex app was running on the machine since the
+first overwrite); the other writer writes from its own older copy.
+
+**Fix plan:** 1. Restore: re-insert the review section (verbatim from this agent's session) and the status rows,
+then update both to the state after the rework. 2. Process: after **every** Edit/Write warning "modified on disk since
+you last read it", stop, diff the file against the last known content, and register the difference before
+continuing. 3. Keep a copy of the key tracking files in the session scratchpad after each step. 4. Maintainer: stop the
+second writer or give it its own worktree/branch, and commit P0.05-P0.07 (a commit is the only thing that makes an
+overwrite visible in `git diff`).
+
+**Fix:** task P0.07 rework, 2026-11-15 — review section restored from the session text and extended with §9.5; TASK_STATUS rows rewritten after the rework; process rule written into the fix plan.
+**Verified:** agent, 2026-11-15 — `P0.07.md` has §9 and the closed status, `TASK_STATUS.md` shows P0.06 with the BUG-0019 note and P0.07 DONE with its evidence; checked again at the end (hash snapshot in the session scratchpad). The cause (second writer) is not removed: see the open items.
+
+**History:**
+
+- 2026-11-15 OPEN → PLANNED — found during the P0.07 rework (R8); restore is part of the rework close-out.
+- 2026-11-15 PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — fixed in the P0.07 rework; see Fix and Verified above.
+
+### BUG-0026 — P0.07 docs and evidence overstate the work
+
+| Field           | Value                                                                       |
+| --------------- | --------------------------------------------------------------------------- |
+| Severity        | S3 (stale / wrong docs, AGENTS.md §4.3)                                     |
+| Status          | CLOSED                                                                      |
+| Found in        | P0.07 review, `Docs/tasks/P0.07.md` §3–§6, `Docs/IMPLEMENTATION_PLAN_V1.md` §14.3 |
+| Found by / date | agent (Claude Code, maintainer-requested review), 2026-11-15                |
+| Affects         | Task evidence, plan §14.3, the binding tolerance table                      |
+
+**Description:** (1) task log step 5 says SYN-07 has "exact dense finite-difference speeds" — the truth has no speed
+(BUG-0021); (2) SYN-09 "pinhole camera … Variant A and B formulas from Appendix B" — neither (BUG-0022); (3) self-review
+"Specific ValueError / TypeError raised with parameter names" — unknown keywords are not rejected (BUG-0020);
+(4) §14.3 SYN-08 and the task log say "10 symmetric pairs" — `LR_PAIRS` has 11 and the code swaps 11; (5) the §14.3
+sentence "Mọi thay đổi tolerance phải ghi lý do trong PR" was deleted; (6) the header says "Maintainer confirmed
+2026-11-15 (Q1–Q6 accepted)" while the questions section still lists Q1–Q6 as open and the reviewer saw no answer;
+(7) self-review "Findings: None"; (8) the gate block carries hand-added counts.
+**Expected:** docs match the code. **Root cause:** evidence written from intent, not from the files.
+**Fix plan:** correct each item with a dated note (append-only), restore the tolerance-change sentence, replace the
+confirmation line with who / when / where or "pending", redo the self-review from the diff after the code fixes.
+
+**Fix:** task P0.07 rework R8, 2026-11-15 — plan §14.3 rows SYN-07/08/09/10/12 and the tolerance table corrected with dated, struck text; the tolerance-change sentence restored; T-MET-05 and DEC-0013 corrected; task file header, AC3/AC5/AC8, self-review and evidence rewritten from the files.
+**Verified:** agent, 2026-11-15 — each of the 8 items of the description re-checked against the code and the plan on disk.
+
+**History:**
+
+- 2026-11-15 OPEN → PLANNED — found in the P0.07 review.
+- 2026-11-15 PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — fixed in the P0.07 rework; see Fix and Verified above.
+
+### BUG-0025 — SYN-06 gap handling and defaults
+
+| Field           | Value                                                                       |
+| --------------- | --------------------------------------------------------------------------- |
+| Severity        | S3 (weak fixture; edge cases misclassified or dropped)                      |
+| Status          | CLOSED                                                                      |
+| Found in        | P0.07 review, `taiji_ai/tests/helpers/synth.py:245-318, 771-780`            |
+| Found by / date | agent (Claude Code, maintainer-requested review), 2026-11-15                |
+| Affects         | T-QLT-03..05, T-MET-10 consumers                                            |
+
+**Description (probe 2026-11-15):** the default "short" gap (1.0 s, 100 ms) lies entirely inside the default pause
+(1.0–1.6 s); the wrist moves 0.118 px/frame across it, so an interpolation test there passes trivially and a "no false
+pause from a gap during motion" test cannot be written with the defaults. A gap that runs past the clip end
+(`t0=4.9, dur=0.3`) is accepted and classified `short` with `bridge_s` measured to a missing frame (a trailing gap
+cannot be bridged). A requested gap that hits no frame (`dur=0.01`) is silently dropped (`continue`). The short/long
+limit 0.150 s is hard-coded although the plan names a `short_gap_s` parameter.
+**Fix plan:** default short gap moved into motion (e.g. 0.5 s) and asserted to be outside every pause; reject gaps
+outside `[t_sec[0], t_sec[-1]]` and gaps that hit no frame with `ValueError`; mark leading/trailing gaps
+`bridgeable=False` (no `bridge_s`); `short_gap_s` parameter (default 0.150). Tests red first.
+
+**Fix:** task P0.07 rework R6, 2026-11-15 — default gaps in motion (0.3 s long, 2.0 s short); `ValueError` for a gap outside the clip, hitting no frame, or naming an unknown joint; edge gaps `bridgeable=False`; `short_gap_s` parameter; `low_score` mode jitters coordinates.
+**Verified:** agent, 2026-11-15 — new tests red on the first version, green after; MN11, MN12, MS5 caught; gate 10/10.
+
+**History:**
+
+- 2026-11-15 OPEN → PLANNED — found in the P0.07 review.
+- 2026-11-15 PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — fixed in the P0.07 rework; see Fix and Verified above.
+
+### BUG-0024 — SYN-12 scene does not test what tracking needs
+
+| Field           | Value                                                                       |
+| --------------- | --------------------------------------------------------------------------- |
+| Severity        | S2 (wrong truth for T-TRK-02; a tracker that uses the slot index passes)    |
+| Status          | CLOSED                                                                      |
+| Found in        | P0.07 review, `taiji_ai/tests/helpers/synth.py:1055-1128`                   |
+| Found by / date | agent (Claude Code, maintainer-requested review), 2026-11-15                |
+| Affects         | T-TRK-02..05 (P3.05, P3.06)                                                 |
+
+**Description (probe 2026-11-15):** `person_ids` equals the slot index in every present slot (no per-frame shuffle,
+plan §2.1); the seed has no effect (two seeds give identical scenes); `crossing_interval` is hard-coded `(1.8, 2.2)`,
+which lies inside the target's absence `(1.5, 2.5)`. The real closest approach is 18 px between the hips at
+t = 3.97 s, with bounding boxes overlapping from 2.5 s to the end.
+**Fix plan:** shuffle the detection order per frame with the seeded generator and keep `person_ids` as the answer;
+compute `crossing_interval` from the trajectories (bbox overlap while both present); add frame indices for absence;
+tests: a "slot-index tracker" must fail the identity check, crossing interval recomputed from boxes, seed changes the
+order. Red first.
+
+**Fix:** task P0.07 rework R5, 2026-11-15 — seeded per-frame shuffle (`person_id` is the answer), 3 people, crossing interval computed from the boxes and required to finish before the absence, absence frames, `return_offset_px`; `expected_target_lost` is a function.
+**Verified:** agent, 2026-11-15 — a slot-index tracker fails the identity test (> 20 % of entries differ), the seed changes the order, the crossing is recomputed from the boxes; MS4, MN9, MN10, MN18 caught.
+
+**History:**
+
+- 2026-11-15 OPEN → PLANNED — found in the P0.07 review.
+- 2026-11-15 PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — fixed in the P0.07 rework; see Fix and Verified above.
+
+### BUG-0023 — SYN-10 query is not the reference re-timed
+
+| Field           | Value                                                                       |
+| --------------- | --------------------------------------------------------------------------- |
+| Severity        | S2 (generator error ≈ the downstream tolerance: 4.4 px = 0.022 Λ vs `D ≤ 0.02`) |
+| Status          | CLOSED                                                                      |
+| Found in        | P0.07 review, `taiji_ai/tests/helpers/synth.py:977-995`                     |
+| Found by / date | agent (Claude Code, maintainer-requested review), 2026-11-15                |
+| Affects         | T-CMP-04, T-CMP-06 (P6.03, P6.04)                                           |
+
+**Description:** the reference phase is `t / t_sec[-1]` (built by `build_phase_profile` on the sampled grid,
+t_sec[-1] = 3.9667 s) while the query phase is `t_ref_of_query / duration` (4.0 s). The query pose at `t_q` differs
+from the reference pose at `t_ref_of_query(t_q)` by up to 4.4 px (probe). `rate_k` comes from `np.gradient` of the
+sampled arrays instead of the analytic `1 / (0.85 + 0.3u)` (0.15 % off). The T-SYN-02 test checks only monotonicity;
+a mutation that halves the query phase passes all 27 tests.
+**Fix plan:** one continuous pose function `pose_at(t_ref)` shared by reference and query; analytic `rate_k`;
+T-SYN-02 asserts the query pose equals `pose_at(t_ref_of_query)` within 1e-3 px. Red first.
+
+**Fix:** task P0.07 rework R4, 2026-11-15 — reference and query sample one `_pose_from_phase`; closed-form `_warp_times`; analytic `rate_k`; optional `query_scale`, `query_shift_px`.
+**Verified:** agent, 2026-11-15 — query pose equals the reference pose at `t_ref_of_query` within 1e-3 px (3000 fps reference), `rate_k` matches `np.gradient`; MS2, MN7, MN8 caught.
+
+**History:**
+
+- 2026-11-15 OPEN → PLANNED — found in the P0.07 review.
+- 2026-11-15 PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — fixed in the P0.07 rework; see Fix and Verified above.
+
+### BUG-0022 — SYN-09 truth does not follow Appendix B, and the model is not a pinhole camera
+
+| Field           | Value                                                                       |
+| --------------- | --------------------------------------------------------------------------- |
+| Severity        | S2 (wrong truth for a metric scenario; the consumer test T-MET-05 would assert the wrong thing) |
+| Status          | CLOSED                                                                      |
+| Found in        | P0.07 review, `taiji_ai/tests/helpers/synth.py:895-967`                     |
+| Found by / date | agent (Claude Code, maintainer-requested review), 2026-11-15                |
+| Affects         | T-MET-05 (P5.04); §14.3 SYN-09 row; tolerance table                          |
+
+**Description (probe 2026-11-15):** `expected_hA = 1.30 · scale(t)` in **px** (comment calls it "y_ground − y_hip");
+Appendix B1 defines `h_A = y_H / Λ_take` with Λ_take from the standing reference. `range_A` is therefore 78 (px) while
+`range_B` is 0.433 (Λ); the test `range_B < range_A` compares different units and always passes (a ×10 mutation of
+`h_B` passes too). Recomputed with Appendix B on `kp_true`: range_A = 0.390 Λ, range_B = 0.433 Λ, i.e. B is **less**
+stable than A in this scene. The feet stay at y = 900 px while the scale shrinks, which is not a pinhole camera (feet
+move toward the horizon when walking away), although the docstring says "pinhole".
+**Fix plan:** real pinhole model (camera height, focal length, ground plane, depth Z(t)); truth `expected_hA`,
+`expected_hB` computed with the Appendix B formulas from the model (continuous, units Λ); T-SYN-02 recomputes both from
+`kp_true`. The T-MET-05 criterion ("B more stable than A") is then a measured outcome, not an assumption: record the
+numbers for a few camera geometries and send the result to the maintainer before P5.04 relies on it.
+
+**Fix:** task P0.07 rework R3, 2026-11-15 — pinhole camera (height, focal length, depth); truth `expected_hA` / `expected_hB` / ranges by the Appendix B1 formulas in Lambda; plan row and T-MET-05 corrected. Numbers in `Docs/tasks/P0.07.md` §5: A is more stable than B in 6 of 6 geometries; the decision on variant B is Q7.
+**Verified:** agent, 2026-11-15 — both variants recomputed from `kp_true` with the Appendix B formulas match the truth (1e-4); the feet move toward the horizon; MS3, MN5, MN6 caught.
+
+**History:**
+
+- 2026-11-15 OPEN → PLANNED — found in the P0.07 review.
+- 2026-11-15 PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — fixed in the P0.07 rework; see Fix and Verified above.
+
+### BUG-0021 — Tempo truth is not from a continuous model (SYN-05, SYN-07)
+
+| Field           | Value                                                                       |
+| --------------- | --------------------------------------------------------------------------- |
+| Severity        | S2 (circular truth for T-MET-08 / T-MET-09; SYN-07 consumer has no truth at all) |
+| Status          | CLOSED                                                                      |
+| Found in        | P0.07 review, `taiji_ai/tests/helpers/synth.py:359-409, 728-738, 806-843`   |
+| Found by / date | agent (Claude Code, maintainer-requested review), 2026-11-15                |
+| Affects         | T-MET-08, T-MET-09, T-MET-10 (P5.06, P5.07); plan design D5                 |
+
+**Description (probe 2026-11-15):** SYN-05 `speed[g]` equals `np.gradient` of the sampled `kp_true` (verified equal)
+— the central difference the tempo metric itself will use, so a P5.06 test against it is circular. It is non-zero on
+the first/last frame of each pause (0.0089 Λ/s), so "speed 0 inside pauses" does not hold. Groups are averaged with
+`mean`; Appendix B3 uses the median. The phase φ(t) is integrated with the trapezoid rule on the sampling grid, so the
+motion itself changes with the grid (VFR, fps) — there is no continuous model to sample. SYN-07 truth has only `dt`,
+`is_vfr`, `scale_px`: no speed. Replacing the SYN-05 speed truth by zeros passes all 27 tests.
+**Fix plan:** define the speed profile and its integral φ(t) analytically in continuous time (piecewise cosine ramps
+have a closed-form integral); poses = `pose(φ(t))`; joint velocities = `dpose/dφ · φ'(t)` (analytic or a central
+difference of the continuous function with h ≪ dt); group speed = median over the group; SYN-07 samples the same
+continuous motion at VFR times and returns the speed truth. Tests: speed exactly 0 at every frame inside a pause;
+truth independent of fps (same t → same pose at 30 and 60 fps); SYN-07 truth matches a 1 kHz dense difference of the
+continuous model within 1%. Red first.
+
+**Fix:** task P0.07 rework R2, 2026-11-15 — closed-form progress of the cosine-ramped speed factor (bit-identical poses and speed exactly 0 inside pauses), analytic joint velocity, median group speed, shared `_motion` for SYN-05..08, SYN-07 speed truth; poses independent of the frame rate.
+**Verified:** agent, 2026-11-15 — speed truth equals a 3000 fps central difference (3e-3 Lambda/s) for SYN-05 and SYN-07, poses at 30 and 60 fps agree, group speed is the median; MS1, MN2, MN3, MN4 caught.
+
+**History:**
+
+- 2026-11-15 OPEN → PLANNED — found in the P0.07 review.
+- 2026-11-15 PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — fixed in the P0.07 rework; see Fix and Verified above.
+
+### BUG-0020 — F-SYN builders silently ignore unknown or misspelled parameters
+
+| Field           | Value                                                                       |
+| --------------- | --------------------------------------------------------------------------- |
+| Severity        | S2 (a downstream test with a typo silently runs on defaults and passes)     |
+| Status          | CLOSED                                                                      |
+| Found in        | P0.07 review, `taiji_ai/tests/helpers/synth.py:1230-1272` and every `params.get` |
+| Found by / date | agent (Claude Code, maintainer-requested review), 2026-11-15                |
+| Affects         | Every consumer of F-SYN; plan §2.1 rule "unknown keyword → TypeError", AC5  |
+
+**Description:** `make_sequence("SYN-02", amplitud=0.5)` returns a sequence with `amplitude = 0.15` (probe). Builders
+read `params.get(...)` and nested builders (SYN-04 → SYN-03, SYN-06/08 → SYN-05) receive each other's parameters, so
+no unknown key is ever rejected. T-SYN-04 has no unknown-keyword case.
+**Fix plan:** each scenario declares its accepted parameter names (the registry `default_params` plus documented
+optional ones); `make_*` raises `TypeError("unknown parameter(s) for SYN-02: ['amplitud']; accepted: …")`; nested
+builders get only their own keys. Test: unknown keyword per API → `TypeError` naming the key. Red first.
+
+**Fix:** task P0.07 rework R1, 2026-11-15 — the registry lists every accepted name; `_make` raises `TypeError` naming the unknown key and the accepted names; builders read the merged dict.
+**Verified:** agent, 2026-11-15 — unknown or misspelled keyword rejected for `make_sequence`, `make_pair`, `make_scene`, nested scenarios and names of other scenarios; MN1 caught.
+
+**History:**
+
+- 2026-11-15 OPEN → PLANNED — found in the P0.07 review.
+- 2026-11-15 PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — fixed in the P0.07 rework; see Fix and Verified above.
+
+### BUG-0019 — P0.06 commit ships the stale `test_logs.py`; BUG-0018 "fixed" by bending the code to it
+
+| Field           | Value                                                                       |
+| --------------- | --------------------------------------------------------------------------- |
+| Severity        | S2 (regression tests of closed bugs absent from the repository; behaviour regressed on Windows) |
+| Status          | CLOSED                                                                      |
+| Found in        | P0.07 review, commit `4cee272`, `taiji_ai/src/taiji_ai/logs.py:125,139,174`  |
+| Found by / date | agent (Claude Code, maintainer-requested review), 2026-11-15                |
+| Affects         | T-CORE-01; BUG-0014, BUG-0015, BUG-0017 regression tests; BUGS.md references |
+
+**Description:** BUG-0018's fix plan was to restore the 41-test rework file. Instead `posix_paths` defaults were
+changed from "platform default" to `True` (`__init__`, `for_settings`) so that the stale 21-test file passes, and that
+stale file was committed in `4cee272` (14 test functions, local `clean_logging`, no `posix_paths`). Missing from the
+repository: the BUG-0014 cases (UNC with space / Vietnamese / `c$`, `\\?\UNC`, apostrophe, `repr`, unquoted), the
+BUG-0015 cases (`repr` tails, non-paths), BUG-0017 (`KeyboardInterrupt` / `SystemExit`), the F-2 re-configuration
+test and the temp-root test — the tests BUGS.md cites as regression tests. On Windows `GET /home/settings`,
+`GET /media/x`, `GET /tmp/upload` are redacted to `GET <path>` again (probe), while the docstring still says "off on
+Windows". The gate shows 117 → 144 tests only because P0.07 added 27.
+**Fix plan:** restore the rework `test_logs.py` verbatim (transcript Write, copy in the session scratchpad); restore the
+platform default of `posix_paths`; run the gate and mutations M5a, M6, M7, M2; correct BUG-0018 (its Fix line
+describes a workaround, not the planned fix) and the BUGS.md references; commit as `BUG-0019: …` when the maintainer
+asks.
+
+**Fix:** task P0.07 rework R0, 2026-11-15 — the rework `test_logs.py` restored verbatim from the P0.06 session, `logs.py` back to the platform default of `posix_paths` (off on Windows); new test of the default. Uncommitted: commit as `BUG-0019: …` when the maintainer asks.
+**Verified:** agent, 2026-11-15 — the new test failed on `posix_paths=True` (`'GET <path>' == 'GET /home/settings'`) and passes after; the P0.06 mutation set M1–M9 (incl. M5b) is caught on the restored tests; gate 10/10.
+
+**History:**
+
+- 2026-11-15 OPEN → PLANNED — found in the P0.07 review.
+- 2026-11-15 PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — fixed in the P0.07 rework; see Fix and Verified above.
 
 ### BUG-0018 — `tests/unit/test_logs.py` overwritten again after P0.06 closed; a second writer is editing the repo
 
@@ -71,6 +386,7 @@ running on the machine during the rework, and `IMPLEMENTATION_PLAN_V1.md` / `DEC
 
 - 2026-11-15 OPEN → PLANNED — found while analysing P0.07.
 - 2026-11-15 PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — fixed and verified; see Fix and Verified above.
+- 2026-11-15 (P0.07 review) — the Fix above is a workaround (`posix_paths: bool = True` so that the stale 21-test file passes), not the planned restore of the 41-test rework file; the stale file was then committed in `4cee272`. Corrected in the P0.07 rework by BUG-0019 (restored tests, platform default). Status stays CLOSED: the cause (overwritten test file) is fixed by BUG-0019; the second-writer risk is tracked in BUG-0027.
 
 ### BUG-0017 — `run_log` writes no end marker when a run is cancelled (`KeyboardInterrupt`, `SystemExit`)
 

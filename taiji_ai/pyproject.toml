@@ -57,6 +57,7 @@ packages = ["src/taiji_ai"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["tests"]
 addopts = "-q"
 markers = [
     "gpu: requires CUDA-capable GPU and downloaded models",
@@ -69,6 +70,9 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "NPY"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["taiji_ai", "helpers"]
 
 [tool.mypy]
 python_version = "3.12"

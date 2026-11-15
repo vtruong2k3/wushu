@@ -135,7 +135,7 @@ Con số này cao hơn 30–44 ngày công của v3 vì có thêm phần dựng 
 | P0.04 | Commit đầu tiên; quy ước nhánh và PR; file `CONTRIBUTING.md` ngắn | B | 0,25 | — | commit, `CONTRIBUTING.md` | `git log` |
 | P0.05 | Script kiểm tra một lệnh `tools/check.ps1`: ruff check + format check + pytest (bỏ qua test `gpu` nếu `-NoGpu`); *mở rộng 2026-11-14 (S1–S4, `Docs/tasks/P0.05.md`)*: web checks, mypy, uv lock, repo-hygiene | B | 0,25 → 0,5 (2026-11-14) | P0.04 | `tools/check.ps1`, `tools/repo_hygiene.py` | T-TOOL-01..05 (2026-11-14) |
 | P0.06 | Logging thống nhất (`logging` + file log theo run), không log đường dẫn chứa tên thật; mở rộng 2026-11-15: BUG-0011, uvicorn routing | A | 0,5 → 0,75 (2026-11-15) | — | `taiji_ai/logs.py` (đổi tên từ logging.py để tránh che stdlib) | T-CORE-01 (a..p) |
-| P0.07 | Bộ sinh skeleton tổng hợp cho test (mục 14.3) | A | 1 | — | `tests/helpers/synth.py` | T-SYN-01..03 |
+| P0.07 | ✅ Bộ sinh skeleton tổng hợp cho test (mục 14.3); mở rộng 2026-11-15: 12 kịch bản SYN-01..12, continuous truth, bảng tolerance | A | 1 → 1,5 (2026-11-15) | — | `tests/helpers/synth.py` | T-SYN-01..04 |
 
 **Nghiệm thu P0:** `tools/check.ps1` pass trên máy A và B. Bộ sinh skeleton tổng hợp tạo đủ các kịch bản ở mục 14.3.
 
@@ -405,24 +405,44 @@ Con số này cao hơn 30–44 ngày công của v3 vì có thêm phần dựng 
 | **H-PILOT** | Holdout theo participant | `split_manifest.csv` | Chỉ mở ở P11 |
 | **PSU** (nếu được cấp) | Video 2 góc + Vicon + áp lực chân | ngoài repo | Kiểm chứng metric 2D |
 
-**Bộ sinh skeleton tổng hợp F-SYN (P0.07).** Hàm `make_sequence(...)` trả về `kp (T,26,2)`, `score (T,26)`, `t_sec (T,)` và một dict đáp án. Các kịch bản:
+**Bộ sinh skeleton tổng hợp F-SYN (P0.07, cập nhật 2026-11-15).** Nằm trong `tests/helpers/synth.py` (chỉ dùng cho test, không xuất xưởng trong `src/`). Cung cấp 3 hàm công khai:
+- `make_sequence(scenario, seed=0, **params)` trả về `SynthSequence(kp, score, t_sec, truth, kp_true, ...)` cho SYN-01..09.
+- `make_pair(scenario, seed=0, **params)` trả về `SynthPair(ref, query, truth, ...)` cho SYN-10..11.
+- `make_scene(scenario, seed=0, **params)` trả về `SynthScene(kp, score, bbox, t_sec, truth, ...)` cho SYN-12 (đa người).
+
+Các kịch bản:
 
 | Mã | Kịch bản | Tham số | Đáp án kiểm tra |
 |---|---|---|---|
-| SYN-01 | Đứng yên + nhiễu | σ px | Biên độ hông ≈ 0; không có pause giả do nhiễu ở 6 Hz |
-| SYN-02 | Hông dao động sin | biên độ A (theo Λ), tần số f | `range ≈ 2A` (tolerance 5%) |
+| SYN-01 | Đứng yên + nhiễu | σ px | Biên độ hông = 0; toàn bộ clip là 1 pause duy nhất (`n_pauses=1`); không có pause giả bổ sung |
+| SYN-02 | Hông dao động sin | biên độ A (theo Λ), tần số f | `range ≈ 2A` (chính xác `2A·sin(0.45π)` theo phân vị rời rạc) |
 | SYN-03 | Thân nghiêng cố định / đổi dần | θ(t) | median θ sai ≤ 0,5° |
-| SYN-04 | Roll camera | xoay toàn ảnh β | Sau sửa roll, θ đúng ± 0,5° |
-| SYN-05 | Chuyển động + pause | các interval dừng | Phát hiện đúng số pause; ranh giới sai ≤ 1 frame |
-| SYN-06 | Gap ngắn / dài | độ dài gap | Ngắn → nội suy + cờ; dài → NaN, không pause giả |
-| SYN-07 | Timestamp VFR | dt thay đổi | Tốc độ tính theo thời gian thật, không theo index |
-| SYN-08 | Tráo L/R | frame tráo | Cờ `lr_swap_suspect` đúng frame |
-| SYN-09 | Di chuyển theo chiều sâu | scale(t) | Biến thể A lệch, B ổn định hơn (định lượng) |
-| SYN-10 | Kéo giãn thời gian | hệ số k(t) | DTW: hình dạng ≈ 0, tỷ lệ tốc độ ≈ k(t) |
-| SYN-11 | Hai động tác khác nhau | 2 quỹ đạo | Khoảng cách lớn hơn cùng động tác |
-| SYN-12 | Nhiều người + người mục tiêu đi ra rồi vào | bbox | Tracking không nhảy người; `target_lost` đúng |
+| SYN-04 | Roll camera | xoay toàn ảnh β | Sau bù roll, θ_raw − β = θ_body; đường thẳng tham chiếu có góc đúng β |
+| SYN-05 | Chuyển động + pause | các interval dừng | Phát hiện đúng số pause; tư thế đứng yên tuyệt đối trong pause; ranh giới sai ≤ 1 frame |
+| SYN-06 | Gap ngắn / dài | độ dài gap | Ngắn → nội suy + cờ; dài → NaN, không pause giả; báo cả `missing_s` và `bridge_s` |
+| SYN-07 | Timestamp VFR | dt thay đổi | Tốc độ tính theo thời gian thật, không theo index; dt không hằng số; đáp án tốc độ lấy từ mô hình liên tục (giải tích), cùng chuyển động với SYN-05 (2026-11-15, BUG-0021) |
+| SYN-08 | Tráo L/R | frame tráo | Cờ `lr_swap_suspect` đúng frame; hoán đổi đúng ~~10~~ 11 cặp khớp đối xứng (`LR_PAIRS`; sửa 2026-11-15, BUG-0026) |
+| SYN-09 | Di chuyển theo chiều sâu | camera pinhole (`cam_height_m`, `depth_ratio`) | Camera pinhole thật, người đi xa dần, chiều cao hông thật không đổi (`true_hip_height_range_m = 0`); đáp án `expected_hA`, `expected_hB`, `range_A`, `range_B` theo công thức Phụ lục B1 (đơn vị Λ). ~~Biến thể A lệch theo độ sâu, B ổn định hơn~~ → thứ tự A/B là kết quả đo, không phải giả định (sửa 2026-11-15, BUG-0022; số liệu ở `Docs/tasks/P0.07.md` §5) |
+| SYN-10 | Kéo giãn thời gian | hệ số k(t), `query_scale`, `query_shift_px` | Query = reference được kéo giãn thời gian đơn điệu (cùng một hàm tư thế liên tục, đáp án `t_ref_of_query`, `rate_k` giải tích); tùy chọn tịnh tiến/scale query cho test bất biến (2026-11-15, BUG-0023) |
+| SYN-11 | Hai động tác khác nhau | 2 quỹ đạo | Khoảng cách hình dạng giữa 2 động tác khác nhau lớn hơn so với biến thể cùng động tác |
+| SYN-12 | Nhiều người + người mục tiêu đi ra rồi vào | absent_s, n_people (2–3), cross_s, return_offset_px | Thứ tự detection xáo theo seed mỗi frame (`person_id` là đáp án); người gây nhiễu cắt ngang trước khi mục tiêu vắng mặt; bbox bao trọn keypoints; `target_lost` đúng khoảng vắng mặt; mục tiêu quay lại đúng chỗ cũ hoặc lệch `return_offset_px` (2026-11-15, BUG-0024). Mục tiêu biến mất đột ngột, không có quỹ đạo đi ra khỏi khung |
 
-Tolerance chốt ở P0.07. Mọi thay đổi tolerance phải ghi lý do trong PR.
+**Bảng sai số cho phép (Tolerances) cho các test P3–P6 (chốt tại P0.07, DEC-0013):**
+
+| Kịch bản | Module / Test sử dụng | Dung sai cho phép | Căn cứ |
+|---|---|---|---|
+| SYN-02 | T-MET-03/04 | `abs(range / (2A) − 1) ≤ 5%` | Đáp án lý thuyết liên tục là 0,9877·2A (−1,2%), chừa ≈ 3,8% cho làm mịn và lấy mẫu |
+| SYN-03 / SYN-04 | T-MET-06 / T-MET-02 | Sai số trung vị θ ≤ 0,5° với `noise_px ≤ 1` tại `scale_px = 200` | 1 px nhiễu trên thân 200 px tương đương ≈ 0,4° trước trung vị |
+| SYN-05 | T-MET-09 | Đúng số pause; mỗi biên sai ≤ 1 frame so với ngưỡng cắt τ (noise-free) | Đáp án cung cấp profile tốc độ liên tục |
+| SYN-06 | T-QLT-03/04 | Gap ngắn: sai số nội suy tối đa ≤ 2 px so với `kp_true`; gap dài: toàn bộ NaN, không giữ giá trị cũ | Chuyển động mẫu mượt mà; 2 px ≈ 1% độ dài thân |
+| SYN-07 | T-MET-08 | Sai số tốc độ tương đối trung vị ≤ 5% trên các frame hợp lệ | Sai phân trung tâm trên dt không đều kèm lọc 6 Hz |
+| SYN-08 | T-QLT-10 | Frame gắn cờ đúng chính xác swap mask; 0 cờ trên clip không tráo | Hoán đổi đối xứng |
+| SYN-09 | T-MET-05 | metric A và B khớp `expected_hA`, `expected_hB` trong `range_abs_error_lambda ≤ 0,02` Λ; ~~`range_B < range_A`~~ thứ tự không được khẳng định (2026-11-15, BUG-0022) | Đo trên 6 cấu hình camera: A ổn định hơn B ở cả 6 (B chia cho Λ trung vị cả đoạn nên vẫn co theo Λ(t)); quyết định chuyên môn cho P5.04 thuộc maintainer |
+| SYN-10 | T-CMP-04/06 | Khoảng cách hình dạng `D ≤ 0,02` (đơn vị Λ, noise-free); sai số trung vị `abs(ρ/k − 1) ≤ 10%` sau làm mịn 0,5 s | Cùng hình dạng, chỉ khác lấy mẫu thời gian |
+| SYN-11 | P6.03 | `D(ref, other) ≥ 2 × D(ref, variant)` | Phân biệt rõ giữa động tác khác và biến thể cùng động tác |
+| SYN-12 | T-TRK-02..05 | 0 lần nhảy ID; khoảng `target_lost` khớp `expected_target_lost(scene, max_lost_s)` trong vòng 1 frame | |
+
+Mọi thay đổi tolerance phải ghi lý do trong PR. *(Câu này của plan gốc bị xóa nhầm ở bản đầu của P0.07; khôi phục 2026-11-15, BUG-0026.)*
 
 ---
 
@@ -437,7 +457,7 @@ Cột **Loại**: U = unit, C = contract, G = golden, I = integration, M = manua
 | T-CORE-01 | U/C | T-CORE-01a..p: Log không chứa tên thật hoặc đường dẫn có tên (kể cả UNC có dấu cách/chữ có dấu, `c$`, dấu nháy, dạng `repr`); ~~redaction 2 pass~~ redaction một lượt quét (2026-11-15, BUG-0014/0015); có `run_id`; `run.log` theo context, có dòng kết thúc cả khi bị hủy; traceback/warning được lọc; API uvicorn định dạng thống nhất; test không để lại trạng thái logging (BUG-0016) | P0.06 (cập nhật 2026-11-15) |
 | T-SCH-01 | U | `RecordingManifest`/`SyncManifest` từ chối trường thiếu, sai kiểu; có `schema_version` | P2.01 |
 | T-SCH-02 | U | `MetricSeries` bắt buộc units, valid_intervals, coverage | P5.01 |
-| T-SYN-01..03 | U | Bộ sinh F-SYN: shape, đáp án đúng, seed cố định cho kết quả lặp lại | P0.07 |
+| T-SYN-01..04 | U | Bộ sinh F-SYN: shape, contract, body conventions, đáp án đúng độc lập (SYN-01..12), seed cố định, cô lập RNG toàn cục, kiểm tra lỗi đầu vào | P0.07 |
 | T-TOOL-01 | C | `tools/check.ps1` là ASCII-only và parse sạch trong PowerShell 5.1; có test đối chứng: script sai cú pháp bị phát hiện | P0.05 (thêm 2026-11-14) |
 | T-TOOL-02 | C | `check.ps1 -DryRun` in 10 bước theo thứ tự chuẩn, không in đường dẫn tuyệt đối, không chạy lệnh | P0.05 (thêm 2026-11-14) |
 | T-TOOL-03 | C | `check.ps1` cờ `-NoGpu`, `-SkipWeb` (SKIP 4 bước web), `-Root <empty>` (exit 2, uv sync), `TAIJI_CHECK_RUNNING` (exit 2, kiểm tra trước preflight) | P0.05 (thêm 2026-11-14) |
@@ -513,7 +533,7 @@ Cột **Loại**: U = unit, C = contract, G = golden, I = integration, M = manua
 | T-MET-02 | U | SYN-04: sửa roll đúng | P5.02 |
 | T-MET-03 | G | SYN-02: biến thể A, `range ≈ 2A` (± 5%) | P5.03 |
 | T-MET-04 | G | SYN-02: biến thể B, `range ≈ 2A` (± 5%) | P5.04 |
-| T-MET-05 | G | SYN-09: B ổn định hơn A khi di chuyển chiều sâu; ghi số liệu | P5.04 |
+| T-MET-05 | G | SYN-09: số đo A và B khớp đáp án Phụ lục B của mô hình pinhole; ghi số liệu. ~~B ổn định hơn A~~ (2026-11-15: không đúng ở 6/6 cấu hình đo, xem `Docs/tasks/P0.07.md` §5; chờ quyết định của maintainer về cách chuẩn hóa Λ của biến thể B) | P5.04 |
 | T-MET-06 | G | SYN-03: θ sai ≤ 0,5° | P5.05 |
 | T-MET-07 | U | View không phù hợp thì metric `insufficient_evidence`, không trả số | P5.05 |
 | T-MET-08 | G | SYN-07: tốc độ theo thời gian thật trên VFR | P5.06 |
