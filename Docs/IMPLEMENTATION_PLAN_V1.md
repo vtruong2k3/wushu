@@ -437,7 +437,7 @@ Các kịch bản:
 | SYN-06 | T-QLT-03/04 | Gap ngắn: sai số nội suy tối đa ≤ 2 px so với `kp_true`; gap dài: toàn bộ NaN, không giữ giá trị cũ | Chuyển động mẫu mượt mà; 2 px ≈ 1% độ dài thân |
 | SYN-07 | T-MET-08 | Sai số tốc độ tương đối trung vị ≤ 5% trên các frame hợp lệ | Sai phân trung tâm trên dt không đều kèm lọc 6 Hz |
 | SYN-08 | T-QLT-10 | Frame gắn cờ đúng chính xác swap mask; 0 cờ trên clip không tráo | Hoán đổi đối xứng |
-| SYN-09 | T-MET-05 | metric A và B khớp `expected_hA`, `expected_hB` trong `range_abs_error_lambda ≤ 0,02` Λ; ~~`range_B < range_A`~~ thứ tự không được khẳng định (2026-11-15, BUG-0022) | Đo trên 6 cấu hình camera: A ổn định hơn B ở cả 6 (B chia cho Λ trung vị cả đoạn nên vẫn co theo Λ(t)); quyết định chuyên môn cho P5.04 thuộc maintainer |
+| SYN-09 | T-MET-05 | metric A và B khớp `expected_hA`, `expected_hB` trong `range_abs_error_lambda ≤ 0,02` Λ; ~~`range_B < range_A`~~ thứ tự không được khẳng định (2026-11-15, BUG-0022) | Đo trên 6 cấu hình camera: A ổn định hơn B ở cả 6 (B chia cho Λ trung vị cả đoạn nên vẫn co theo Λ(t)); quyết định 2026-11-15 (DEC-0014): giữ cả A và B, chọn theo sai số so với đo tay |
 | SYN-10 | T-CMP-04/06 | Khoảng cách hình dạng `D ≤ 0,02` (đơn vị Λ, noise-free); sai số trung vị `abs(ρ/k − 1) ≤ 10%` sau làm mịn 0,5 s | Cùng hình dạng, chỉ khác lấy mẫu thời gian |
 | SYN-11 | P6.03 | `D(ref, other) ≥ 2 × D(ref, variant)` | Phân biệt rõ giữa động tác khác và biến thể cùng động tác |
 | SYN-12 | T-TRK-02..05 | 0 lần nhảy ID; khoảng `target_lost` khớp `expected_target_lost(scene, max_lost_s)` trong vòng 1 frame | |
@@ -533,7 +533,7 @@ Cột **Loại**: U = unit, C = contract, G = golden, I = integration, M = manua
 | T-MET-02 | U | SYN-04: sửa roll đúng | P5.02 |
 | T-MET-03 | G | SYN-02: biến thể A, `range ≈ 2A` (± 5%) | P5.03 |
 | T-MET-04 | G | SYN-02: biến thể B, `range ≈ 2A` (± 5%) | P5.04 |
-| T-MET-05 | G | SYN-09: số đo A và B khớp đáp án Phụ lục B của mô hình pinhole; ghi số liệu. ~~B ổn định hơn A~~ (2026-11-15: không đúng ở 6/6 cấu hình đo, xem `Docs/tasks/P0.07.md` §5; chờ quyết định của maintainer về cách chuẩn hóa Λ của biến thể B) | P5.04 |
+| T-MET-05 | G | SYN-09: số đo A và B khớp đáp án Phụ lục B của mô hình pinhole; ghi số liệu. ~~B ổn định hơn A~~ (2026-11-15: không đúng ở 6/6 cấu hình đo, xem `Docs/tasks/P0.07.md` §5; quyết định 2026-11-15, DEC-0014: giữ cả A và B, chọn theo sai số so với đo tay; chưa thêm biến thể Λ từng frame) | P5.04 |
 | T-MET-06 | G | SYN-03: θ sai ≤ 0,5° | P5.05 |
 | T-MET-07 | U | View không phù hợp thì metric `insufficient_evidence`, không trả số | P5.05 |
 | T-MET-08 | G | SYN-07: tốc độ theo thời gian thật trên VFR | P5.06 |

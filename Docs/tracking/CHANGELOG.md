@@ -4,6 +4,18 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
 
 ---
 
+## 2026-11-15 — Q7 decision: hip-height variants A and B (DONE)
+
+- Decided: DEC-0014 — P5.04 computes both variants as defined in Appendix B1 and reports both; no ordering criterion;
+  the variant is chosen by the error against hand measurements (TECH_WORKFLOW §12 #4); no per-frame-Lambda variant now.
+  Basis: A is more stable than B on 6 of 6 pinhole geometries of F-SYN SYN-09 (`Docs/tasks/P0.07.md` §5). The
+  maintainer delegated the choice to the agent's recommendation
+- Changed: `Docs/tracking/DECISIONS.md` (DEC-0014), `Docs/IMPLEMENTATION_PLAN_V1.md` (T-MET-05 and SYN-09 tolerance row),
+  `Docs/tasks/P0.07.md`, `Docs/tracking/{TASK_STATUS,BUGS}.md`
+- Merge and push: branch `feat/P0.07-synthetic-skeleton` merged into `main` (fast-forward) and `main` pushed on the
+  maintainer's request
+- Commit: this commit (branch `docs/Q7-hip-height-decision`, fast-forward merged)
+
 ## 2026-11-15 — P0.07 Synthetic HALPE_26 skeleton generator F-SYN — rework after review, closed (DONE)
 
 - Reopened 2026-11-15 by the review (`Docs/tasks/P0.07.md` §9): five S2 bugs in the truth of the scenarios, four

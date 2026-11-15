@@ -121,6 +121,7 @@ overwrite visible in `git diff`).
 
 - 2026-11-15 OPEN → PLANNED — found during the P0.07 rework (R8); restore is part of the rework close-out.
 - 2026-11-15 PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — fixed in the P0.07 rework; see Fix and Verified above.
+- 2026-11-15 — the maintainer reported stopping Codex; processes of the Codex app and its IDE extension were still visible, so file hashes are checked before every push.
 
 ### BUG-0026 — P0.07 docs and evidence overstate the work
 
@@ -260,6 +261,7 @@ numbers for a few camera geometries and send the result to the maintainer before
 
 - 2026-11-15 OPEN → PLANNED — found in the P0.07 review.
 - 2026-11-15 PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — fixed in the P0.07 rework; see Fix and Verified above.
+- 2026-11-15 (Q7) — the metric-design question raised by the measured numbers is decided: DEC-0014 (keep A and B, choose by error against hand measurements).
 
 ### BUG-0021 — Tempo truth is not from a continuous model (SYN-05, SYN-07)
 
