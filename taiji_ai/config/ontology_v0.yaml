@@ -1,0 +1,278 @@
+# Ontology v0 for the 24-form Taijiquan (P1.04). Validated by taiji_ai.schemas.ontology.
+#
+# STATUS: draft_unconfirmed. The list below is written by us from the commonly taught numbered list of the 24-form;
+# the coach (H) has not confirmed it (AGENTS.md §5.12). Nothing may treat it as confirmed until `status: confirmed`
+# with `confirmed_by` (a role) and `confirmed_at` (ISO date) is set by the person who reviewed it.
+# English and Vietnamese names are our own wording; no text is copied from any third-party source (AGENTS.md §9.1).
+# The Vietnamese (Sino-Vietnamese) readings were written from general knowledge and were not checked against a
+# source or a native reader; the coach or a Vietnamese-speaking reviewer confirms them with the rest.
+#
+# Open questions for H (see Docs/tasks/P1.04.md):
+#   Q3  Is this the variant and the division into 24 numbered movements that the coach teaches?
+#   Q5  Movements that alternate sides inside one number list both sides and a repetition count; movements numbered
+#       per side (A07/A08, A16/A17) have one side each. Is that how the coach counts them?
+#   Q6  May a reference for one number come from the other number of the same `technique`? (decided in P6.05)
+#   Q7  Sub-phases inside a movement are not part of v0 (the `segment` table has no column for them).
+#   Q8  Which side each repetition uses is given by `side_sequence` only where names or sources point to one order
+#       (A02, A04, A18; each marked provisional below). A06 and A10 have none: no source read gives their order, and
+#       an action without a sequence is not checked for side/occurrence pairing.
+#   Q9  What does a side mean (leading foot, working hand or direction of the turn)? Which side label does a segment
+#       get when it covers a whole alternating movement (no occurrence)? The validator accepts any listed side then.
+#       Searched 2026-11-15 (X.19), no authoritative answer found (search-engine summaries; no textbook page could be
+#       read): the results disagree on the order of A06 (one lists right first, others left first); one says the left
+#       version of A16 stands on the left leg; nothing on kicks; none says whether a name follows the hand or the foot.
+#       Working convention (agreed by the maintainer 2026-11-15, DEC-0024; a coach may change it): the side label is
+#       the left/right word of the movement's standard name; for movements that step forward that is the front foot.
+#       The kicks (A13, A15) and the independent stands (A16, A17) follow their names as listed. A06 and A10 have no
+#       sequence (their names give no order of repetitions). A18: the name here (左右穿梭) says left first, but the
+#       sequence is right, left, taken from two sources that call it 右左玉女穿梭, so the name order does not settle it.
+#       Still open: the label of a segment that covers a whole alternating movement.
+#       Details: Docs/tasks/X.19.md, Docs/tasks/X.20.md. This is not a coach sign-off: the status stays draft.
+#
+# Source check (X.18, 2026-11-15; facts only, see Docs/tasks/X.18.md section 1.1): three public pages (English and
+# Chinese Wikipedia, one commercial blog) agree with this list on all 24 numbers and Chinese names, so Q3 and Q5 are
+# supported but not confirmed. None of them gives repetition counts; one low-authority article gives 3, 3, 4, 3, 2 for
+# A02, A04, A06, A10, A18 (equal to this file). A18 is named "right and left" by two of them. No Vietnamese source was found.
+#   Repetitions to confirm: A06 (4 here; some teachers do 3) and A10 (3 here; some teachers do 4).
+#
+# Adding or renaming a label after segments exist needs a migration note: bump `ontology_version`.
+
+schema_version: ontology/1
+ontology_version: v0
+
+form:
+  id: taiji24
+  name_en: Simplified 24-form Taijiquan
+  expected_actions: 24
+  status: draft_unconfirmed
+
+# Allowed values. `none` = the movement has no side. `view_categories` must equal the CHECK list of
+# segment.view_category in migrations/0001_init.sql (test T-DATA-01f).
+sides: [left, right, none]
+view_categories: [front, side, oblique, back, unknown]
+flags: [orientation_change, occlusion, perspective_shift]
+
+# One action = one numbered movement of the form. `sides` = the sides that occur inside it; `repetitions` = how often
+# it is performed inside the number (a segment's `occurrence` is 1..repetitions); `technique` is shared by numbers
+# that are the same technique.
+actions:
+  - id: A01
+    slug: commencement
+    technique: commencement
+    name_en: Commencement
+    name_zh: 起势
+    name_vi: Khởi thế
+    sides: [none]
+    repetitions: 1
+
+  - id: A02
+    slug: part_wild_horses_mane
+    technique: part_wild_horses_mane
+    name_en: Part the wild horse's mane, left and right
+    name_zh: 左右野马分鬃
+    name_vi: Tả hữu dã mã phân tông
+    sides: [left, right]
+    repetitions: 3
+    side_sequence: [left, right, left] # provisional: name order "left, right" and alternation; the coach confirms
+
+  - id: A03
+    slug: white_crane_spreads_wings
+    technique: white_crane_spreads_wings
+    name_en: White crane spreads its wings
+    name_zh: 白鹤亮翅
+    name_vi: Bạch hạc lượng sí
+    sides: [none]
+    repetitions: 1
+
+  - id: A04
+    slug: brush_knee_twist_step
+    technique: brush_knee_twist_step
+    name_en: Brush knee and twist step, left and right
+    name_zh: 左右搂膝拗步
+    name_vi: Tả hữu lâu tất ảo bộ
+    sides: [left, right]
+    repetitions: 3
+    side_sequence: [left, right, left] # provisional: name order "left, right" and alternation; the coach confirms
+
+  - id: A05
+    slug: play_the_lute
+    technique: play_the_lute
+    name_en: Play the lute
+    name_zh: 手挥琵琶
+    name_vi: Thủ huy tỳ bà
+    sides: [none]
+    repetitions: 1
+
+  - id: A06
+    slug: repulse_monkey
+    technique: repulse_monkey
+    name_en: Repulse the monkey, left and right
+    name_zh: 左右倒卷肱
+    name_vi: Tả hữu đảo quyển quăng
+    sides: [left, right]
+    repetitions: 4
+    # side_sequence not specified: no source read gives the order (Q8, Q9); the coach decides
+
+  - id: A07
+    slug: grasp_bird_tail_left
+    technique: grasp_bird_tail
+    name_en: Grasp the bird's tail, left
+    name_zh: 左揽雀尾
+    name_vi: Tả lãm tước vĩ
+    sides: [left]
+    repetitions: 1
+
+  - id: A08
+    slug: grasp_bird_tail_right
+    technique: grasp_bird_tail
+    name_en: Grasp the bird's tail, right
+    name_zh: 右揽雀尾
+    name_vi: Hữu lãm tước vĩ
+    sides: [right]
+    repetitions: 1
+
+  - id: A09
+    slug: single_whip_1
+    technique: single_whip
+    name_en: Single whip (first)
+    name_zh: 单鞭
+    name_vi: Đơn tiên
+    sides: [none]
+    repetitions: 1
+
+  - id: A10
+    slug: wave_hands_like_clouds
+    technique: wave_hands_like_clouds
+    name_en: Wave hands like clouds
+    name_zh: 云手
+    name_vi: Vân thủ
+    sides: [left, right]
+    repetitions: 3
+    # side_sequence not specified: no source read gives the order (Q8, Q9); the coach decides
+
+  - id: A11
+    slug: single_whip_2
+    technique: single_whip
+    name_en: Single whip (second)
+    name_zh: 单鞭
+    name_vi: Đơn tiên
+    sides: [none]
+    repetitions: 1
+
+  - id: A12
+    slug: high_pat_on_horse
+    technique: high_pat_on_horse
+    name_en: High pat on the horse
+    name_zh: 高探马
+    name_vi: Cao thám mã
+    sides: [none]
+    repetitions: 1
+
+  - id: A13
+    slug: right_heel_kick
+    technique: right_heel_kick
+    name_en: Right heel kick
+    name_zh: 右蹬脚
+    name_vi: Hữu đặng cước
+    sides: [right]
+    repetitions: 1
+
+  - id: A14
+    slug: strike_ears_with_both_fists
+    technique: strike_ears_with_both_fists
+    name_en: Strike the ears with both fists
+    name_zh: 双峰贯耳
+    name_vi: Song phong quán nhĩ
+    sides: [none]
+    repetitions: 1
+
+  - id: A15
+    slug: turn_and_left_heel_kick
+    technique: turn_and_left_heel_kick
+    name_en: Turn and left heel kick
+    name_zh: 转身左蹬脚
+    name_vi: Chuyển thân tả đặng cước
+    sides: [left]
+    repetitions: 1
+
+  - id: A16
+    slug: lower_stand_one_leg_left
+    technique: lower_stand_one_leg
+    name_en: Lower body and stand on one leg, left
+    name_zh: 左下势独立
+    name_vi: Tả hạ thế độc lập
+    sides: [left]
+    repetitions: 1
+
+  - id: A17
+    slug: lower_stand_one_leg_right
+    technique: lower_stand_one_leg
+    name_en: Lower body and stand on one leg, right
+    name_zh: 右下势独立
+    name_vi: Hữu hạ thế độc lập
+    sides: [right]
+    repetitions: 1
+
+  - id: A18
+    slug: shuttle_weaving
+    technique: shuttle_weaving
+    name_en: Fair lady works the shuttles
+    name_zh: 左右穿梭
+    name_vi: Tả hữu xuyên thoa
+    sides: [left, right]
+    repetitions: 2
+    side_sequence: [right, left] # provisional: two sources call this movement "right and left"; the coach confirms
+
+  - id: A19
+    slug: needle_at_sea_bottom
+    technique: needle_at_sea_bottom
+    name_en: Needle at the sea bottom
+    name_zh: 海底针
+    name_vi: Hải để châm
+    sides: [none]
+    repetitions: 1
+
+  - id: A20
+    slug: flash_the_arm
+    technique: flash_the_arm
+    name_en: Fan through the back
+    name_zh: 闪通臂
+    name_vi: Thiểm thông tý
+    sides: [none]
+    repetitions: 1
+
+  - id: A21
+    slug: turn_deflect_parry_punch
+    technique: turn_deflect_parry_punch
+    name_en: Turn, deflect, parry and punch
+    name_zh: 转身搬拦捶
+    name_vi: Chuyển thân bàn lan chùy
+    sides: [none]
+    repetitions: 1
+
+  - id: A22
+    slug: apparent_close_up
+    technique: apparent_close_up
+    name_en: Apparent close-up
+    name_zh: 如封似闭
+    name_vi: Như phong tự bế
+    sides: [none]
+    repetitions: 1
+
+  - id: A23
+    slug: cross_hands
+    technique: cross_hands
+    name_en: Cross hands
+    name_zh: 十字手
+    name_vi: Thập tự thủ
+    sides: [none]
+    repetitions: 1
+
+  - id: A24
+    slug: closing
+    technique: closing
+    name_en: Closing
+    name_zh: 收势
+    name_vi: Thu thế
+    sides: [none]
+    repetitions: 1
