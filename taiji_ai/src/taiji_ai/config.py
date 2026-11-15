@@ -1,7 +1,7 @@
 """Project paths and runtime settings.
 
 Values can be overridden with environment variables, read when ``Settings()`` is constructed (not at import):
-TAIJI_DATA_DIR, TAIJI_MODELS_DIR, TAIJI_WEB_DIST_DIR, TAIJI_DEVICE, TAIJI_API_PORT.
+TAIJI_DATA_DIR, TAIJI_MODELS_DIR, TAIJI_WEB_DIST_DIR, TAIJI_DEVICE, TAIJI_API_PORT, TAIJI_LOG_LEVEL.
 
 The API host is deliberately not configurable: the server only listens on the loopback interface
 (AGENTS.md §5.7).
@@ -30,6 +30,7 @@ class Settings:
     migrations_dir: Path = PROJECT_ROOT / "migrations"
     device: str = field(default_factory=lambda: os.environ.get("TAIJI_DEVICE", "cuda"))
     api_port: int = field(default_factory=lambda: int(os.environ.get("TAIJI_API_PORT", "8007")))
+    log_level: str = field(default_factory=lambda: os.environ.get("TAIJI_LOG_LEVEL", "INFO").upper())
 
     @property
     def db_path(self) -> Path:

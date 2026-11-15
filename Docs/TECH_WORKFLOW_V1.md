@@ -54,7 +54,7 @@ Phụ lục A: skeleton HALPE_26 · Phụ lục B: công thức metric · Phụ 
 | UI | React + Vite + TypeScript (SPA) | MIT | Các màn Video / Số đo / So sánh / Báo cáo | `<video>` + `requestVideoFrameCallback` cho đánh dấu chính xác từng frame (mục 3, W3) |
 | UI: dữ liệu | TanStack Query, React Router | MIT | Gọi API, cache, điều hướng | Client API có kiểu (TypeScript) |
 | UI: biểu đồ | Thư viện time-series nhẹ (ứng viên uPlot, MIT), chốt ở P8.08 | MIT | Đường cong metric đồng bộ với video | Plotly chỉ dùng cho report HTML tĩnh |
-| Kiểm thử UI | Vitest (unit), Playwright (E2E) | MIT / Apache-2.0 | Component, luồng G04 | Chạy cùng `tools/check.ps1` khi có |
+| Kiểm thử UI | Vitest (unit), Playwright (E2E) | MIT / Apache-2.0 | Component, luồng G04 | Vitest chạy trong `tools/check.ps1`; Playwright thêm ở P8.15 |
 | Node toolchain | Node.js ≥ 24, pnpm | MIT | Build/dev frontend | Chỉ cần lúc phát triển và build |
 | Biểu đồ report | Plotly | MIT | Biểu đồ trong report HTML tĩnh | Không dùng cho UI tương tác (xem "UI: biểu đồ") |
 | Report | Jinja2 → HTML; JSON/CSV | BSD | Báo cáo có bằng chứng | Snapshot bất biến |
@@ -280,6 +280,7 @@ data/
 ├── takes/<take_id>/sync.json
 ├── runs/<run_id>/            # run_id = hash(cache key, mục 4.3)
 │   ├── run_manifest.json
+│   ├── run.log               # log chạy của riêng run này (P0.06), ghi nối nếu chạy lại
 │   ├── pose_raw.npz
 │   ├── track.parquet
 │   ├── pose_masked.npz
@@ -378,6 +379,7 @@ taiji_ai/
 ├── pyproject.toml / uv.lock
 ├── src/taiji_ai/
 │   ├── config.py            # Pydantic settings, đọc TOML
+│   ├── logs.py              # logging thống nhất, per-run file log, lọc đường dẫn tuyệt đối (P0.06)
 │   ├── schemas/             # recording, segment, run, metric, finding (Pydantic)
 │   ├── io/
 │   │   ├── probe.py         # ffprobe → RecordingMeta
@@ -611,6 +613,7 @@ Báo ba tỷ lệ cho từng metric × camera (theo v3 mục 8.3): tỷ lệ th�
 - ID giả danh. Bảng ánh xạ tên thật ↔ ID để riêng, mã hóa hoặc ngoài máy phân tích.
 - `consent_scope` tách riêng phân tích, huấn luyện và chia sẻ. Pipeline kiểm `consent_scope` trước khi đưa recording vào tập train.
 - Xóa theo yêu cầu: xóa recording, proxy, audio, mọi run, clip và report liên quan. Ghi `audit_log`.
+- Logging thống nhất: log qua thư viện chuẩn, chỉ log ID (run_id, recording_id, pseudonym), không bao giờ log tên file người dùng, đường dẫn nguồn hay văn bản tự do; mọi đường dẫn tuyệt đối dạng Windows (ổ đĩa, UNC, `\\?\`, cả dạng `repr`) bị lọc thành `<path>`, trừ tail tương đối dưới root an toàn (`<data>\…`); đường dẫn không có dấu nháy bị lọc tới hết dòng. Không phát hiện được: tên file tương đối, văn bản tự do, đường dẫn URL-encode — vì vậy quy tắc chỉ log ID là bắt buộc (P0.06, sửa 2026-11-15 theo BUG-0014/0015).
 - Đối chiếu Luật 91/2025/QH15 và Nghị định 356/2025/NĐ-CP, cùng thủ tục với người chưa thành niên (v3 mục 9.2).
 
 ### 10.2 An toàn kỹ thuật

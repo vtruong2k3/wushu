@@ -4,6 +4,79 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
 
 ---
 
+## 2026-11-15 — P0.06 Unified logging and path redaction — rework after review, closed (DONE)
+
+- Reopened 2026-11-15 by the review (task file §9): a redactor leak (BUG-0014), and P0.05 files and history
+  overwritten during P0.06 (BUG-0012, BUG-0013). Closed after the rework R1–R9 (§9.4, §9.5).
+- Fixed: BUG-0014 and BUG-0015 (`taiji_ai/src/taiji_ai/logs.py`: `PathRedactor` is one left-to-right pass with
+  quote-aware path ends — UNC with spaces / Vietnamese / `c$`, apostrophes and `repr` spellings are redacted whole,
+  `repr` tails of known roots are kept; POSIX personal prefixes only with POSIX path syntax, keyword `posix_paths`,
+  default off on Windows), BUG-0017 (`run_log` writes its end line on `KeyboardInterrupt`/`SystemExit` too),
+  BUG-0016 (`tests/conftest.py`: shared `clean_logging` + autouse logging-state guard), BUG-0012 (P0.05
+  `tests/contract/test_check_script.py`, `test_repo_hygiene_git.py` restored verbatim), BUG-0013 (CHANGELOG P0.05
+  entries, BUG-0008 detail, BUGS next free ID, TASK_STATUS date restored)
+- Changed: `logs.py` docstrings (format, placeholders, end rules, limits, threads); level names limited to the five
+  documented ones; unsafe-root check fails closed; `tests/unit/test_logs.py` (41 tests), `tests/api/test_api_core.py`
+  (fixture use, traceback assertion); `Docs/TECH_WORKFLOW_V1.md` §10.1, `taiji_ai/README.md`, `DECISIONS.md`
+  DEC-0012, `IMPLEMENTATION_PLAN_V1.md` T-CORE-01 (wording with limits, dated)
+- Tests: red first (18 failed + 3 errors on the unfixed code); full gate 10/10 PASS in 19.0 s (137 pytest,
+  11 Vitest); mutations M1–M9 all caught, files restored hash-equal; BUG-0010 / BUG-0008 mutation checks re-run on the
+  restored P0.05 tests; real-API smoke re-run
+- Bugs: BUG-0012..BUG-0017 CLOSED (BUG-0011 closed in the first pass)
+- Decisions: DEC-0012 (corrected)
+- Open: maintainer to confirm Q1–Q6 explicitly (task file F-8); commits
+- Commit: not committed
+- Plan: `Docs/tasks/P0.06.md` (§9 review, §9.4 rework plan, §9.5 resolution, §5 rework evidence)
+
+## 2026-11-15 — P0.06 Unified logging and path redaction (DONE; reopened, superseded by the entry above)
+
+- **Reopened 2026-11-15 by the review** (`Docs/tasks/P0.06.md` §9): status back to IN_PROGRESS; BUG-0012..0017
+  registered. Claims below that the review disproved: ~~"two-pass path redaction prevents personal path leakage"~~
+  (BUG-0014: UNC and apostrophe paths leak); ~~`tests/contract/test_check_script.py` "fixed … environment
+  inheritance"~~ (that was P0.05 rework 2; the file was overwritten with an older version, BUG-0012). This entry is
+  superseded by the rework entry above.
+
+- Added: `taiji_ai/src/taiji_ai/logs.py` (`PathRedactor`, `RunContextFilter`, `RunMatchFilter`, `RedactingFormatter`, `configure_logging`, `run_log`, `current_run_id`), `taiji_ai/tests/unit/test_logs.py` (T-CORE-01a..n, 21 tests)
+- Changed: `taiji_ai/src/taiji_ai/config.py` (`log_level` field, default `"INFO"`), `taiji_ai/src/taiji_ai/api/app.py` (redacted error boundary for BUG-0011), `taiji_ai/src/taiji_ai/api/__main__.py` (`configure_logging` before uvicorn, `log_config: None` in `server_config()`), `taiji_ai/tests/api/test_api_core.py` (T-CORE-01o..p, T-API-04b, BUG-0011 red-first tests), `taiji_ai/tests/unit/test_config.py` (`TAIJI_LOG_LEVEL` tests), `taiji_ai/tests/contract/test_check_script.py` (fixed `TAIJI_CHECK_RUNNING` environment inheritance in child runner)
+- Behaviour: unified ISO-8601 logging across application, uvicorn and background runs; per-run `run.log` written in append mode; two-pass path redaction prevents personal path leakage across console, file logs, tracebacks, warnings and API errors
+- Tests: T-CORE-01 (a..p), T-API-04b, BUG-0011 regression tests pass; mutation checks M1..M4 verified; full quality gate 10/10 PASS in 26.4s
+- Bugs: BUG-0011 (closed in this task)
+- Decisions: DEC-0012
+- Commit: not committed
+- Plan: `Docs/tasks/P0.06.md`
+
+## 2026-11-15 — P0.05 One-command quality gate `tools/check.ps1` — rework after re-review, closed (DONE)
+
+- Reopened 2026-11-15 by the re-review (task file §9): BUG-0009's fix was incomplete, BUG-0010 and findings F-3..F-12
+  were new; both bugs were introduced by this task, so it could not stay DONE/IN_REVIEW. Closed after rework 2.
+- Fixed: BUG-0009 (`tools/repo_hygiene.py`: one `stat()` per file via `collect_entries()`; any file that cannot be
+  stat'ed gives exit 2 naming the file, never 0 or 1), BUG-0010 (`tools/check.ps1`: nested-run guard checked before
+  preflight; the test no longer starts a real gate run), BUG-0008 (closed: shared `parse_errors()` helper with a
+  negative control)
+- Changed: `tools/check.ps1` (`[n/N]` from the step count; relative interpreter path in the plan; `Get-UvLauncher`
+  shared by the step and preflight; header prints Python, uv, Node, pnpm versions), `store/artifacts.py` (unneeded
+  `type: ignore` removed, docstring), `tests/contract/test_check_script.py` (9 tests), `tests/unit/test_repo_hygiene.py`
+  (51 tests, 7 for BUG-0009), `tests/contract/test_repo_hygiene_git.py` (no `git commit`), `tests/unit/test_core.py`
+  (BUG-0006 tests check `ValueError` and the message), `taiji_ai/README.md` (gate in its own section after the web
+  setup), `Docs/IMPLEMENTATION_PLAN_V1.md` (date markers, T-TOOL rows), `Docs/tracking/DECISIONS.md` (DEC-0011 note)
+- Tests: `tools\check.ps1` full run 10/10 PASS in 14.6 s warm (73.8 s cold), pytest 91 passed, Vitest 11 passed,
+  0 hygiene violations; regression tests written and run red first (5 failures on the unfixed code); mutation check of
+  the guard test; fault injection (lint error), stale lock, `-SkipWeb`, `-NoGpu` from `%TEMP%`, nested run, empty root
+- Bugs: BUG-0008, BUG-0009, BUG-0010 CLOSED (with BUG-0006, BUG-0007 from the original task)
+- Not covered: a run on machine B (maintainer); GitHub Actions CI (follow-up)
+- Commit: not committed
+- Plan: `Docs/tasks/P0.05.md` (§3.1 rework plan, §4 step 13, §5 rework-2 evidence, §9 re-review)
+
+## 2026-11-14 — P0.05 One-command quality gate `tools/check.ps1` (IN_REVIEW; superseded by the 2026-11-15 entry above)
+
+- Added: `taiji_ai/tools/check.ps1` (10-step quality gate: uv-lock, ruff-check, ruff-format, mypy, pytest, web-lint, web-typecheck, web-test, web-build, repo-hygiene; Windows PowerShell 5.1 compatible, ASCII-only, Out-Host stream isolation), `taiji_ai/tools/repo_hygiene.py` (rules R1–R11, 5 MB limit), `tests/contract/test_check_script.py` (T-TOOL-01..03, 5 tests), `tests/unit/test_repo_hygiene.py` (T-TOOL-04, 44 tests), `tests/contract/test_repo_hygiene_git.py` (T-TOOL-05, CLI subprocess contract)
+- Fixed: BUG-0006 (`atomic_save_npz` keyword reserved check and object-dtype rejection; `tests/unit/test_core.py`), BUG-0007 (removed hard-coded test counts in `taiji_ai/README.md`), BUG-0008 (T-TOOL-01 captures `[ref]$errors` and added negative syntax test), ~~BUG-0009 (`repo_hygiene.py` no longer swallows stat errors on existing files)~~ (incomplete, see 2026-11-15)
+- Changed: `AGENTS.md` §7, `CLAUDE.md`, `CONTRIBUTING.md`, `Docs/IMPLEMENTATION_PLAN_V1.md` (§4, §15.1, §16.3), `Docs/TECH_WORKFLOW_V1.md` line 57
+- Decisions: DEC-0011
+- Tests: all 10 gate steps pass in 13.2s (79 python tests, 11 vitest tests, 0 hygiene violations); ~~full verification matrix V-01..V-15 verified on machine A~~ (overstated: V-02, V-09, V-13 were not run as described; verified 2026-11-15, see task file §5 and §9)
+- Commit: not committed
+- Plan: `Docs/tasks/P0.05.md` (status: IN_REVIEW)
+
 ## 2026-11-14 — X.06 Usable repositories recorded in the docs (DONE)
 
 - Usable items from X.05 (already cloned, git-ignored): `repos/taolu/tpz` (MPL-2.0, E04 reference) and
@@ -79,7 +152,7 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
 
 ## 2026-11-14 — X.03 Rules for third-party code, models and datasets (DONE)
 
-- Changed: `AGENTS.md` — new §9 *Third-party code, models and datasets* (license tiers, repositories, weights,
+- Changed: `AGENTS.md` — new §9 _Third-party code, models and datasets_ (license tiers, repositories, weights,
   datasets, own recordings, where to record); "When in doubt" renumbered §9 → §10 (no existing reference used §9);
   §1 table and §5.10/§5.11 point to §9
 - Added: `taiji_ai/THIRD_PARTY_NOTICES.md` (direct deps with metadata licenses, NVIDIA proprietary CUDA/cuDNN wheels,

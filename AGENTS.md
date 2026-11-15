@@ -228,6 +228,7 @@ Every defect — found in review, in tests, by the user, or in existing code —
   NaN = not observed.
 - Schemas: Pydantic v2 with `schema_version` in every persisted manifest.
 - Errors: raise specific exceptions with actionable messages; no bare `except`.
+- Logging: library modules use `log = logging.getLogger(__name__)`; entry points configure logging (`taiji_ai.logs.configure_logging`); log IDs (`run_id`, `recording_id`, pseudonym), never user-supplied file names or free text; no `print` in `src/`.
 - Tests live in `taiji_ai/tests/{unit,contract,golden,integration}`; test names reference test IDs where they exist
   (e.g. `test_t_qlt_04_long_gap_stays_nan`).
 
@@ -254,7 +255,16 @@ pnpm lint; pnpm typecheck; pnpm test
 pnpm build        # outputs web/dist, served by FastAPI
 ```
 
-`tools/check.ps1` (task P0.05) will wrap lint + format + tests; once it exists it is the required gate.
+Quality gate (mandatory before closing a task or opening a PR; run from `taiji_ai/`):
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\check.ps1          # full gate (10 steps: python + web + repo-hygiene)
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\check.ps1 -NoGpu   # deselects gpu tests (machines without CUDA/models only)
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\check.ps1 -SkipWeb # quick Python iteration; PARTIAL, NOT valid for DoD
+```
+
+Exit codes: `0` pass (or PARTIAL with `-SkipWeb`), `1` check failed, `2` environment/preflight error.
+A full run is required for the Definition of Done (`-NoGpu` permitted only on machines lacking a supported GPU).
 
 ---
 

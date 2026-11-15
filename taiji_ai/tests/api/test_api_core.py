@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 
 import pytest
@@ -201,3 +202,117 @@ def test_t_api_04_loopback_only(port):
     assert cfg["host"] == "127.0.0.1"
     assert cfg["port"] == port
     assert cfg["workers"] == 1
+    assert cfg["log_config"] is None
+
+
+def test_t_api_04b_uvicorn_log_config_none(clean_logging):  # clean_logging restores uvicorn loggers (BUG-0016)
+    import uvicorn
+
+    cfg_dict = server_config(8007, log_level="info")
+    assert cfg_dict["log_config"] is None
+    cfg = uvicorn.Config("taiji_ai.api.app:create_app", **cfg_dict)
+    cfg.configure_logging()
+    for name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
+        u_log = logging.getLogger(name)
+        assert len(u_log.handlers) == 0
+        assert u_log.propagate is True
+
+
+def test_t_core_01o_api_unhandled_traceback_redacted(tmp_path: Path, clean_logging):
+    import io
+
+    from taiji_ai.logs import configure_logging
+
+    stream = io.StringIO()
+    configure_logging(level="DEBUG", stream=stream)
+
+    fake_path = r"C:\Users\Người Tập Giả\secret\data.csv"
+    app = create_app(_settings(tmp_path))
+
+    def _boom():
+        raise RuntimeError(f"cannot read {fake_path}")
+
+    _add_api_route(app, "/api/_boom", _boom)
+
+    with TestClient(app, raise_server_exceptions=False) as client:
+        r = client.get("/api/_boom")
+
+    assert r.status_code == 500
+    assert r.json()["error"]["code"] == "internal_error"
+    out = stream.getvalue()
+    assert "unhandled error on GET /api/_boom" in out
+    assert "Traceback (most recent call last)" in out
+    assert "Người Tập Giả" not in out
+    assert "<path>" in out
+    assert not (r"C:\Users" in out or "C:/Users" in out)
+
+
+def test_t_core_01p_main_configures_logging_before_uvicorn(monkeypatch, clean_logging):
+    import logging
+
+    import uvicorn
+
+    from taiji_ai.api.__main__ import main
+    from taiji_ai.logs import _TAIJI_HANDLER_ATTR
+
+    run_called: dict = {}
+
+    def fake_run(app_str, **kwargs):
+        root = logging.getLogger()
+        has_taiji = any(getattr(h, _TAIJI_HANDLER_ATTR, False) for h in root.handlers)
+        run_called["configured_before"] = has_taiji
+        run_called["kwargs"] = kwargs
+
+    monkeypatch.setattr(uvicorn, "run", fake_run)
+    main(["--port", "9999"])
+
+    assert run_called.get("configured_before") is True
+    assert run_called["kwargs"]["port"] == 9999
+    assert run_called["kwargs"]["log_config"] is None
+
+
+# --- BUG-0011 ---------------------------------------------------------------------------------
+@pytest.mark.parametrize("scenario", ["registry_missing", "model_missing"])
+def test_bug_0011_health_error_has_no_absolute_path(tmp_path: Path, scenario: str):
+    fake_user_dir = tmp_path / "Người Tập Giả"
+    models_dir = fake_user_dir / "models"
+    models_dir.mkdir(parents=True)
+
+    if scenario == "model_missing":
+        reg = {
+            "schema_version": "model-registry/1",
+            "models": [
+                {
+                    "name": "det-x",
+                    "role": "det",
+                    "file": "det.onnx",
+                    "sha256": "0" * 64,
+                    "input_size": [640, 640],
+                }
+            ],
+        }
+        (models_dir / "registry.json").write_text(json.dumps(reg), encoding="utf-8")
+
+    settings = Settings(
+        data_dir=fake_user_dir / "data",
+        models_dir=models_dir,
+        web_dist_dir=fake_user_dir / "dist",
+        migrations_dir=PROJECT_ROOT / "migrations",
+        device="cpu",
+        api_port=0,
+    )
+
+    verify = scenario == "model_missing"
+    with TestClient(create_app(settings, verify_models=verify)) as client:
+        r = client.get("/api/health")
+
+    assert r.status_code == 200
+    body = r.json()
+    assert body["models"]["ok"] is False
+    err = body["models"]["error"]
+    assert err is not None
+
+    # Red test: on current code, err contains absolute path and the user directory name
+    assert "Người Tập Giả" not in err, f"Personal path/name leaked in error: {err}"
+    assert "<models>" in err, f"Expected <models> placeholder in: {err}"
+    assert not (":\\" in err or ":/" in err or err.startswith("/")), f"Absolute path found in error: {err}"

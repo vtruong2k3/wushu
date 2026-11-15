@@ -18,6 +18,7 @@ from taiji_ai.api.routers import health
 from taiji_ai.api.routers.health import ModelInfo, ModelStatus
 from taiji_ai.api.static import API_PREFIX, install_static
 from taiji_ai.config import Settings, get_settings
+from taiji_ai.logs import PathRedactor
 from taiji_ai.pose.registry import ModelIntegrityError, ModelRegistry
 from taiji_ai.store.db import connect
 
@@ -29,8 +30,9 @@ def _check_models(settings: Settings, verify: bool) -> ModelStatus:
     try:
         reg = ModelRegistry(settings.registry_path, verify=verify)
     except ModelIntegrityError as exc:
-        log.warning("model registry problem: %s", exc)
-        return ModelStatus(ok=False, verified_at_startup=verify, error=str(exc))
+        redacted_error = PathRedactor.for_settings(settings).redact(str(exc))
+        log.warning("model registry problem: %s", redacted_error)
+        return ModelStatus(ok=False, verified_at_startup=verify, error=redacted_error)
     entries = [ModelInfo(name=e.name, role=e.role, sha256_prefix=e.sha256[:12]) for e in reg.entries.values()]
     return ModelStatus(ok=True, verified_at_startup=verify, entries=entries)
 

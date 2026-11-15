@@ -133,8 +133,8 @@ Con số này cao hơn 30–44 ngày công của v3 vì có thêm phần dựng 
 | P0.02 | ✅ Tải và đăng ký model, GPU smoke test | A | — | — | `models/registry.json` | T-POSE-01..03 |
 | P0.03 | ✅ `io/probe`, `io/frames`, `store/*`, migration 0001 | A | — | — | module + test | T-IO-01..05, T-STORE-01..03 |
 | P0.04 | Commit đầu tiên; quy ước nhánh và PR; file `CONTRIBUTING.md` ngắn | B | 0,25 | — | commit, `CONTRIBUTING.md` | `git log` |
-| P0.05 | Script kiểm tra một lệnh `tools/check.ps1`: ruff check + format check + pytest (bỏ qua test `gpu` nếu `-NoGpu`) | B | 0,25 | P0.04 | `tools/check.ps1` | Chạy pass |
-| P0.06 | Logging thống nhất (`logging` + file log theo run), không log đường dẫn chứa tên thật | A | 0,5 | — | `taiji_ai/logging.py` | T-CORE-01 |
+| P0.05 | Script kiểm tra một lệnh `tools/check.ps1`: ruff check + format check + pytest (bỏ qua test `gpu` nếu `-NoGpu`); *mở rộng 2026-11-14 (S1–S4, `Docs/tasks/P0.05.md`)*: web checks, mypy, uv lock, repo-hygiene | B | 0,25 → 0,5 (2026-11-14) | P0.04 | `tools/check.ps1`, `tools/repo_hygiene.py` | T-TOOL-01..05 (2026-11-14) |
+| P0.06 | Logging thống nhất (`logging` + file log theo run), không log đường dẫn chứa tên thật; mở rộng 2026-11-15: BUG-0011, uvicorn routing | A | 0,5 → 0,75 (2026-11-15) | — | `taiji_ai/logs.py` (đổi tên từ logging.py để tránh che stdlib) | T-CORE-01 (a..p) |
 | P0.07 | Bộ sinh skeleton tổng hợp cho test (mục 14.3) | A | 1 | — | `tests/helpers/synth.py` | T-SYN-01..03 |
 
 **Nghiệm thu P0:** `tools/check.ps1` pass trên máy A và B. Bộ sinh skeleton tổng hợp tạo đủ các kịch bản ở mục 14.3.
@@ -434,10 +434,15 @@ Cột **Loại**: U = unit, C = contract, G = golden, I = integration, M = manua
 
 | Mã | Loại | Mô tả | Task |
 |---|---|---|---|
-| T-CORE-01 | U | Log không chứa tên thật hoặc đường dẫn có tên; có `run_id` | P0.06 |
+| T-CORE-01 | U/C | T-CORE-01a..p: Log không chứa tên thật hoặc đường dẫn có tên (kể cả UNC có dấu cách/chữ có dấu, `c$`, dấu nháy, dạng `repr`); ~~redaction 2 pass~~ redaction một lượt quét (2026-11-15, BUG-0014/0015); có `run_id`; `run.log` theo context, có dòng kết thúc cả khi bị hủy; traceback/warning được lọc; API uvicorn định dạng thống nhất; test không để lại trạng thái logging (BUG-0016) | P0.06 (cập nhật 2026-11-15) |
 | T-SCH-01 | U | `RecordingManifest`/`SyncManifest` từ chối trường thiếu, sai kiểu; có `schema_version` | P2.01 |
 | T-SCH-02 | U | `MetricSeries` bắt buộc units, valid_intervals, coverage | P5.01 |
 | T-SYN-01..03 | U | Bộ sinh F-SYN: shape, đáp án đúng, seed cố định cho kết quả lặp lại | P0.07 |
+| T-TOOL-01 | C | `tools/check.ps1` là ASCII-only và parse sạch trong PowerShell 5.1; có test đối chứng: script sai cú pháp bị phát hiện | P0.05 (thêm 2026-11-14) |
+| T-TOOL-02 | C | `check.ps1 -DryRun` in 10 bước theo thứ tự chuẩn, không in đường dẫn tuyệt đối, không chạy lệnh | P0.05 (thêm 2026-11-14) |
+| T-TOOL-03 | C | `check.ps1` cờ `-NoGpu`, `-SkipWeb` (SKIP 4 bước web), `-Root <empty>` (exit 2, uv sync), `TAIJI_CHECK_RUNNING` (exit 2, kiểm tra trước preflight) | P0.05 (thêm 2026-11-14) |
+| T-TOOL-04 | U | `repo_hygiene.classify`: quy tắc R1–R11, ngoại lệ cho phép, chuẩn hóa đường dẫn; lỗi `stat` → exit 2 (BUG-0009) | P0.05 (thêm 2026-11-14) |
+| T-TOOL-05 | C | `repo_hygiene` trên git repo tạm: file ignored bị bỏ qua, vi phạm báo exit 1, non-ASCII | P0.05 (thêm 2026-11-14) |
 
 ### 15.2 IO và ingest
 
@@ -663,7 +668,9 @@ cd taiji_ai
 .venv\Scripts\python.exe -m pytest tests\golden          # golden test
 .venv\Scripts\python.exe -m pytest tests\integration     # trước khi merge vào main
 .venv\Scripts\python.exe tools\env_check.py --gpu-smoke  # kiểm tra môi trường
-powershell -File tools\check.ps1                         # lint + format + test (P0.05)
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\check.ps1          # cổng chất lượng 1 lệnh (P0.05, 2026-11-14)
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\check.ps1 -NoGpu    # bỏ qua test gpu
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\check.ps1 -SkipWeb  # bỏ qua web (PARTIAL, không dùng cho DoD)
 ```
 
 Chưa có CI từ xa. `tools/check.ps1` là cổng bắt buộc trước mỗi PR. Khi có remote (GitHub/GitLab), chuyển script này thành CI, chạy `-m "not gpu"`. Test GPU chạy hằng ngày trên máy có GPU.
