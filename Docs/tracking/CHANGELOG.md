@@ -19,7 +19,7 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
 - Decisions: DEC-0026
 - Bugs: BUG-0047 (S3, weak tests and a rule weaker than DEC-0025) and BUG-0048 (S3, wrong full-suite counts in the P1.04 and
   X.18 records) closed; BUG-0049 (S3, 15 older lint warnings in the workflow) planned for X.22; BUG-0046 (`is_vfr`) planned for P2.02
-- Commit: not committed
+- Commit: 2d0cdf4
 - Plan: Docs/tasks/P2.01.md
 
 ## 2026-11-15 — X.21 Detailed plan for Phase 2 (DONE)
@@ -33,7 +33,7 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
 - Maintainer: confirmed the plans of P2.01, P2.02, P2.04 and accepted the defaults of every question (DEC-0025)
 - Tests: none (documents); gate 10/10 PASS; IDE markdownlint clean
 - Bugs: BUG-0046 (S3, PLANNED, fix in P2.02)
-- Commit: not committed
+- Commit: 5c5ca32
 - Plan: Docs/tasks/X.21.md
 
 ## 2026-11-15 — X.20 Working convention for the side label (Q9, first part) (DONE)
@@ -49,7 +49,7 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
 - Open: label of a segment that covers a whole alternating movement; order of A06 and A10; the coach sign-off
 - Decisions: DEC-0024
 - Bugs: none
-- Commit: not committed
+- Commit: c0567ae
 - Plan: Docs/tasks/X.20.md
 
 ## 2026-11-15 — X.19 Record the Q9 search findings next to Q9 (DONE)
@@ -64,7 +64,7 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
 - Tests: no new test; the stale guard (T-DATA-01l) failed after the YAML edit and passed after regeneration; parsed
   ontology equal to the snapshot before; gate 10/10 PASS
 - Bugs: none
-- Commit: not committed
+- Commit: c0567ae
 - Plan: Docs/tasks/X.19.md
 
 ## 2026-11-15 — X.18 Ontology open questions without a coach: source check, side order, review sheet (DONE)
@@ -85,7 +85,7 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
 - Open: the coach sign-off (Q3, Q5, Q8 for A06 and A10, Q9, counts of A06 and A10, names); Q6 (P6.05) and Q7 (P9.04)
 - Decisions: DEC-0023
 - Bugs: BUG-0042 (S3, test gap found by mutation) and BUG-0043 (S3, pre-existing README MD040), both closed
-- Commit: not committed
+- Commit: c0567ae
 - Plan: Docs/tasks/X.18.md
 
 ## 2026-11-15 — P1.04 Ontology v0: 24-form actions, sides, occurrences, views, flags (DONE)
@@ -105,7 +105,7 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
   English names and the unchecked Vietnamese readings
 - Decisions: DEC-0022
 - Bugs: BUG-0041 (S3, test gaps found by the mutation run, fixed in this task)
-- Commit: not committed
+- Commit: c0567ae
 - Plan: Docs/tasks/P1.04.md
 
 ## 2026-11-15 — X.16 Four candidate datasets checked; two downloaded (DONE)
@@ -124,7 +124,7 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
 - Tests: gate 10/10 PASS in 19.4 s; `getDiagnostics` empty; `git status` shows no data file
 - Open: no task uses the C3D data yet (a geometry study after P5 would need its own task)
 - Bugs: BUG-0039 CLOSED
-- Commit: not committed
+- Commit: add697e
 - Plan: `Docs/tasks/X.16.md`
 
 ## 2026-11-15 — X.17 Coach-interview tasks set aside (DONE)
@@ -138,7 +138,7 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
 - Changed: `Docs/tracking/{DECISIONS,TASK_STATUS,CHANGELOG}.md` (P1 summary now 2 DONE, 6 in progress, 2 BLOCKED;
   total 11 / 6 / 2 / 81), `Docs/tasks/{P1.02,P1.03,X.17}.md`. No code
 - Tests: documentation only; the counts add up (100 = 11 + 6 + 2 + 81); diagnostics none; full gate 10/10 PASS in 19.3 s
-- Commit: not committed
+- Commit: add697e
 - Plan: `Docs/tasks/X.17.md`
 
 ## 2026-11-15 — P1.02 Note template and interview checklist (IN_PROGRESS)
@@ -158,7 +158,7 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
   15.9 s
 - Open: coaches and dates (O); the first real interview, which is also the trial read of the guide (DEC-0020); three
   `observed` notes for AC1
-- Commit: not committed
+- Commit: add697e
 - Plan: `Docs/tasks/P1.02.md`
 
 ## 2026-11-15 — P1.01 Interview guide v0.2, closed on a dry run (DONE)
@@ -177,7 +177,7 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
   in 19.4 s
 - Open: the real coach read (first real interview); the 62 minutes in the guide header were checked by summing the parts
 - Bugs: BUG-0037, BUG-0038 CLOSED
-- Commit: not committed
+- Commit: add697e
 - Plan: `Docs/tasks/P1.01.md` (§9 review)
 
 ## 2026-11-15 — P1.01 reviewed after the maintainer reported it done (still IN_REVIEW)
@@ -192,7 +192,7 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
   question Q7 on sub-phases
 - Changed: `Docs/tracking/{BUGS,TASK_STATUS,CHANGELOG}.md`, `Docs/tasks/{P1.01,P1.02,P1.04}.md`. The guide and the four
   simulated files were not touched
-- Commit: not committed
+- Commit: add697e
 - Plan: `Docs/tasks/P1.01.md` §9
 
 ## 2026-11-15 — X.15 Stop waiting for access-controlled datasets (DONE)
@@ -207,7 +207,7 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
 - Tests: documentation only; full gate 10/10 PASS in 19.9 s; IDE diagnostics none
 - Open (maintainer): which dataset the request was for; whether to download the Kinetics validation split (28.3 GB for
   50 clips; not recommended before P3)
-- Commit: not committed
+- Commit: add697e
 - Plan: `Docs/tasks/X.15.md`
 
 ## 2026-11-15 — X.14 Survey of openly downloadable Taijiquan datasets (DONE)
@@ -226,7 +226,7 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
 - Open (maintainer): read the MADS and CMU terms in a browser; decide on the Kinetics download; decide whether MADS or
   CMU may stand in for PSU-TMM100 in P10.07
 - Bugs: BUG-0036 CLOSED
-- Commit: not committed
+- Commit: add697e
 - Plan: `Docs/tasks/X.14.md`
 
 ## 2026-11-15 — P1.01 Interview guide, draft v0.1 (IN_REVIEW)
@@ -238,7 +238,7 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
 - Deviation: the cards carry no example number at all (the plan's Q4 default allowed invented numbers marked as such)
 - Tests: documentation only; checks C-1..C-6 pass; IDE diagnostics none; full gate 10/10 PASS in 15.4 s
 - Open: O's edits and one coach's trial read (AC2); the task is not DONE
-- Commit: not committed
+- Commit: add697e
 - Plan: `Docs/tasks/P1.01.md`
 
 ## 2026-11-15 — Phase 1 decisions; P1.10 closed by decision (DONE)
@@ -255,7 +255,7 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
 - Changed: `Docs/tracking/{DECISIONS,TASK_STATUS,BUGS,CHANGELOG}.md`, `Docs/IMPLEMENTATION_PLAN_V1.md` (P1.09, P1.10
   rows), `Docs/DATASET_REGISTRY_TAIJI.md`, `Docs/tasks/{P1.04,P1.09,P1.10}.md`. No code
 - Tests: documentation only; full gate 10/10 PASS in 16.0 s after these edits
-- Commit: not committed
+- Commit: add697e
 - Plan: `Docs/tasks/P1.10.md`
 
 ## 2026-11-15 — P1.01–P1.10 Phase 1 planned (PLAN_READY)
@@ -284,7 +284,7 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
 - Tests: documentation only; full gate 10/10 PASS in 15.3 s; IDE diagnostics empty; a manual check of the ten files for
   the usual lint mistakes found none
 - Bugs: none
-- Commit: not committed
+- Commit: add697e
 - Plan: `Docs/tasks/P1.01.md` … `Docs/tasks/P1.10.md`
 
 ## 2026-11-15 — X.13 Record the deferral of X.08, GitHub Actions CI (DONE)
