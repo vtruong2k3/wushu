@@ -37,7 +37,7 @@ The git repository root is this workspace root. `repos/*/*` and `datasets/*/*` a
 Every piece of work is a **task** with an ID. Work that is not in `IMPLEMENTATION_PLAN_V1.md` gets a new ID
 (see §2.2) **before** any code is written. No code without a task. No task closed without review.
 
-```
+```text
 TODO → ANALYZING → PLAN_READY → IN_PROGRESS → IN_REVIEW → DONE
                        ↑              │              │
                        └── plan changes ─┘   bugs found ─┘ (back to IN_PROGRESS)
@@ -174,7 +174,7 @@ Every defect — found in review, in tests, by the user, or in existing code —
 
 ### 4.2 Changelog entry format (`Docs/tracking/CHANGELOG.md`, newest first)
 
-```
+```text
 ## 2026-11-20 — P4.02 Short-gap interpolation (DONE)
 - Changed: taiji_ai/src/taiji_ai/quality/gaps.py (new), tests/unit/test_gaps.py (new)
 - Behaviour: gaps ≤ 150 ms interpolated with `interpolated` flag; longer gaps stay NaN
@@ -354,7 +354,7 @@ Unknown or conflicting license → treat as the most restrictive plausible tier 
 1. A recording enters the system only with a participant pseudonym and a consent reference.
 2. `consent_train = 0` → never used for training or model selection; `consent_share = 0` → never leaves the
    controlled machine, never shown to other participants.
-3. Withdrawal or deletion requests remove the recording and everything derived from it (§5.9, task P8.12).
+3. Withdrawal or deletion requests remove the recording and everything derived from it (§5.9, task P8.14).
 
 ### 9.6 Where to record
 

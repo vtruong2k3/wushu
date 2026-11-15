@@ -54,7 +54,7 @@ Flags (`-NoGpu`, `-SkipWeb`, `-DryRun`) and exit codes: `AGENTS.md` §7.
 
 ## Layout
 
-```
+```text
 src/taiji_ai/
   config.py            paths/settings (TAIJI_DATA_DIR, TAIJI_MODELS_DIR, TAIJI_DEVICE, TAIJI_LOG_LEVEL)
   logs.py              unified logging, per-run log file, absolute path redaction
@@ -65,10 +65,15 @@ src/taiji_ai/
   pose/rtm.py          YOLOX + RTMPose wrapper (detect / estimate separately)
   store/artifacts.py   atomic writes, checksums
   store/db.py          SQLite + numbered migrations (migrations/*.sql)
+  schemas/ontology.py  ontology v0 models, loader and `check_segment` (reads config/ontology_v0.yaml)
+  schemas/_base.py     manifest base: strict models, atomic write, validated read (ManifestError)
+  schemas/recording.py recording.json, proxy.json and the ingest input (recording/1, proxy/1)
+  schemas/sync.py      sync.json and the time mapping between two cameras (sync/1)
   track/ quality/ metrics/ compare/ pipeline/ report/   (to be implemented)
   api/                 FastAPI app (`python -m taiji_ai.api`, 127.0.0.1 only): /api/health, SPA serving
+config/                ontology_v0.yaml: the 24-form actions, sides, views, flags (draft until the coach signs)
 web/                   React + Vite + TypeScript UI: src/{api,components,pages}, tests/ (Vitest)
-tools/                 check.ps1, repo_hygiene.py, fetch_models.py, env_check.py
+tools/                 check.ps1, repo_hygiene.py, fetch_models.py, env_check.py, render_ontology_review.py
 tests/                 unit/, contract/ (synthetic FFmpeg fixtures; GPU smoke test), api/ (FastAPI TestClient)
 tests/helpers/         synth.py synthetic HALPE_26 skeleton generator (F-SYN, SYN-01..12)
 ```
@@ -85,6 +90,8 @@ tests/helpers/         synth.py synthetic HALPE_26 skeleton generator (F-SYN, SY
 | web (React + Vite: router, react-query, typed API client, status page) | done, tested (Vitest, real-browser smoke) |
 | tooling (check.ps1 gate, repo_hygiene) | done, tested (T-TOOL-01..05) |
 | test helpers (F-SYN skeleton generator, SYN-01..12) | done, tested (T-SYN-01..04) |
+| ontology (schemas/ontology.py, config/ontology_v0.yaml, tools/render_ontology_review.py) | code done, tested (T-DATA-01a..l); the 24-action content is `draft_unconfirmed` until the coach signs; `Docs/discovery/ontology_review_sheet.md` is generated from the YAML (stale-guard test) |
+| manifests (schemas/_base, recording, sync) | done, tested (T-SCH-01a..i); nothing writes them yet (ingest is P2.02) |
 | track, quality, metrics, compare, pipeline, report | not started |
 
 ## Logging

@@ -4,12 +4,26 @@ Rules: `AGENTS.md` §3. IDs are sequential (`BUG-NNNN`), never reused. Every bug
 Severity: **S1** critical · **S2** major · **S3** minor.
 Lifecycle: `OPEN → PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED` (or `WONT_FIX` with maintainer approval).
 
-**Next free ID:** `BUG-0036`
+**Next free ID:** `BUG-0050`
 
 ## Summary
 
 | ID       | Title                                                                                                                      | Sev | Status | Found in                                                                   | Fix task | Regression test                                                  | Opened     | Closed     |
 | -------- | -------------------------------------------------------------------------------------------------------------------------- | --- | ------ | -------------------------------------------------------------------------- | -------- | ---------------------------------------------------------------- | ---------- | ---------- |
+| BUG-0049 | `Docs/TECH_WORKFLOW_V1.md` has 15 markdownlint warnings that were there before P2.01 and that the IDE showed when P2.01 edited the file (it had never been analysed): MD032 (nine lists without a blank line: W0, W1, W2, W5, §9, Appendix B), MD040 (two fenced blocks without a language: the folder tree in §4.1 and the block of §5.1), MD031 (the `run_manifest.json` fence), MD036 (three bold labels used as headings in Appendix B) | S3 | PLANNED | P2.01 edit of the workflow (IDE diagnostics), pre-existing | X.22 | IDE diagnostics for `TECH_WORKFLOW_V1.md` show no warning | 2026-11-15 | |
+| BUG-0048 | The "full suite" test counts in the P1.04 and X.18 records are wrong: the P1.04 task file §5 and its CHANGELOG entry say 161 passed, the X.18 task file §5 and its CHANGELOG entry say 191 passed; the true totals were 305 and 335 (non-ontology files 246, plus the ontology and sheet tests of that day); I added up the dots of the last three progress lines only, a cut-off view of the output | S3 | CLOSED | P2.01 (a count taken from `pytest --collect-only`), `Docs/tasks/P1.04.md:198`, `Docs/tasks/X.18.md:167`, `Docs/tracking/CHANGELOG.md:65,84` | P2.01 | Each place now shows the old number struck through and the recomputed one; the current full run is 472 passed (2026-11-15) | 2026-11-15 | 2026-11-15 |
+| BUG-0047 | The first version of the P2.01 sync tests matched only the field name in the error, so five rules could be removed and the tests still passed (found by a mutation run: 60 of 67 caught); one was a real gap, because `usable_for_metrics` was also accepted with the flash residual at one end only, against DEC-0025 (flash needed at both ends); the validator and a test said the opposite | S3 | CLOSED | P2.01 mutation check, `taiji_ai/src/taiji_ai/schemas/sync.py` and `taiji_ai/tests/unit/test_schemas_sync.py` | P2.01 | Cases now match the message of the right rule (`_EXPECT`); `usable` needs both ends; mutation run caught all but the two equivalent ones (2026-11-15) | 2026-11-15 | 2026-11-15 |
+| BUG-0046 | `io.frames.is_vfr` flags a constant-frame-rate video as VFR when the time base is coarse: a 30 fps CFR clip with time base 1/1000 has frame intervals of 33 and 34 ms (rounding to the tick), std/median = 1.43 % > the 1 % tolerance, so `is_vfr` returns True; same for 29.97 fps | S3 (S2 once a stage acts on the flag) | PLANNED | Phase 2 planning experiment (2026-11-15), `taiji_ai/src/taiji_ai/io/frames.py` `is_vfr`, pre-existing since P0.03 | P2.02 | New T-IO-12: CFR 30 and 29.97 fps fixtures with `-video_track_timescale 1000` are not VFR; the existing VFR fixture still is | 2026-11-15 | |
+| BUG-0045 | `AGENTS.md` has two markdownlint MD040 warnings: the lifecycle diagram (line 40) and the changelog-entry example (line 177) are fenced blocks without a language; present before P1.06, shown by the IDE when P1.06 edited the file for BUG-0044 | S3 | CLOSED | P1.06 (IDE diagnostics after the BUG-0044 fix), `AGENTS.md:40,177`, pre-existing | P1.06 | IDE diagnostics for `AGENTS.md` show no warning after the fix (checked 2026-11-15) | 2026-11-15 | 2026-11-15 |
+| BUG-0044 | The deletion task is cited as P8.12 in `AGENTS.md` §9.5 item 3, `Docs/tasks/P0.06.md` (two places) and `Docs/tasks/P1.06.md` (three places); the plan gives deletion of a participant's data to P8.14 (`tools/delete_participant.py`, T-STORE-07), and P8.12 is the report export | S3 | CLOSED | P1.06 analysis (2026-11-15), `AGENTS.md:357`, `Docs/tasks/P0.06.md:145,379`, `Docs/tasks/P1.06.md:26,48,79` | P1.06 | Manual check: `grep -rn "P8.12"` over `*.md` shows only export contexts after the fix (2026-11-15) | 2026-11-15 | 2026-11-15 |
+| BUG-0043 | `taiji_ai/README.md` has a markdownlint MD040 warning: the fenced block of the Layout section (line 57) has no language; present before X.18, shown by the IDE when X.18 edited the file (the P1.04 check of this file returned an empty answer because the IDE had not analysed it) | S3 | CLOSED | X.18 edit of the README (IDE diagnostics), pre-existing | X.18 | IDE diagnostics for the README show no warning after the fix (checked 2026-11-15) | 2026-11-15 | 2026-11-15 |
+| BUG-0042 | The first version of the X.18 `side_sequence` tests passed with the rule "every entry must be one of the action's sides" removed: every test case for it also broke the rule "every side must occur", which rejected it instead, so a mutation run left the rule alive | S3 | CLOSED | X.18 mutation check, `taiji_ai/tests/unit/test_ontology.py` (T-DATA-01i) | X.18 | Case `[left, right, up]` added (an unknown side while every declared side occurs); mutation run 45/45 caught (2026-11-15) | 2026-11-15 | 2026-11-15 |
+| BUG-0041 | The first version of the P1.04 tests (T-DATA-01) passed with four rules broken: a mutation run left 4 of 26 mutations alive (strict integer `repetitions`, repeated declared sides passed for the wrong reason, repeated sides inside an action, the "mapping" message); the immutability test caught a bare `Exception`; no test for an unquoted YAML date in `confirmed_at` | S3 | CLOSED | P1.04 mutation check, `taiji_ai/tests/unit/test_ontology.py` | P1.04 | Mutation run on a copy of the module: 28/28 caught (2026-11-15); `test_ontology.py` 59 passed | 2026-11-15 | 2026-11-15 |
+| BUG-0040 | The P1.02 note template `Docs/discovery/notes/_TEMPLATE.md` has two MD037 warnings: the blanks written as `___` on the line of question 2.4 are read as emphasis markers; my first verification said "lint ok" because the IDE had not analysed the new file yet | S3 | CLOSED | P1.02 (IDE diagnostics after the SIM-4 edit), `Docs/discovery/notes/_TEMPLATE.md:53` | P1.02 | IDE diagnostics for the template show no warning (checked 2026-11-15) | 2026-11-15 | 2026-11-15 |
+| BUG-0039 | `datasets/taiji/README.md` has 3 markdownlint warnings in text older than X.16: the tree block has no language (MD040), the lists after "Thống kê" and "Giới hạn" have no blank line above (MD032) | S3 | CLOSED | X.16 edit of the README (IDE diagnostics), pre-existing | X.16 | IDE diagnostics for the README show no warning (checked 2026-11-15) | 2026-11-15 | 2026-11-15 |
+| BUG-0038 | The simulated interview files in `Docs/discovery/` (three personas and a comparison): the personas are coded H1–H3, the codes of the real coaches (collision with P1.02 notes and the P1.08 roles); they sit next to the real guide with no separate folder; 29 markdownlint warnings (20 bare URLs, 6 bold-only labels, 3 double blank lines) | S3 | CLOSED | P1.01 review (2026-11-15), `Docs/discovery/P1.01_*_MO_PHONG.md` | P1.01 | Manual check: codes SIM-n, folder `simulated/`, IDE diagnostics empty (checked 2026-11-15) | 2026-11-15 | 2026-11-15 |
+| BUG-0037 | The interview guide v0.1 (my draft) has four defects shown by the dry run: question (c) of part 6 asks for a "number" on cards that show none; part 6 has 12 questions in 10 minutes; question 1.4 is too big for part 1; the time table of Appendix B has 5 rows and one persona needs 6 | S3 | CLOSED | P1.01 review (2026-11-15), `Docs/discovery/interview_guide.md` | P1.01 | Re-run C-1..C-6 on v0.2 plus a read of the four changes (done 2026-11-15) | 2026-11-15 | 2026-11-15 |
+| BUG-0036 | `Docs/DATASET_REGISTRY_TAIJI.md` has 16 markdownlint warnings in the detail sections: each `###` heading is followed by a list without a blank line (MD022 and MD032, 7 sections) and two e-mail addresses are bare (MD034, line 42); present in HEAD | S3 | CLOSED | P1.10 edit of the registry (IDE diagnostics), pre-existing in HEAD | X.14 | IDE diagnostics for the registry show no warning (checked 2026-11-15) | 2026-11-15 | 2026-11-15 |
 | BUG-0035 | New task files `X.10.md` and `X.11.md` have markdownlint warnings: X.10 line 19 starts with a plus sign (read as a list item: MD032, and MD004 on its 18 dash lists), X.11 has five bold-only labels (MD036); written by this agent and not checked with the IDE problems list | S3 | CLOSED | X.11 verification (`getDiagnostics`), `Docs/tasks/X.10.md:19`, `Docs/tasks/X.11.md` | X.11 | IDE diagnostics for both files show no warning (checked 2026-11-15) | 2026-11-15 | 2026-11-15 |
 | BUG-0034 | `Docs/tasks/P0.07.md` has a markdownlint MD022 warning: the heading "### Rework evidence" (line 338) has no blank line above it; in HEAD since the P0.07 rework commit `84c9bff` | S3 | CLOSED | X.11 check of the IDE problems list, pre-existing in HEAD | X.11 | IDE diagnostics for `Docs/tasks/P0.07.md` show no MD022 (checked 2026-11-15) | 2026-11-15 | 2026-11-15 |
 | BUG-0033 | `Docs/IMPLEMENTATION_PLAN_V1.md` §14.3 has a markdownlint MD032 warning (the list of the three F-SYN functions starts right after its paragraph, no blank line; about line 409); present in HEAD | S3 | CLOSED | X.10 edit of the plan (IDE diagnostics), pre-existing in HEAD | X.11 | IDE diagnostics for `Docs/IMPLEMENTATION_PLAN_V1.md` show no MD032 (checked 2026-11-15) | 2026-11-15 | 2026-11-15 |
@@ -49,6 +63,360 @@ Lifecycle: `OPEN → PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED` 
 ---
 
 ## Details
+
+### BUG-0049 — TECH_WORKFLOW_V1.md: 15 older markdownlint warnings
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3 (formatting; no content problem)                                                        |
+| Status          | PLANNED (task X.22)                                                                        |
+| Found in        | `Docs/TECH_WORKFLOW_V1.md`: lines about 127, 135, 171, 178, 228, 607, 737, 743, 749 (MD032), 271 and 417 (MD040), 363 (MD031), 736, 742, 748 (MD036) |
+| Found by / date | agent (Claude Code), 2026-11-15, IDE diagnostics after the P2.01 edit of §4.1 and §4.2     |
+| Affects         | Markdown lint noise only                                                                   |
+
+**Description:** the file had never been analysed by the IDE in this workspace. After P2.01 added two blank lines before its
+own new `json` blocks (its own two MD031 warnings were fixed in P2.01), 15 older warnings remain: nine lists that follow a
+paragraph or a bold label without a blank line, two fenced blocks without a language, one fence glued to its label, and three
+bold labels in Appendix B that markdownlint reads as headings.
+**Fix plan (X.22):** add the blank lines; open the two blocks as `text`; separate the `run_manifest.json` label from its
+fence; for the three Appendix B labels either make them real headings (`####`, which adds them to the structure) or keep them as
+bold text inside the list; no wording changes; read the IDE answer after the edits.
+**Fix:** —
+**Verified:** —
+
+**History:**
+
+- 2026-11-15 OPEN → PLANNED — found while editing §4 in P2.01; scheduled in X.22.
+
+### BUG-0048 — Wrong "full suite" test counts in the P1.04 and X.18 records
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3 (documentation numbers; the tests themselves passed)                                    |
+| Status          | CLOSED                                                                                     |
+| Found in        | `Docs/tasks/P1.04.md:198`, `Docs/tasks/X.18.md:167`, `Docs/tracking/CHANGELOG.md:65,84`    |
+| Found by / date | agent (Claude Code), 2026-11-15, when `pytest --collect-only` gave 472 for the whole suite during P2.01 |
+| Affects         | The evidence of two closed tasks overstated nothing but understated the suite size and was not what the run showed |
+
+**Description:** I reported "161 passed" at P1.04 and "191 passed" at X.18 by adding the dots of the last three progress
+lines of `pytest -q` that I had cut with `Select-Object -Last 3`. The suite had more lines, so the sums were far too low. The
+true totals follow from the per-file counts: the files that are not ontology, sheet or schema tests hold 246 tests; with the
+59 ontology tests of P1.04 that is 305, with the 77 ontology and 12 sheet tests of X.18 that is 335. The gate passed both times
+(the gate does not print a count), so no result was wrong, only the number written down.
+**Fix plan:** strike the two wrong numbers in the four places and write the recomputed ones with the reason; from now on
+a full-suite count is taken from `pytest`'s own summary line ("N passed") or `--collect-only`, never from the visible dots.
+**Fix:** task P2.01, 2026-11-15 — the four places corrected; the P2.01 record uses the summary line (472 passed).
+**Verified:** agent, 2026-11-15 — `pytest` summary line: 472 passed; per-file counts add up (246 + 81 + 55 + 77 + 13).
+
+**History:**
+
+- 2026-11-15 OPEN → PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — found and fixed in P2.01.
+
+### BUG-0047 — P2.01 sync tests passed for the wrong reason; `usable_for_metrics` accepted one flash end
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3 (test strength, and a validator weaker than DEC-0025; no data written yet)              |
+| Status          | CLOSED                                                                                     |
+| Found in        | `taiji_ai/src/taiji_ai/schemas/sync.py` (`SyncManifest._consistent`), `taiji_ai/tests/unit/test_schemas_sync.py` |
+| Found by / date | agent (Claude Code), 2026-11-15, the mutation check of P2.01 and a re-read of the validator |
+| Affects         | A later change could drop a sync rule without a failing test; a take with the flash found at one end only could be marked usable for metrics |
+
+**Description:** (1) the invalid cases of T-SCH-01e expected only a field name in the message. Removing the rule "a validation
+with method `none` has no numbers" still passed because the later rules crash or fire on the same field, and a crash
+inside a validator (`max()` of an empty list) is turned by pydantic into a validation error that also names the field.
+Five mutations survived this way. (2) DEC-0025 says two cameras are combined only with a flash validation at both ends, but
+the validator required one residual only, and a test asserted that a take with only the start flash could be usable.
+**Fix plan:** a table of the message of the right rule for each case (`_EXPECT`); `usable_for_metrics` needs
+`residual_start_ms` and `residual_end_ms`; the test now says that such a take is kept (end null, no made-up number) but not
+usable; rerun the mutations.
+**Fix:** task P2.01, 2026-11-15 — as planned.
+**Verified:** agent, 2026-11-15 — mutation run (see the P2.01 task file §5).
+
+**History:**
+
+- 2026-11-15 OPEN → PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — found and fixed in P2.01.
+
+### BUG-0046 — `is_vfr` reports VFR for a CFR video with a coarse time base
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3 now (the flag is only stored); S2 once a stage acts on it (a wrong abstain or warning)  |
+| Status          | PLANNED (fix in P2.02)                                                                     |
+| Found in        | `taiji_ai/src/taiji_ai/io/frames.py` `is_vfr` (since P0.03)                                |
+| Found by / date | agent (Claude Code), 2026-11-15, an experiment while planning Phase 2                      |
+| Affects         | `recording.vfr` and the P2 acceptance "VFR video is detected correctly"; containers with a 1/1000 time base (Matroska and WebM always, some MP4) |
+
+**Steps to reproduce:** `ffmpeg -f lavfi -i testsrc2=size=160x120:rate=30:duration=10 -c:v libx264 -pix_fmt yuv420p
+-video_track_timescale 1000 -an cfr.mp4`, then `is_vfr(scan_pts("cfr.mp4")[0])`.
+**Expected vs actual:** expected False (the clip is CFR); actual True. Measured: 300 frames, dt 33.000–34.000 ms,
+std/median 0.0143 (30 fps) and 0.0146 (29.97 fps); with time bases 1/90000 and 1/600 the same clips give 0.0000 and False.
+**Root cause:** `is_vfr` compares the relative spread of `dt` in seconds with 1 %; with a 1 ms tick a 33.33 ms interval must
+round to 33 or 34 ms, a 3 % alternation that is quantisation, not a change of frame rate.
+**Fix plan:** decide VFR on the integer PTS ticks: an interval counts as deviating only when it differs from the median by
+more than one tick **and** by more than `rel_tol` of the median; VFR when such intervals exist beyond a small share (value fixed
+in P2.02 from fixtures, recorded in the manifest as the VFR rule version). `scan_pts` gets a variant that returns the integer
+PTS and the time base, which P2.02 needs for `pts.parquet` anyway. Regression test T-IO-12 (CFR at time base 1/1000, 30 and
+29.97 fps: not VFR) next to T-IO-03 (the real VFR fixture: still VFR).
+**Fix:** —
+**Verified:** —
+
+**History:**
+
+- 2026-11-15 OPEN → PLANNED — found while planning Phase 2; scheduled in P2.02.
+
+### BUG-0045 — AGENTS.md: two fenced blocks without a language (MD040)
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3 (formatting; no rule changed)                                                           |
+| Status          | CLOSED                                                                                     |
+| Found in        | `AGENTS.md` line 40 (the lifecycle diagram) and line 177 (the changelog entry example)     |
+| Found by / date | agent (Claude Code), 2026-11-15, IDE diagnostics after the one-token edit of BUG-0044      |
+| Affects         | Markdown lint noise only                                                                   |
+
+**Description:** both blocks open with a bare fence (MD040). They were there before P1.06; the IDE had not analysed the file,
+so earlier "empty" answers did not show them.
+**Fix plan:** open both fences as `text`; no wording inside the blocks changes; read the IDE answer after the edit.
+**Fix:** task P1.06, 2026-11-15 — both fences are now ```` ```text ````.
+**Verified:** agent, 2026-11-15 — IDE diagnostics for `AGENTS.md` after the fix: none.
+
+**History:**
+
+- 2026-11-15 OPEN → PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — found and fixed in P1.06.
+
+### BUG-0044 — Deletion of a participant's data is cited as P8.12; the plan says P8.14
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3 (a wrong cross-reference; no code affected)                                             |
+| Status          | CLOSED                                                                                     |
+| Found in        | `AGENTS.md:357` (§9.5 item 3), `Docs/tasks/P0.06.md:145,379`, `Docs/tasks/P1.06.md:26,48,79` |
+| Found by / date | agent (Claude Code), 2026-11-15, while re-reading P1.06 against the plan rows P8.12 and P8.14 |
+| Affects         | A reader (or a later task) looking for the deletion procedure would be sent to the export task |
+
+**Description:** `IMPLEMENTATION_PLAN_V1.md` rows P8.12 (export JSON/CSV/HTML and evidence clips) and P8.14 (backup,
+restore, delete one participant's data; test T-STORE-07), `TASK_STATUS.md` and `X.04.md` all agree. Four documents still
+say "P8.12" for the deletion on a withdrawal request.
+**Fix plan:** P1.06 is corrected in its own task; the P0.06 task file is history, so the two places get the old id struck
+through with the new one next to it; `AGENTS.md` line 357 gets the id only (no rule changes); check with `grep`.
+**Fix:** tasks P1.06 and the P0.06 notes, 2026-11-15 — `AGENTS.md` item 3 now says "task P8.14".
+**Verified:** agent, 2026-11-15 — `grep -rn "P8.12"` over `*.md` lists only the export row, its tests and the dependency
+rows, no deletion context.
+
+**History:**
+
+- 2026-11-15 OPEN → PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — found and fixed in P1.06.
+
+### BUG-0043 — README: Layout code block without a language (MD040)
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3 (formatting; no content problem)                                                        |
+| Status          | CLOSED                                                                                     |
+| Found in        | `taiji_ai/README.md` line 57 (the fenced block of the Layout section)                      |
+| Found by / date | agent (Claude Code), 2026-11-15, IDE diagnostics after an X.18 edit of the same file       |
+| Affects         | Markdown lint noise only                                                                   |
+
+**Description:** the tree block opens with a bare fence (MD040). It existed before X.18. In P1.04 the IDE had not
+analysed the README, so `getDiagnostics` returned an empty list without `linesInFile`; I then reported the file among the
+checked ones in my summary, which was wrong (corrected in the X.18 task file §5).
+**Fix plan:** open the fence as `text`; read the IDE answer after the edit.
+**Fix:** task X.18, 2026-11-15 — the fence is now ```` ```text ````.
+**Verified:** agent, 2026-11-15 — IDE hook output after the fix: none.
+
+**History:**
+
+- 2026-11-15 OPEN → PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — found and fixed in X.18.
+
+### BUG-0042 — X.18 tests: one `side_sequence` rule was masked by another
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3 (test strength; the module behaved correctly)                                           |
+| Status          | CLOSED                                                                                     |
+| Found in        | `taiji_ai/tests/unit/test_ontology.py` (T-DATA-01i, invalid `side_sequence` cases)         |
+| Found by / date | agent (Claude Code), 2026-11-15, mutation check of the X.18 rules                          |
+| Affects         | A later change could drop the "entry must be one of `sides`" rule without a failing test   |
+
+**Description:** the mutation "skip the check that every `side_sequence` entry is in `sides`" survived. The invalid cases
+`[left, up, left]` and (on a single-side action) `[left]` also leave a declared side unused, so the neighbouring rule
+"every side of `sides` must occur" rejected them and the test still passed.
+**Fix plan:** add a case where every declared side occurs and only one entry is unknown: `[left, right, up]`; rerun all mutations.
+**Fix:** task X.18, 2026-11-15 — case `outside-only` added to the parametrised test.
+**Verified:** agent, 2026-11-15 — mutation run: 45/45 caught; `test_ontology.py` 77 passed; gate 10/10 PASS.
+
+**History:**
+
+- 2026-11-15 OPEN → PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — found and fixed in X.18.
+
+### BUG-0041 — P1.04 tests: four mutations survived and one test passed for the wrong reason
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3 (test strength; the module behaved correctly in every case checked afterwards)         |
+| Status          | CLOSED                                                                                     |
+| Found in        | `taiji_ai/tests/unit/test_ontology.py` (T-DATA-01c, T-DATA-01g, T-DATA-01h)                |
+| Found by / date | agent (Claude Code), 2026-11-15, mutation check of the P1.04 validator (AC1)               |
+| Affects         | A later change could break a rule of the ontology validator without a failing test         |
+
+**Description:** 26 one-rule mutations of `schemas/ontology.py` were run on a copy; four stayed alive: (1) `repetitions`
+accepted `true` or `"3"` (no test); (2) repeated values in the declared `sides` list: the test used
+`[left, left, none]`, which fails because `right` is missing, not because of the repeat; (3) repeated sides inside one
+action (no test); (4) a top level that is not a mapping: the test only asserted `OntologyError`, which pydantic raises
+anyway, so the explicit message was not pinned. Also: the immutability test used `pytest.raises(Exception)` with a
+`noqa`, and no test covered an unquoted YAML date such as `confirmed_at: 2026-12-01` (the form a coach will write).
+**Fix plan:** make the repeated-vocabulary test keep a superset of the action sides so only the repeat is wrong; add
+cases for strict `repetitions` (bool, string, float), repeated action sides and invalid UTF-8; assert `match="mapping"`
+and `match="YAML"` for the two loader error kinds; catch `ValidationError` in the immutability test; add the date test;
+re-run all mutations (plus two new ones for the UTF-8 and pydantic error wrapping).
+**Fix:** task P1.04, 2026-11-15 — tests changed as planned.
+**Verified:** agent, 2026-11-15 — mutation run: 28/28 caught; `test_ontology.py` 59 passed; gate 10/10 PASS.
+
+**History:**
+
+- 2026-11-15 OPEN → PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — found and fixed in P1.04.
+
+### BUG-0040 — P1.02 note template: two MD037 warnings
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3 (formatting; no content problem)                                                        |
+| Status          | CLOSED                                                                                     |
+| Found in        | `Docs/discovery/notes/_TEMPLATE.md` line 53 (question 2.4)                                 |
+| Found by / date | agent (Claude Code), 2026-11-15, IDE diagnostics after the SIM-4 edit                      |
+| Affects         | Markdown lint noise only                                                                   |
+
+**Description:** the text `thấp ___ , cao ___` uses runs of underscores as blanks; markdownlint reads them as emphasis markers
+with spaces inside (MD037). My verification of the template (P1.02 §5) said "lint ok": the IDE had returned an empty
+answer for the file because it had not analysed it yet, and my manual check did not cover this rule.
+**Fix plan:** replace the underscores by the words "thấp (phút):" and "cao (phút):"; call `getDiagnostics` again.
+**Fix:** task P1.02, 2026-11-15 — line 53 now reads "thấp (phút): , cao (phút):".
+**Verified:** agent, 2026-11-15 — `getDiagnostics` for the template: none.
+
+**History:**
+
+- 2026-11-15 OPEN → PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — found and fixed in P1.02.
+
+### BUG-0039 — Data README: three markdownlint warnings in older text
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3 (formatting; no content problem)                                                        |
+| Status          | CLOSED                                                                                     |
+| Found in        | `datasets/taiji/README.md`: the tree block (line 5), the lists after "Thống kê" and "Giới hạn" (lines 52 and 59) |
+| Found by / date | agent (Claude Code), 2026-11-15, IDE diagnostics after the X.16 edit of the same file      |
+| Affects         | Markdown lint noise only                                                                   |
+
+**Description:** the fenced tree has no language (MD040); two lists directly follow their bold label without a blank line
+(MD032). The text is from X.03 and the UMONS download; X.16 added its own section below it without these defects.
+**Fix plan:** use the language `text` for the tree and put a blank line before each of the two lists; no text change.
+Done in X.16; check the IDE diagnostics for the file.
+
+**Fix:** task X.16, 2026-11-15 — the tree block is now ` ```text `; a blank line was inserted before the two lists; no text changed.
+**Verified:** agent, 2026-11-15 — `getDiagnostics` for the README: none (3 warnings before), also after the later X.16 edits.
+
+**History:**
+
+- 2026-11-15 OPEN → PLANNED — found during X.16.
+- 2026-11-15 PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — fixed in X.16; see Fix and Verified above.
+
+### BUG-0038 — Simulated interview files: code collision, no separate folder, lint warnings
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3 (the files are clearly labelled as simulated; the risk is mixing them with real notes)   |
+| Status          | CLOSED                                                                                     |
+| Found in        | `Docs/discovery/P1.01_H1_HLV_PHONG_TRAO_MO_PHONG.md`, `…_H2_…`, `…_H3_…`, `P1.01_TONG_HOP_3_KICH_BAN_MO_PHONG.md` |
+| Found by / date | agent (Claude Code), 2026-11-15, review of P1.01 at the maintainer's request               |
+| Affects         | P1.02 (real notes `<H-id>_<date>.md`), P1.03 (counts n), P1.08 (roles H1, H2)              |
+
+**Description:** (1) the three simulated persons are coded H1, H2, H3, the same codes the guide and P1.02 give to real
+coaches; a later note `H1_…` would be ambiguous, and the summary's own rule "do not count them in n" depends on telling
+them apart. (2) They are stored in `Docs/discovery/` beside the guide, where the real notes and the synthesis will also
+live. (3) markdownlint reports 29 warnings: MD034 bare URLs (5 per file, 4 files), MD036 bold-only labels (2 in each
+record), MD012 double blank line at the end of each record.
+**Fix plan (needs the maintainer's agreement because the files are theirs):** 1. Rename the personas SIM-1, SIM-2, SIM-3
+in the three records and the summary (title, header row, text, file names `P1.01_SIM-n_…`). 2. Move the four files to
+`Docs/discovery/simulated/`; real notes stay in `Docs/discovery/notes/`. 3. Wrap each URL in angle brackets, put a colon
+inside the two bold labels, remove the extra blank line. 4. P1.02 template gets the field `data_origin` (observed or
+synthetic) and counts only `observed` notes (P1.02 plan revised in the same review). No change of meaning.
+
+**Fix:** task P1.01, 2026-11-15 — the four files moved to `Docs/discovery/simulated/`; the personas renamed
+SIM-1..SIM-3 in title, header, text and file names (22 replacements, summary included); the 20 bare URLs put in angle
+brackets, a colon inside 6 bold labels, trailing blank lines removed; the wording of the P1.02 flag in the summary
+aligned with the plan (`data_origin`). The originals were copied to a backup outside the repository first. No other
+text changed.
+**Verified:** agent, 2026-11-15 — no H1, H2 or H3 left in the folder; `getDiagnostics` for the four files: none (29
+warnings before); the guide and the P1.02 plan name the same folder and the same field.
+
+**History:**
+
+- 2026-11-15 OPEN → PLANNED — found in the P1.01 review.
+- 2026-11-15 PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — fixed in P1.01; see Fix and Verified above.
+
+### BUG-0037 — Interview guide v0.1: four defects shown by the dry run
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3 (wording and time budget of a draft; no data affected)                                  |
+| Status          | CLOSED                                                                                     |
+| Found in        | `Docs/discovery/interview_guide.md` parts 1, 6 and Appendix B (my draft of P1.01)           |
+| Found by / date | agent (Claude Code), 2026-11-15, review of the three simulated records                     |
+| Affects         | The first real interviews (P1.02)                                                          |
+
+**Description:** (1) Part 6 question (c) says "which number would you not trust", but the cards carry no number (a rule
+set in the plan review); all three simulated answers had to reinterpret it as "which result or claim". (2) Part 6 asks 12
+questions on three cards in 10 minutes, less than a minute each including the reading of the card. (3) Question 1.4 asks
+for the version, the division, the names and the repetitions of the whole form in a part of 7 minutes; the simulated answer
+for it is the longest of the part, and a real coach may go through the 24 movements one by one. (4) The Appendix B table
+has 5 steps; the persona of the competition group has 6.
+**Fix plan:** v0.2 of the guide: (1) "Which result, line or count in this card would you not trust?"; (2) part 6 raised
+to 15 minutes, total about 62 minutes; (3) question 1.4 limited to the version and whether the coach divides or counts
+differently, plus the sentence "if the coach needs more than 7 minutes, book a separate 30-minute session to confirm the
+list of movements (input of P1.04)"; (4) Appendix B with 8 rows and the line "add rows if needed". Then re-run C-1..C-6.
+Not applied yet: the maintainer may have unsaved edits of the guide, so the change waits for a go.
+
+**Fix:** task P1.01, 2026-11-15 — guide v0.2: (1) question (c) of part 6 now asks which result, line or count of the
+card the coach would not trust; (2) part 6 is 15 minutes and the total 62; (3) question 1.4 is limited to the version
+and the differences, with the sentence that a separate 30-minute session confirms the list of movements; (4) Appendix
+B has 8 rows and a line to add more. Header: version, status and duration updated.
+**Verified:** agent, 2026-11-15 — C-1..C-6 re-run on v0.2: pass; the words "Có con số nào" are gone; Appendix B has 8
+rows; the parts add up to 62 minutes (5+7+15+5+5+5+15+3+2); `getDiagnostics` for the guide: none.
+
+**History:**
+
+- 2026-11-15 OPEN → PLANNED — found in the P1.01 review.
+- 2026-11-15 PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — fixed in P1.01; see Fix and Verified above.
+
+### BUG-0036 — Dataset registry: markdownlint warnings in the detail sections
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3 (formatting; no content problem)                                                        |
+| Status          | CLOSED                                                                                     |
+| Found in        | `Docs/DATASET_REGISTRY_TAIJI.md` lines 24–71 (sections D06, D10, D14, D11, D12, D09, D13)  |
+| Found by / date | agent (Claude Code), 2026-11-15, IDE diagnostics after the P1.10 edit of the same file     |
+| Affects         | Markdown lint noise only; `check.ps1` is not affected                                      |
+
+**Description:** every detail heading (`### D06 — …` and the others) is directly followed by its bullet list, so
+markdownlint reports MD022 below the heading and MD032 above the list; line 42 has two bare e-mail addresses (MD034).
+The same lines are in `HEAD` (`git show HEAD:Docs/DATASET_REGISTRY_TAIJI.md`); P1.10 edited only lines 3, 12–15 and
+81–82, so it did not cause them.
+**Fix plan:** insert an empty line after each detail heading; put the two addresses in angle brackets; no text change.
+Done in X.14, which edits the same file to add the new dataset rows; check that the IDE diagnostics for the file are
+empty.
+
+**Fix:** task X.14, 2026-11-15 — one empty line inserted after each of the 7 detail headings (D06, D10, D14, D11, D12,
+D09, D13); the two e-mail addresses on the D11 line put in angle brackets; no text changed. Done with a one-off script
+that asserts 7 insertions and one match per address.
+**Verified:** agent, 2026-11-15 — `getDiagnostics` for the registry: none (16 warnings before); `git diff -U0` shows only
+added empty lines and the two bracketed addresses besides the P1.10 and X.14 edits; gate 10/10.
+
+**History:**
+
+- 2026-11-15 OPEN → PLANNED — found during P1.10; scheduled in X.14.
+- 2026-11-15 PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — fixed in X.14; see Fix and Verified above.
 
 ### BUG-0035 — New task files X.10 / X.11: markdownlint warnings written by this agent
 

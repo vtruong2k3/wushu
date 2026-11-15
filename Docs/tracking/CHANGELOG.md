@@ -4,6 +4,289 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
 
 ---
 
+## 2026-11-15 — P2.01 Manifest schemas: recording, proxy, sync (DONE)
+
+- Changed: `taiji_ai/src/taiji_ai/schemas/{_base,recording,sync}.py` (new), `taiji_ai/tests/unit/test_schemas_recording.py`
+  and `test_schemas_sync.py` (new), `Docs/TECH_WORKFLOW_V1.md` §4.1–4.2, `taiji_ai/README.md`,
+  `Docs/tracking/{TASK_STATUS,BUGS,DECISIONS,CHANGELOG}.md`, `Docs/tasks/{P2.01,P1.04,X.18}.md`
+- Behaviour: strict manifests `recording/1`, `proxy/1`, `sync/1` and the ingest input (`IngestMeta`, `CaptureInfo`); atomic write
+  and validated read (`ManifestError` names the field); the row of the `recording` table built from the manifest (relative
+  `source_path`, no made-up duration); the time mapping between two cameras `t_b = t_a + offset_s + drift × (t_a − t_ref_s)`
+  with an exact inverse, available only when both ends are matched; unknown values are null; `usable_for_metrics` needs the
+  flash at both ends and a residual of at most 1 frame; no field for a name, an original file name or an absolute path
+- Tests: T-SCH-01a..i, 136 tests written red first; mutation check 79 of 81 caught (the 2 left are equivalent); full suite
+  472 passed; gate 10/10 PASS in 15.0 s
+- Decisions: DEC-0026
+- Bugs: BUG-0047 (S3, weak tests and a rule weaker than DEC-0025) and BUG-0048 (S3, wrong full-suite counts in the P1.04 and
+  X.18 records) closed; BUG-0049 (S3, 15 older lint warnings in the workflow) planned for X.22; BUG-0046 (`is_vfr`) planned for P2.02
+- Commit: not committed
+- Plan: Docs/tasks/P2.01.md
+
+## 2026-11-15 — X.21 Detailed plan for Phase 2 (DONE)
+
+- Changed: `Docs/tasks/P2.01.md` … `P2.08.md` (new), `Docs/tasks/X.21.md` (new), `Docs/IMPLEMENTATION_PLAN_V1.md` §3 and §6
+  (P2 estimate 4 → 5,5 days; new row P2.08; P2.01, P2.02, P2.06, P2.07 rows updated), `Docs/tracking/{TASK_STATUS,BUGS,DECISIONS,CHANGELOG}.md`.
+  No code
+- Findings: BUG-0046 (`is_vfr` flags a CFR video as VFR on a coarse time base); the proxy command would enlarge small sources;
+  the sync time mapping of W2 was undefined; `sync.drift` NOT NULL would force a fabricated 0; no task wrote `participant` rows
+  (new P2.08)
+- Maintainer: confirmed the plans of P2.01, P2.02, P2.04 and accepted the defaults of every question (DEC-0025)
+- Tests: none (documents); gate 10/10 PASS; IDE markdownlint clean
+- Bugs: BUG-0046 (S3, PLANNED, fix in P2.02)
+- Commit: not committed
+- Plan: Docs/tasks/X.21.md
+
+## 2026-11-15 — X.20 Working convention for the side label (Q9, first part) (DONE)
+
+- Changed: `taiji_ai/tools/render_ontology_review.py` (three lines in question 4), `taiji_ai/tests/unit/test_ontology_review_sheet.py`
+  (one new case), `taiji_ai/config/ontology_v0.yaml` (Q9 comment block only), `Docs/discovery/ontology_review_sheet.md`
+  (regenerated), `Docs/tracking/{DECISIONS,TASK_STATUS,CHANGELOG}.md`, `Docs/tasks/{X.20,X.19}.md`
+- Behaviour: none in the code. Documented rule (DEC-0024): the side label is the left/right word of the movement's standard
+  name, the front foot for step-forward movements; shown to the coach in question 4. Found at the plan re-read that for A18 the
+  name order does not settle the sequence (name left first, sequence right first); recorded
+- Not a coach sign-off: the ontology stays `draft_unconfirmed`; no value changed (parsed ontology equal to the snapshot before)
+- Tests: new case red first; stale guard seen red then green; 90 ontology and sheet tests pass; gate 10/10 PASS in 20.3 s
+- Open: label of a segment that covers a whole alternating movement; order of A06 and A10; the coach sign-off
+- Decisions: DEC-0024
+- Bugs: none
+- Commit: not committed
+- Plan: Docs/tasks/X.20.md
+
+## 2026-11-15 — X.19 Record the Q9 search findings next to Q9 (DONE)
+
+- Changed: `taiji_ai/config/ontology_v0.yaml` (six comment lines under Q9, no key or value changed),
+  `Docs/discovery/ontology_review_sheet.md` (regenerated: only its digest line differs), `Docs/tasks/{X.19,X.18}.md`,
+  `Docs/tracking/{TASK_STATUS,CHANGELOG}.md`. No code
+- Findings recorded (search-engine summaries; no textbook page could be read): the results disagree on the order of A06; one
+  says the left version of A16 stands on the left leg; nothing on kicks; none says whether a name follows the hand or the foot.
+  Working proposal (side label = the left/right word of the standard name, exceptions unspecified) is recorded as NOT a
+  decision; Q9 stays open for a coach
+- Tests: no new test; the stale guard (T-DATA-01l) failed after the YAML edit and passed after regeneration; parsed
+  ontology equal to the snapshot before; gate 10/10 PASS
+- Bugs: none
+- Commit: not committed
+- Plan: Docs/tasks/X.19.md
+
+## 2026-11-15 — X.18 Ontology open questions without a coach: source check, side order, review sheet (DONE)
+
+- Changed: `taiji_ai/src/taiji_ai/schemas/ontology.py` (optional `Action.side_sequence`, validator, pairing check in
+  `check_segment`), `taiji_ai/config/ontology_v0.yaml` (sequences for A02, A04, A18; English names of A18 and A20; header),
+  `taiji_ai/tools/render_ontology_review.py` (new), `taiji_ai/tests/unit/test_ontology.py`,
+  `taiji_ai/tests/unit/test_ontology_review_sheet.py` (new), `Docs/discovery/ontology_review_sheet.md` (new, generated),
+  `taiji_ai/THIRD_PARTY_NOTICES.md`, `taiji_ai/README.md`, `Docs/tracking/{TASK_STATUS,BUGS,DECISIONS,CHANGELOG}.md`,
+  `Docs/tasks/{X.18,P1.04}.md`
+- Behaviour: when an action has a `side_sequence` and a segment gives an occurrence, `check_segment` requires the side of
+  that repetition; an action without a sequence is not paired (unknown stays unknown); A06 and A10 have none. The coach review
+  sheet (Vietnamese, 24 rows and six questions) is generated from the YAML and a test fails when it is stale
+- Source check: three public pages (English and Chinese Wikipedia, one blog) agree with the 24 numbers and Chinese names;
+  none gives repetition counts, side order or Vietnamese names; one low-authority article gives counts equal to ours
+- Tests: T-DATA-01i..l (new); `test_ontology.py` 77 and the sheet tests 12; full suite ~~191~~ 335 passed (corrected, BUG-0048); 45 of 45 mutations
+  caught; gate 10/10 PASS in 14.9 s
+- Open: the coach sign-off (Q3, Q5, Q8 for A06 and A10, Q9, counts of A06 and A10, names); Q6 (P6.05) and Q7 (P9.04)
+- Decisions: DEC-0023
+- Bugs: BUG-0042 (S3, test gap found by mutation) and BUG-0043 (S3, pre-existing README MD040), both closed
+- Commit: not committed
+- Plan: Docs/tasks/X.18.md
+
+## 2026-11-15 — P1.04 Ontology v0: 24-form actions, sides, occurrences, views, flags (DONE)
+
+- Changed: `taiji_ai/src/taiji_ai/schemas/ontology.py` (new), `taiji_ai/config/ontology_v0.yaml` (new),
+  `taiji_ai/tests/unit/test_ontology.py` (new), `taiji_ai/pyproject.toml` and `uv.lock` (`pyyaml>=6.0.3`, 6.0.3 locked),
+  `taiji_ai/THIRD_PARTY_NOTICES.md`, `taiji_ai/README.md`, `Docs/tracking/{TASK_STATUS,BUGS,DECISIONS,CHANGELOG}.md`,
+  `Docs/tasks/P1.04.md`
+- Behaviour: an action is one numbered movement of the 24-form (`A01`..`A24`) with `sides`, `repetitions` and a shared
+  `technique`; `Ontology.check_segment` is the guard of `segment.action`, `side`, `occurrence`, view and flags (the
+  database checks only the view); the loader uses PyYAML safe loading and rejects a repeated key; the view list is tested
+  against the migration CHECK list. The file is `draft_unconfirmed`: no coach has signed (DEC-0021), AC2 is met by
+  "open corrections listed"
+- Tests: T-DATA-01a..h, 59 tests, written red first; full suite ~~161~~ 305 passed (corrected, BUG-0048); 28 of 28 mutations of the validator caught;
+  gate 10/10 PASS in 14.6 s
+- Open for H: Q3, Q5, Q6, Q7, Q8 (new: the side of each repetition is not encoded), repetitions of A06 and A10, the
+  English names and the unchecked Vietnamese readings
+- Decisions: DEC-0022
+- Bugs: BUG-0041 (S3, test gaps found by the mutation run, fixed in this task)
+- Commit: not committed
+- Plan: Docs/tasks/P1.04.md
+
+## 2026-11-15 — X.16 Four candidate datasets checked; two downloaded (DONE)
+
+- Checked on the primary pages (the pasted description was not trusted): UMONS-TAICHI (statements match Zenodo; we
+  already held 3 of the 4 files of its list), Motion Embedding (no licence: not usable, not downloaded), Figshare "balance
+  movements" (CC BY 4.0; content found by reading it: lower-limb model output, no marker coordinates, no video, so it does not
+  serve the MVP metrics), PhysioNet Tai Chi gait (ODC-By, but it is walking of older adults: not downloaded)
+- Downloaded (TLS on, md5 and size equal to the published values, members checked before extraction, extracted under
+  `datasets/taiji/`, nothing in git): UMONS `Segmented_C3D.zip` (2.67 GB; 2,149 `.c3d` of 12 people and 13 classes, licence
+  file CC BY-NC-SA 4.0; content not opened) and the Figshare RAR (202 MiB; 16 xlsx workbooks)
+- Registry: D18 (Figshare), D19 (PhysioNet, `reference-only`), D12 and D13 updated; data README updated with provenance
+- Fixed: BUG-0039 (3 old markdownlint warnings in the data README)
+- Changed: `Docs/DATASET_REGISTRY_TAIJI.md`, `datasets/taiji/README.md` (the only tracked file under `datasets/`),
+  `Docs/tracking/{TASK_STATUS,BUGS,CHANGELOG}.md`, `Docs/tasks/X.16.md`. No code
+- Tests: gate 10/10 PASS in 19.4 s; `getDiagnostics` empty; `git status` shows no data file
+- Open: no task uses the C3D data yet (a geometry study after P5 would need its own task)
+- Bugs: BUG-0039 CLOSED
+- Commit: not committed
+- Plan: `Docs/tasks/X.16.md`
+
+## 2026-11-15 — X.17 Coach-interview tasks set aside (DONE)
+
+- Decided (maintainer): DEC-0021 — the interview part is put aside for now. P1.02 (interviews) and P1.03 (synthesis) are
+  `BLOCKED` with the reason (no coach booked) and the way out (the maintainer books at least two coaches or says to
+  resume). P1.01 stays DONE. The guide v0.2, the note template, the checklist and the four simulated records are kept
+- Effects written down: gate G00 cannot pass; P1.07, P1.08 and the H review of P1.04 wait; P1.04 code, P1.05, P1.06, P1.09
+  (when people are known) and P2 onwards go on; whether P9.01 may start before G00 is left to the maintainer; the plan's
+  "fewer than two coaches" fallback is not triggered; nothing in the repository counts as evidence of a need
+- Changed: `Docs/tracking/{DECISIONS,TASK_STATUS,CHANGELOG}.md` (P1 summary now 2 DONE, 6 in progress, 2 BLOCKED;
+  total 11 / 6 / 2 / 81), `Docs/tasks/{P1.02,P1.03,X.17}.md`. No code
+- Tests: documentation only; the counts add up (100 = 11 + 6 + 2 + 81); diagnostics none; full gate 10/10 PASS in 19.3 s
+- Commit: not committed
+- Plan: `Docs/tasks/X.17.md`
+
+## 2026-11-15 — P1.02 Note template and interview checklist (IN_PROGRESS)
+
+- Added: `Docs/discovery/notes/_TEMPLATE.md` (one section per part of the guide v0.2; fields `data_origin`, consent to take
+  notes, time table, decision per card, guide feedback for the first interview, pre-submission check list) and
+  `Docs/discovery/interview_checklist.md` (before, during, after, after the first interview, when to stop; an invitation
+  message for O)
+- Provenance question (Q4): the maintainer said the four simulated files came from real coaches; their text states they
+  are invented. After the explanation the maintainer accepted that they stay simulated (rehearsal and review of the
+  questions only). No real interview exists yet, so no `observed` note and nothing counts for G00 or P1.03
+- Added later the same day: a fourth simulated record (SIM-4, an AI-built answer set on the guide v0.2, as its own header
+  says) filed in `Docs/discovery/simulated/` as `data_origin: synthetic`; it works as a dry run of v0.2 (the new questions
+  1.4 and (c) and the 8-row table behave as intended). The template now tells the writer to record "keep with a condition"
+  as "change" plus the condition. It is not evidence and not an `observed` note
+- Tests: documentation only; template checked against every question of the guide and the plan fields; gate 10/10 PASS in
+  15.9 s
+- Open: coaches and dates (O); the first real interview, which is also the trial read of the guide (DEC-0020); three
+  `observed` notes for AC1
+- Commit: not committed
+- Plan: `Docs/tasks/P1.02.md`
+
+## 2026-11-15 — P1.01 Interview guide v0.2, closed on a dry run (DONE)
+
+- Decided (maintainer): DEC-0020 — the three simulated coach records the maintainer supplied are used as the dry run that
+  stands in for AC2; they are not evidence (not in n, not in P1.03 or P1.08, no figure copied), only `observed` notes count
+  for gate G00, and the first real interview is the real trial read of the guide (P1.02 plan, step 5 and check C-6).
+  AGENTS.md §5.12 (domain content needs a coach) is met only after that interview
+- Fixed: BUG-0037 (guide v0.2: question (c) of part 6, part 6 raised to 15 minutes and the total to 62, question 1.4
+  limited with a separate 30-minute session for the list of movements, Appendix B with 8 rows); BUG-0038 (the four
+  simulated files renamed SIM-1..SIM-3 to avoid the codes of real coaches, moved to `Docs/discovery/simulated/`,
+  29 markdownlint warnings fixed; originals backed up outside the repository; no meaning changed)
+- Changed: `Docs/discovery/interview_guide.md`, `Docs/discovery/simulated/*` (4 files), `Docs/tracking/{DECISIONS,BUGS,
+  TASK_STATUS,CHANGELOG}.md`, `Docs/tasks/{P1.01,P1.02}.md`
+- Tests: documentation only; C-1..C-6 re-run on v0.2 (pass); IDE diagnostics none on the five files; full gate 10/10 PASS
+  in 19.4 s
+- Open: the real coach read (first real interview); the 62 minutes in the guide header were checked by summing the parts
+- Bugs: BUG-0037, BUG-0038 CLOSED
+- Commit: not committed
+- Plan: `Docs/tasks/P1.01.md` (§9 review)
+
+## 2026-11-15 — P1.01 reviewed after the maintainer reported it done (still IN_REVIEW)
+
+- Found: the guide `Docs/discovery/interview_guide.md` is unchanged since the draft; the four new files in
+  `Docs/discovery/` are simulated interviews of three non-existent coaches (clearly labelled), which are a dry run and not
+  the coach read that AC2 asks for. Re-run of C-1..C-6 on the guide: pass
+- Registered: BUG-0037 (four defects of my draft shown by the dry run: question (c) asks for a number on cards without
+  numbers; part 6 has 12 questions in 10 minutes; question 1.4 too big for part 1; Appendix B has too few rows),
+  BUG-0038 (simulated personas coded H1–H3 collide with the real coach codes; no separate folder; 29 lint warnings)
+- Plan changes: P1.02 template field `data_origin` (observed or synthetic), only observed notes count for G00; P1.04
+  question Q7 on sub-phases
+- Changed: `Docs/tracking/{BUGS,TASK_STATUS,CHANGELOG}.md`, `Docs/tasks/{P1.01,P1.02,P1.04}.md`. The guide and the four
+  simulated files were not touched
+- Commit: not committed
+- Plan: `Docs/tasks/P1.01.md` §9
+
+## 2026-11-15 — X.15 Stop waiting for access-controlled datasets (DONE)
+
+- Decided (maintainer): DEC-0019 — an access request (form and e-mail to authors) had no reply, so the project depends on
+  no request any more and uses the datasets it holds plus openly downloadable ones; D15 MADS leaves the plans. It extends
+  DEC-0018. The dataset the request was for is not named (open question)
+- Measured, read-only (no dataset file downloaded): Kinetics-400 validation split = 20 parts, 28.3 GB (HEAD requests on the
+  CVDF files), 50 tai chi clips (50 per class per the paper); CMU mirror metadata lists take 12_04 as "tai chi" (FBX),
+  its file path and size not found (404 at a guessed URL)
+- Changed: `Docs/DATASET_REGISTRY_TAIJI.md`, `Docs/tracking/{DECISIONS,TASK_STATUS,CHANGELOG}.md`, `Docs/tasks/X.15.md`. No code
+- Tests: documentation only; full gate 10/10 PASS in 19.9 s; IDE diagnostics none
+- Open (maintainer): which dataset the request was for; whether to download the Kinetics validation split (28.3 GB for
+  50 clips; not recommended before P3)
+- Commit: not committed
+- Plan: `Docs/tasks/X.15.md`
+
+## 2026-11-15 — X.14 Survey of openly downloadable Taijiquan datasets (DONE)
+
+- Result: **no open dataset has per-movement labels for the 24-form**; every source with such labels needs a request
+  (PSU-TMM100, TaiChi-AQA, TaiChi-24, the multi-view TaiChi set). Registered in `Docs/DATASET_REGISTRY_TAIJI.md`
+  (nothing downloaded): D02 KungfuAthlete Taiji part (`reference-only`: licence conflict, the stricter applied), D15
+  MADS (`not-usable` until the maintainer reads the terms: page unreachable), D16 Kinetics tai chi class (`dev-test`
+  after the maintainer approves the download), D17 CMU mocap (`dev-test` after the maintainer reads the primary terms)
+- Verification: a research subagent's report was treated as unverified; the primary or mirror pages of the kept
+  candidates were re-read. MADS and the CMU site gave TLS errors (no bypass); the Kinetics CC BY 4.0 claim exists only on
+  secondary pages; those points and the CMU take number are marked unverified in the registry
+- Also fixed: BUG-0036 (16 old markdownlint warnings in the registry detail sections)
+- Changed: `Docs/DATASET_REGISTRY_TAIJI.md`, `Docs/tracking/{TASK_STATUS,BUGS,CHANGELOG}.md`, `Docs/tasks/X.14.md`. No code
+- Tests: documentation only; full gate 10/10 PASS in 18.6 s; IDE diagnostics for the registry none
+- Open (maintainer): read the MADS and CMU terms in a browser; decide on the Kinetics download; decide whether MADS or
+  CMU may stand in for PSU-TMM100 in P10.07
+- Bugs: BUG-0036 CLOSED
+- Commit: not committed
+- Plan: `Docs/tasks/X.14.md`
+
+## 2026-11-15 — P1.01 Interview guide, draft v0.1 (IN_REVIEW)
+
+- Added: `Docs/discovery/interview_guide.md` (Vietnamese): interviewer rules (open questions first, no number or tool
+  before part 6, minutes as numbers, pseudonyms H1, H2…, notes only), parts 0–8 (about 57 minutes, including the
+  24-form version taught for P1.04 and the pilot hours for P1.08), three sketch cards matching TECH_WORKFLOW Appendix
+  B1–B3 with no number on them, and a time table
+- Deviation: the cards carry no example number at all (the plan's Q4 default allowed invented numbers marked as such)
+- Tests: documentation only; checks C-1..C-6 pass; IDE diagnostics none; full gate 10/10 PASS in 15.4 s
+- Open: O's edits and one coach's trial read (AC2); the task is not DONE
+- Commit: not committed
+- Plan: `Docs/tasks/P1.01.md`
+
+## 2026-11-15 — Phase 1 decisions; P1.10 closed by decision (DONE)
+
+- Decided (maintainer): DEC-0016 ontology in YAML with PyYAML (P1.04 plan confirmed; one task ID kept, the code part
+  may start before P1.02); DEC-0017 P1.09 depends on P1.06 (plan row updated, dated); DEC-0018 no access requests for
+  now, use the datasets held and look for openly downloadable ones (X.14). The trial logistics (performer, phones,
+  venue, date) are not known yet, so P1.09 waits
+- Closed: P1.10, by the decision not to send (its AC1 allows that outcome). Registry: rows D06, D10, D11, D14 marked "not
+  requested", allowed use unchanged (`not-usable`), roll-out table updated; P10.07 does not run unless DEC-0018 changes
+- Found: BUG-0036 (old markdownlint warnings in the registry detail sections), scheduled in X.14. Also fixed here: the
+  `Total` row of the TASK_STATUS summary had not been updated when P1 was planned (it still showed 0 in progress, 91
+  TODO)
+- Changed: `Docs/tracking/{DECISIONS,TASK_STATUS,BUGS,CHANGELOG}.md`, `Docs/IMPLEMENTATION_PLAN_V1.md` (P1.09, P1.10
+  rows), `Docs/DATASET_REGISTRY_TAIJI.md`, `Docs/tasks/{P1.04,P1.09,P1.10}.md`. No code
+- Tests: documentation only; full gate 10/10 PASS in 16.0 s after these edits
+- Commit: not committed
+- Plan: `Docs/tasks/P1.10.md`
+
+## 2026-11-15 — P1.01–P1.10 Phase 1 planned (PLAN_READY)
+
+- Planned: a task file for each Phase 1 task with analysis, plan, tests, acceptance criteria and open questions;
+  all ten are `PLAN_READY`. No deliverable exists yet (interview guide, protocol, consent form, ontology, and so on)
+- Facts read from the code and documents that shape the plans: (1) `segment.view_category` in migration 0001 already
+  allows `unknown`, and `consent_analysis` defaults to 1, so the ontology (P1.04) and the consent mapping (P1.06) follow
+  that; (2) PyYAML is not in `uv.lock`, so an ontology in YAML needs one new MIT dependency (or TOML instead); (3)
+  OpenWushu content is CC BY-SA 4.0 and its Taijiquan routine is the 42-movement one, so nothing is copied; (4) audio is
+  the sync signal, so voice is recorded and the consent form must say so; (5) real names, calendars and prices must stay
+  outside git (AGENTS.md §5.9): P1.02 and P1.08
+- Observations on the plan, not applied (they need the maintainer): P1.09 should depend on P1.06 (a person is recorded);
+  P3.07 and P5.10 speak of 5 clips from P1.09 while it yields one take; the plan's `docs/`, `discovery/`, `config/` map
+  to `Docs/`, `Docs/discovery/`, `taiji_ai/config/`; P1.04 could split into code (no dependency) and H review; P1.07 is
+  scheduled in week 1 together with its dependency P1.03, which is realistic only if the interviews end early in the
+  week; G00 is listed twice with different content (§5 omits consent, §16 includes it); the v3 task P00.05 (license
+  and data-flow matrix, hardware inventory) has no P1 task (partly covered by X.03 and `Docs/hardware_inventory.md`,
+  which lists no camera)
+- Revised the same day after a full re-read of the ten files: P1.04 action model (one action per numbered movement,
+  with `sides`, `repetitions`, `technique`; the first model could not give 24 actions); P1.05 checkerboard size (25 mm
+  squares too small at the recording distance), reason for 30 fps, camera levelling for the roll correction; P1.09 pose
+  check (the existing smoke test uses a synthetic frame), checkerboard corner check, D08 registry and hardware inventory
+  updates; P1.08 G00 checklist now includes consent; P1.06 sharing covers being shown to other participants; P1.01,
+  P1.02, P1.03 ask for the 24-form version taught (P1.04 depends on it)
+- Tests: documentation only; full gate 10/10 PASS in 15.3 s; IDE diagnostics empty; a manual check of the ten files for
+  the usual lint mistakes found none
+- Bugs: none
+- Commit: not committed
+- Plan: `Docs/tasks/P1.01.md` … `Docs/tasks/P1.10.md`
+
 ## 2026-11-15 — X.13 Record the deferral of X.08, GitHub Actions CI (DONE)
 
 - Decided: X.08 is deferred by the maintainer (CI not needed for now). It stays `TODO`, not `CANCELLED`: cancelling needs

@@ -276,6 +276,7 @@ data/
 │   ├── recording.json
 │   ├── pts.parquet
 │   ├── proxy.mp4
+│   ├── proxy.json            # kết quả kiểm tra timestamp của proxy (proxy/1, P2.01)
 │   └── audio.wav
 ├── takes/<take_id>/sync.json
 ├── runs/<run_id>/            # run_id = hash(cache key, mục 4.3)
@@ -297,25 +298,64 @@ data/
 
 ### 4.2 Manifest mẫu
 
-`recording.json`:
+`recording.json` (schema `recording/1`, `schemas/recording.py`, chốt ở P2.01). Giá trị chưa biết là `null`, không bao giờ là 0
+(một frame thì không có khoảng thời gian giữa các frame); không có tên file gốc và không có đường dẫn: file nguồn luôn là
+`recordings/<recording_id>/source<source_ext>` tính từ thư mục dữ liệu. Số thực không được là NaN hay vô cực.
+
 ```json
 {
   "schema_version": "recording/1",
-  "recording_id": "uuid",
+  "recording_id": "3f2b8c1e-5d4a-4e7b-9c1a-0b2d3e4f5a6b",
   "sha256": "…",
-  "participant_id": "P03",
-  "session_id": "S01",
-  "take_id": "S01-P03-T02",
-  "camera_id": "camA",
+  "participant_id": "P03", "session_id": "S01", "take_id": "S01-P03-T02", "camera_id": "camA",
   "consent_ref": "CONSENT-2026-011",
-  "width": 1920, "height": 1080,
-  "display_rotation": 0,
-  "time_base": "1/90000",
-  "nominal_fps": 30.0,
-  "vfr": false,
-  "duration_s": 372.4,
-  "has_audio": true,
-  "ingested_at": "2026-11-20T09:12:00+07:00"
+  "source_ext": ".mp4", "size_bytes": 812345678, "container": "mov,mp4,m4a,3gp,3g2,mj2", "codec": "h264",
+  "width": 1920, "height": 1080, "display_rotation": 0,
+  "time_base": "1/90000", "start_pts": 0, "n_frames": 11172,
+  "pts_span_s": 372.4, "duration_s": 372.43,
+  "nominal_fps": 30.0, "r_frame_rate": 30.0, "measured_fps": 30.0, "median_dt_s": 0.0333333, "dt_rel_std": 0.0,
+  "n_duplicate_pts": 0, "vfr": false,
+  "vfr_rule": {"name": "tick_median", "version": 1, "rel_tol": 0.01, "tick_tol": 1, "max_share": 0.01},
+  "audio": {"codec": "aac", "sample_rate": 48000, "channels": 2, "start_offset_s": 0.0},
+  "capture": {"camera_role": "main_axis", "height_m": 1.1, "distance_m": 4.5, "fps_setting": 30.0},
+  "ingested_at": "2026-11-20T09:12:00+07:00",
+  "tools": {"ffprobe": "9.0.1", "pyav": "19.0.2", "taiji_ai": "0.1.0"}
+}
+```
+
+`proxy.json` (schema `proxy/1`): `recording_id`, `source_sha256`, `proxy_sha256`, `height`, `rotation_applied`, `ffmpeg`,
+`args` (có placeholder, không có đường dẫn thật), `n_frames_source`, `n_frames_proxy` và `check` (`points`, `max_abs_dt_s`,
+`max_abs_dt_frames`, `passed`). `passed = true` chỉ khi số frame bằng nhau và sai lệch lớn nhất ≤ 1 frame (P2.03).
+
+`sync.json` (schema `sync/1`, `schemas/sync.py`), một file cho mỗi take và cặp camera. **Quy ước thời gian** (chốt ở P2.01,
+DEC-0026; bản W2 trước đó không nói `t0` là gì): mọi thời gian là giây trên trục thời gian **video** của từng camera (giây
+kể từ PTS đầu tiên, như `io/frames.py`). Camera A (`cam_a`, xếp trước theo tên) là mốc. Với một khoảnh khắc camera A thấy ở `t_a`:
+
+```text
+t_b = t_a + offset_s + drift × (t_a − t_ref_s)
+t_a = (t_b − offset_s + drift × t_ref_s) / (1 + drift)
+```
+
+`t_ref_s` là tâm cửa sổ khớp ở đầu take trên camera A; `drift` không có đơn vị (1e-4 = 100 ppm); `offset_s > 0` nghĩa là B
+thấy cùng khoảnh khắc đó muộn hơn trên trục của B. Giá trị chưa biết là `null`: `status = ok` chỉ khi khớp tiếng vỗ tay ở cả đầu và
+cuối; `start_only` thì chưa biết `drift`; `not_found` (kèm `not_found_reason` là `no_audio` hoặc `clap_not_found`) thì chưa biết
+cả `offset_s`. Chỉ `ok` mới có phép ánh xạ (`a_to_b`, `b_to_a`; còn lại báo `SyncUnavailable`), để không ngầm coi drift là 0.
+`usable_for_metrics = true` chỉ khi `status = ok`, có kiểm chứng bằng flash ở **cả hai đầu** và sai lệch lớn nhất ≤ 1 frame (P2.06).
+
+```json
+{
+  "schema_version": "sync/1", "take_id": "S01-P03-T02", "cam_a": "camA", "cam_b": "camB",
+  "recording_id_a": "…", "recording_id_b": "…", "method": "audio_xcorr/1",
+  "params": {"sample_rate_hz": 16000, "window_s": 30.0, "max_lag_s": 15.0},
+  "start": {"window_a_s": [0.0, 30.0], "lag_s": 0.737, "peak": 0.93, "peak_ratio": 3.1, "found": true},
+  "end": {"window_a_s": [340.0, 370.0], "lag_s": 0.7371, "peak": 0.91, "peak_ratio": 2.8, "found": true},
+  "status": "ok", "not_found_reason": null, "offset_s": 0.737, "drift": 3.0e-6, "t_ref_s": 15.0,
+  "validation": {"method": "flash", "flash_a_s": [3.2, 4.2], "flash_b_s": [3.9373, 4.9373],
+                 "residual_start_ms": 12.0, "residual_end_ms": 9.0, "residual_ms": 12.0,
+                 "residual_frames": 0.36, "frame_dt_s": 0.0333333},
+  "usable_for_metrics": true, "usable_reason": "usable",
+  "created_at": "2026-11-20T09:20:00+07:00",
+  "tools": {"ffprobe": "9.0.1", "pyav": "19.0.2", "taiji_ai": "0.1.0"}
 }
 ```
 

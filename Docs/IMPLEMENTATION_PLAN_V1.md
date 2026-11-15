@@ -107,7 +107,7 @@ flowchart LR
 |---|---|---:|---|---|---|
 | P0 | Nền tảng code | 2 (còn lại) | A+B | — | — |
 | P1 | Discovery, ontology, protocol | 2,5 kỹ thuật (+ khoảng 2,5 của O, giờ H) | O, H, A | — | **G00** |
-| P2 | Ingest và đồng bộ camera | 4 | B, A | P0 | — |
+| P2 | Ingest và đồng bộ camera | ~~4~~ 5,5 *(2026-11-15, DEC-0025)* | B, A | P0 | — |
 | P3 | Pose và khóa người tập | 5 | A | P0, P2.03 | **G01** (cùng P1.10) |
 | P4 | Quality mask và lọc | 4 | A | P3 | — |
 | P5 | Ba metric | 5 | A | P4 | — |
@@ -117,7 +117,7 @@ flowchart LR
 | P9 | Thu dữ liệu pilot, gán nhãn | 3,5 kỹ thuật + giờ H/annotator | A, O, H | P1 | **G02** |
 | P10 | Kiểm chứng metric và so sánh | 4 (+1–2 nếu có PSU) | A+H | P5, P6, P9 | **G03** |
 | P11 | Pilot giá trị và quyết định | 3 | O, H, A, B | P8, P10 | **G05** |
-| | **Tổng kỹ thuật (A+B)** | **≈ 54** | | | |
+| | **Tổng kỹ thuật (A+B)** | **≈ 54** → **≈ 55,5** *(2026-11-15: P2 từ 4 lên 5,5)* | | | |
 
 Con số này cao hơn 30–44 ngày công của v3 vì có thêm phần dựng code nền, công cụ dữ liệu, kiểm thử và giao diện React + FastAPI (DEC-0008: P8 tăng từ 9,5 lên 14 ngày). Có thể giảm khoảng 1,5 ngày nếu dùng import Kinovea/ELAN (P8.05b) thay video player đánh dấu frame (P8.05) và chỉ làm một biến thể metric hông. Muốn giảm nhiều hơn thì phải cắt phạm vi, ví dụ hoãn trang so sánh (P8.13), dải bình thường (P6.06) và E2E (P8.15).
 
@@ -155,8 +155,8 @@ Con số này cao hơn 30–44 ngày công của v3 vì có thêm phần dựng 
 | P1.06 | Mẫu consent: phân tích / huấn luyện / chia sẻ, thời hạn lưu, rút lại; quy trình cho người chưa thành niên | O | 0,5 | — | `docs/consent_form.md` | O duyệt pháp lý |
 | P1.07 | Định nghĩa sơ bộ 3 metric và điều kiện view (từ Phụ lục B của TECH_WORKFLOW), H góp ý | A+H | 0,5 | P1.03 | `docs/metric_definitions_v0.md` | H ký |
 | P1.08 | Điền nhân sự thật, lịch HLV, đơn giá; khóa mục tiêu pilot (thời gian / chất lượng review) | O | 0,5 | P1.03 | `docs/pilot_targets.md` | — |
-| P1.09 | Quay thử 1 take trọn bài bằng 2 camera theo protocol | A+H | 0,5 | P1.05 | 2 video thử + metadata | Dùng cho P2 và P3 |
-| P1.10 | Gửi yêu cầu dữ liệu PSU-TMM100, TaiChi-AQA, TaiChi-24 (do O quyết định gửi) | O | 0,25 | — | Email/form đã gửi, ghi ngày | `DATASET_REGISTRY` cập nhật |
+| P1.09 | Quay thử 1 take trọn bài bằng 2 camera theo protocol | A+H | 0,5 | P1.05, P1.06 *(thêm P1.06 ngày 2026-11-15, DEC-0017)* | 2 video thử + metadata | Dùng cho P2 và P3 |
+| P1.10 | Gửi yêu cầu dữ liệu PSU-TMM100, TaiChi-AQA, TaiChi-24 (do O quyết định gửi) *(2026-11-15, DEC-0018: O quyết định không gửi; dùng dữ liệu đang có và tìm bộ tải tự do, task X.14)* | O | 0,25 | — | Email/form đã gửi, ghi ngày | `DATASET_REGISTRY` cập nhật |
 
 **Gate G00:**
 
@@ -172,13 +172,14 @@ Con số này cao hơn 30–44 ngày công của v3 vì có thêm phần dựng 
 
 | Mã | Task | Ai | Ngày | Phụ thuộc | Đầu ra | Kiểm tra |
 |---|---|---|---:|---|---|---|
-| P2.01 | Schema Pydantic `RecordingManifest`, `SyncManifest` (`schemas/`) | B | 0,5 | P0 | `schemas/recording.py` | T-SCH-01 |
-| P2.02 | `ingest_recording(path, meta)`: copy read-only, SHA-256, probe, `pts.parquet`, cờ VFR, ghi DB | B | 1 | P2.01 | `io/ingest.py`, CLI `taiji ingest` | T-IO-06..09 |
+| P2.01 | Schema Pydantic `RecordingManifest`, `SyncManifest` (`schemas/`); *2026-11-15: thêm `ProxyManifest`, `IngestMeta`, quy ước ánh xạ thời gian* | B | 0,5 → 0,75 | P0 | `schemas/recording.py`, `schemas/sync.py` | T-SCH-01 (a..i) |
+| P2.02 | `ingest_recording(path, meta)`: copy read-only, SHA-256, probe, `pts.parquet`, cờ VFR, ghi DB; *2026-11-15: sửa BUG-0046 (`is_vfr`), giới hạn kích thước/thời lượng, CLI `taiji ingest`* | B | 1 → 1,25 | P2.01 | `io/ingest.py`, `cli.py` | T-IO-06..09, T-IO-12..16 |
 | P2.03 | Tạo proxy H.264 720p, giữ timestamp nguồn; kiểm tra sai lệch proxy ↔ nguồn ≤ 1 frame tại 10 điểm | B | 0,5 | P2.02 | `io/proxy.py` | T-IO-10, T-IO-11 |
 | P2.04 | Tách audio mono 16 kHz; tìm offset bằng tương quan chéo envelope ở cửa sổ đầu và cuối take; tính drift | A | 1 | P2.02 | `io/audio_sync.py` | T-SYNC-01..03 |
 | P2.05 | Kiểm chứng bằng mốc flash: dò frame có độ sáng nhảy vọt; tính residual (ms, frame) | A | 0,5 | P2.04 | `io/flash.py` | T-SYNC-04 |
-| P2.06 | Quy tắc dùng sync: residual ≤ 1 frame thì cho ghép metric, lớn hơn thì chỉ hiển thị song song | A | 0,25 | P2.05 | `sync.json.usable_for_metrics` | T-SYNC-05 |
-| P2.07 | Chạy ingest + sync trên 2 video thử của P1.09; ghi báo cáo ngắn | A+B | 0,25 | P2.03, P2.06, P1.09 | `reports/p2_ingest_trial.md` | Residual thực tế |
+| P2.06 | Quy tắc dùng sync: residual ≤ 1 frame thì cho ghép metric, lớn hơn thì chỉ hiển thị song song; *2026-11-15: ghi `sync.json`, dòng DB, CLI `taiji sync`* | A | 0,25 → 0,5 | P2.05 | `sync.json.usable_for_metrics`, `pipeline/sync_take.py` | T-SYNC-05 (a..d) |
+| P2.07 | Chạy ingest + sync trên 2 video thử của P1.09; ghi báo cáo ngắn; *2026-11-15: thêm buổi tập dượt kỹ thuật không có người (DEC-0025)* | A+B | 0,25 | P2.03, P2.06, P2.08, P1.09 | `Docs/reports/p2_ingest_trial.md` | Residual thực tế |
+| P2.08 | *(thêm 2026-11-15, DEC-0025)* Đăng ký người tập: mã giả danh + cờ consent, audit log, CLI `taiji participant`; từ chối `consent_analysis = 0` | A | 0,5 | P2.01, P1.06 | `store/participants.py` | T-DATA-05 (a..e) |
 
 **Nghiệm thu P2:**
 

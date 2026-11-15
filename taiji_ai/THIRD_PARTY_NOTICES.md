@@ -4,7 +4,7 @@ Inventory of third-party components used by this code base, with their license t
 Update this file in the same change that adds, removes or upgrades a component.
 This is a project inventory, not legal advice; a license review is required before any commercial release.
 
-**Last updated:** 2026-11-14 (task P8.02; first version X.03). License strings taken from installed package metadata (`.venv`).
+**Last updated:** 2026-11-15 (task X.18: reference-only pages on the 24-form; P1.04: PyYAML; earlier P8.02; first version X.03). License strings taken from installed package metadata (`.venv`).
 
 ## 1. Direct runtime dependencies (`pyproject.toml`)
 
@@ -24,6 +24,7 @@ This is a project inventory, not legal advice; a license review is required befo
 | uvicorn | 0.54.0 | BSD-3-Clause | Permissive | ASGI server (127.0.0.1 only) |
 | plotly | 7.1.0 | MIT | Permissive | Charts, HTML report |
 | jinja2 | 3.1.6 | BSD-3-Clause | Permissive | HTML report templates |
+| PyYAML | 6.0.3 | MIT | Permissive | Reading `config/ontology_v0.yaml` (`safe_load` semantics only; DEC-0016, task P1.04) |
 
 Transitive dependencies are pinned in `uv.lock`; audit them (`uv tree`, package metadata) before any distribution.
 Notable transitive: starlette 1.10.0 (BSD-3, via fastapi); **opentelemetry-api 1.45.2** (Apache-2.0, required by
@@ -108,7 +109,8 @@ QAQA FastDTW windowing / ACDTW step penalty as algorithm references (Apache-2.0,
 | Motion Embedding 24-form (Charl0tte19) | none | Torso-scale normalisation, confidence-masked per-joint similarity, per-second feedback, partial forms as hard negatives |
 | Pang et al. 2025 (Long Fist scoring) | none | DTW alignment then keyframe × metric grid; SHAP explanations (with our own correct implementation) |
 | Zhang et al. 2022 (Long Fist localization) | none | Label transfer through the DTW warping path; temporal IoU + boundary error reporting |
-| OpenWushu | code AGPL-3.0, content CC BY-SA 4.0 | Routine data schema and movement lists as ontology input (content use requires attribution + share-alike) |
+| OpenWushu | code AGPL-3.0, content CC BY-SA 4.0 | Routine data schema and movement lists as ontology input (content use requires attribution + share-alike). P1.04 used only the idea of an action list with sides (commit 53d4e20616c2…); its routine is a 42-movement one and no wording or data was copied into `config/ontology_v0.yaml` |
 | TaiForm deduction criteria | CC BY 4.0 (Zenodo metadata; peer-review sample) | Structure of measurable deduction criteria |
 | achushu/tpz @ e6df070 | MPL-2.0 (code); `ref/` PDFs © IWUF | IWUF 2024 deduction/nandu code tables (JSON) and A/B/C panel scoring logic as references for E04. If a JSON file is reused as is, it stays under MPL-2.0 (file-level) with its notice |
 | klsnkmaria/wushu_vision @ 82b99f0 | none | Idea of per-stance checks mapped to IWUF deduction codes (50–53, 26); its thresholds are not used |
+| Public pages on the 24-form: English and Chinese Wikipedia, a qialance.com blog page, an smzdm.com article (read 2026-11-15) | the two Wikipedia pages CC BY-SA 4.0; the blog page and the article state none | Facts only (numbers, names, repetition counts) to cross-check `config/ontology_v0.yaml` in task X.18; no wording or table copied; the counts from the article are low authority and stay unconfirmed |
