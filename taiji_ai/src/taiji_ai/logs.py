@@ -122,7 +122,7 @@ class PathRedactor:
     (default: on for POSIX, off on Windows).
     """
 
-    def __init__(self, roots: Mapping[str, str | os.PathLike[str]], *, posix_paths: bool = True) -> None:
+    def __init__(self, roots: Mapping[str, str | os.PathLike[str]], *, posix_paths: bool | None = None) -> None:
         self._labels: dict[str, str] = {}
         for label, path in roots.items():
             placeholder = label if label.startswith("<") and label.endswith(">") else f"<{label}>"
@@ -136,7 +136,7 @@ class PathRedactor:
         variants = sorted(self._labels, key=len, reverse=True)  # longest root first
         root_alt = "|".join(re.escape(v) for v in variants) or r"(?!)"
         starts = list(_WINDOWS_STARTS)
-        if posix_paths:
+        if posix_paths if posix_paths is not None else os.name != "nt":
             starts.append(_POSIX_START)
         flags = re.IGNORECASE if _CASE_INSENSITIVE_PATHS else 0
         # Root alternatives come first: at the same position a known root wins over a generic path start.
@@ -171,7 +171,7 @@ class PathRedactor:
         return any(guard == resolved or guard.is_relative_to(resolved) for guard in (home, temp_dir))
 
     @classmethod
-    def for_settings(cls, settings: Settings, *, posix_paths: bool = True) -> PathRedactor:
+    def for_settings(cls, settings: Settings, *, posix_paths: bool | None = None) -> PathRedactor:
         roots: dict[str, str | os.PathLike[str]] = {
             "<data>": settings.data_dir,
             "<models>": settings.models_dir,
