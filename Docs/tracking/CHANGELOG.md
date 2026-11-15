@@ -4,6 +4,86 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
 
 ---
 
+## 2026-11-15 — X.13 Record the deferral of X.08, GitHub Actions CI (DONE)
+
+- Decided: X.08 is deferred by the maintainer (CI not needed for now). It stays `TODO`, not `CANCELLED`: cancelling needs
+  the maintainer's approval and a reason (AGENTS.md §2.1), and the answer was that it is not needed now, not that it is never wanted
+- Changed: `Docs/tracking/TASK_STATUS.md` (X.08 row, X.13 row), `Docs/tasks/X.07.md` §8 (the item about the go struck
+  through), `Docs/tracking/CHANGELOG.md` (a note under the X.07 entry), `Docs/tracking/DECISIONS.md` (DEC-0015 sentence
+  about X.08), `Docs/tasks/X.13.md` (new). No code, no `.github/`
+- Tests: documentation only; full gate 10/10 PASS (figure in `Docs/tasks/X.13.md` §5); `getDiagnostics` empty
+- Bugs: none
+- Commit: not committed
+- Plan: `Docs/tasks/X.13.md`
+
+## 2026-11-15 — X.12 Cut every verbatim quote of the maintainer's chat words from the logs (DONE)
+
+- Changed: the quotations of the maintainer's words were replaced by neutral statements that keep who, what, the date
+  and the condition (approved, requested, delegated, defaults accepted) in `Docs/tasks/{X.02,X.03,X.05,X.06,P0.04,P0.06,
+  P0.07,X.07,X.11}.md`, `Docs/tracking/TASK_STATUS.md` (X.07, P0.07 and X.11 rows) and `Docs/tracking/DECISIONS.md`
+  (DEC-0014): 25 replacements in 11 files by one script with a count assertion for each. The URL with the account name
+  left the P0.04 header. The open items about the quotes were closed in X.11, TASK_STATUS and under the X.11 entry.
+  No code
+- Search: the grep used at the end of X.11 (five phrases, 12 lines in 5 files) was too narrow; a search for any quotation
+  with Vietnamese letters and for quotations after answered / asked / said found the five older task headers and X.11
+  itself as well. Quotations of the plan, UI strings and test placeholders are not chat words and stay
+- Tests: documentation only; full gate 10/10 PASS in 17.4 s; greps C-1..C-3 find no chat quote; `getDiagnostics`
+  (warnings and errors) empty
+- Not covered: commit messages in git history, and a rule against quoting chat in `AGENTS.md` / `DECISIONS.md` (not asked)
+- Bugs: none
+- Commit: not committed
+- Plan: `Docs/tasks/X.12.md`
+
+## 2026-11-15 — X.11 Fix the open markdownlint bugs; cut the chat quote from DEC-0015 (DONE)
+
+- Fixed: BUG-0032 (`P0.06.md` §5 MD031), BUG-0033 (plan §14.3 MD032), BUG-0034 (`P0.07.md` MD022, found by this task's
+  bug check), BUG-0035 (my own new files `X.10.md` MD032 + MD004 and `X.11.md` MD036, found by this task's
+  verification). Only empty lines were inserted in `P0.06.md`, the plan and `P0.07.md`, outside the fenced evidence;
+  `X.10.md`: one wrapped line reflowed; `X.11.md`: colons in the bold labels
+- Changed: the verbatim quote of the maintainer's sentence was cut from `Docs/tracking/DECISIONS.md` DEC-0015 and
+  `Docs/tasks/X.10.md` at the maintainer's request (the decision, residual risk and source are unchanged); `BUGS.md`
+  (BUG-0032..0035 CLOSED, next free ID BUG-0036), `TASK_STATUS.md`, `Docs/tasks/{P0.06,P0.07,X.10,X.11}.md`,
+  `Docs/IMPLEMENTATION_PLAN_V1.md`. No code
+- Tests: documentation only; full gate 10/10 PASS in 19.4 s; `getDiagnostics` (warnings and errors) empty on every
+  changed document; manual checks C-1..C-5
+- Open (maintainer): other places that quote the maintainer's words verbatim (12 lines in 5 files, found by a grep for the
+  phrases of the earlier confirmations); left unchanged until the maintainer decides
+- Note 2026-11-15 (X.12): the maintainer then asked to cut them all; done in X.12
+- Bugs: BUG-0032..0035 CLOSED; no open bug in the register
+- Commit: not committed
+- Plan: `Docs/tasks/X.11.md`
+
+## 2026-11-15 — X.10 Drop the "machine B" part of the P0 acceptance (DONE)
+
+- Decided: DEC-0015 — P0 is accepted when `tools/check.ps1` passes on the maintainer's single machine; there is no
+  second machine and none is planned. Residual risk written in the decision: no run in a second environment (X.08, CI
+  on a clean runner, would cover it and stays optional and not started)
+- Changed: `Docs/IMPLEMENTATION_PLAN_V1.md` §4 (old sentence struck through, dated), `Docs/tracking/DECISIONS.md`
+  (DEC-0015), `Docs/tracking/TASK_STATUS.md` (X.10; P0.05 and P0.07 rows), dated notes in `Docs/tasks/{P0.05,P0.07,X.07}.md`
+  and under the X.07 entry below. Earlier mentions of machine B (P0.05 §1 / R7 / "not covered", P0.07 §9 review text, the
+  2026-11-15 P0.05 entry) are kept as history and are superseded by this entry. No code
+- Tests: documentation only; full gate 10/10 PASS in 18.9 s; manual checks C-1..C-4
+- Bugs: BUG-0033 found (pre-existing MD032 in plan §14.3, S3, PLANNED)
+- Commit: not committed
+- Plan: `Docs/tasks/X.10.md`
+
+## 2026-11-15 — X.07 Close the P0 review leftovers (DONE)
+
+- Fixed: BUG-0030 (the P0.06 / P0.07 rows of TASK_STATUS and dated notes under two CHANGELOG entries and under
+  `P0.07.md` §8 now say the commits are in `main` and pushed; old text kept as history), BUG-0031 (BUG-0009 detail in
+  BUGS.md set to CLOSED and rebuilt — its re-review section had been lost in an uncommitted overwrite and is marked as
+  reconstructed; P0.06 §2.5 AC1–AC11 ticked with a dated note)
+- Registered: X.08 (GitHub Actions CI for the gate) and X.09 (`mypy` on `tests/` and `tools/`), the follow-ups P0.05
+  promised; both TODO, not started. BUG-0032 (pre-existing MD031 warnings in `P0.06.md` §5, S3, planned)
+- Changed: `Docs/tracking/{BUGS,CHANGELOG,TASK_STATUS}.md`, `Docs/tasks/{P0.06,P0.07,X.07}.md`. No code
+- Tests: documentation only; full gate 10/10 PASS in 14.9 s; `pytest -k bug_0009` 7 passed; manual checks C-1..C-6
+- Open (maintainer): P0 acceptance needs the gate on machine B; X.08 needs a go before it starts
+- Note 2026-11-15 (X.10): the machine B item is dropped (DEC-0015); only the go for X.08 remains open
+- Note 2026-11-15 (X.13): the go for X.08 was answered: deferred, not needed now (X.08 stays TODO)
+- Bugs: BUG-0030, BUG-0031 CLOSED; BUG-0032 PLANNED
+- Commit: not committed
+- Plan: `Docs/tasks/X.07.md`
+
 ## 2026-11-15 — Q7 decision: hip-height variants A and B (DONE)
 
 - Decided: DEC-0014 — P5.04 computes both variants as defined in Appendix B1 and reports both; no ordering criterion;
@@ -38,6 +118,8 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
 - Bugs: BUG-0019..BUG-0029 CLOSED
 - Decisions: DEC-0013 (corrected)
 - Commit: 84c9bff on branch `feat/P0.07-synthetic-skeleton` (local, not pushed)
+- Note 2026-11-15 (BUG-0030): the line above is history. The branch was later fast-forward merged into `main` and
+  pushed; `84c9bff` is contained in `origin/main` (`22d3078` on 2026-11-15)
 - Plan: `Docs/tasks/P0.07.md` (§9 review, §9.5 resolution, §5 rework evidence)
 
 ## 2026-11-15 — BUG-0019 P0.06 follow-up: stale `test_logs.py` and `posix_paths` default (DONE)
@@ -50,6 +132,8 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
   caught on the restored tests; gate 10/10
 - Bugs: BUG-0019 CLOSED; BUG-0018's history corrected (its Fix was a workaround)
 - Commit: b060835 on branch `feat/P0.07-synthetic-skeleton` (local, not pushed)
+- Note 2026-11-15 (BUG-0030): the line above is history. `b060835` is contained in `origin/main` (`22d3078` on
+  2026-11-15)
 - Plan: `Docs/tasks/P0.07.md` §4 R0
 
 ## 2026-11-15 — P0.07 Synthetic HALPE_26 skeleton generator F-SYN (DONE; reopened, superseded by the entry above)

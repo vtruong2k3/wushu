@@ -137,7 +137,7 @@ Con số này cao hơn 30–44 ngày công của v3 vì có thêm phần dựng 
 | P0.06 | Logging thống nhất (`logging` + file log theo run), không log đường dẫn chứa tên thật; mở rộng 2026-11-15: BUG-0011, uvicorn routing | A | 0,5 → 0,75 (2026-11-15) | — | `taiji_ai/logs.py` (đổi tên từ logging.py để tránh che stdlib) | T-CORE-01 (a..p) |
 | P0.07 | ✅ Bộ sinh skeleton tổng hợp cho test (mục 14.3); mở rộng 2026-11-15: 12 kịch bản SYN-01..12, continuous truth, bảng tolerance | A | 1 → 1,5 (2026-11-15) | — | `tests/helpers/synth.py` | T-SYN-01..04 |
 
-**Nghiệm thu P0:** `tools/check.ps1` pass trên máy A và B. Bộ sinh skeleton tổng hợp tạo đủ các kịch bản ở mục 14.3.
+**Nghiệm thu P0:** ~~`tools/check.ps1` pass trên máy A và B.~~ *(2026-11-15, X.10, DEC-0015: maintainer chỉ có một máy, nên điều kiện là `tools/check.ps1` pass trên máy đó. Rủi ro còn lại: không có lần chạy trên môi trường thứ hai; X.08, CI trên runner sạch, có thể bù nếu cần.)* Bộ sinh skeleton tổng hợp tạo đủ các kịch bản ở mục 14.3.
 
 ---
 
@@ -406,6 +406,7 @@ Con số này cao hơn 30–44 ngày công của v3 vì có thêm phần dựng 
 | **PSU** (nếu được cấp) | Video 2 góc + Vicon + áp lực chân | ngoài repo | Kiểm chứng metric 2D |
 
 **Bộ sinh skeleton tổng hợp F-SYN (P0.07, cập nhật 2026-11-15).** Nằm trong `tests/helpers/synth.py` (chỉ dùng cho test, không xuất xưởng trong `src/`). Cung cấp 3 hàm công khai:
+
 - `make_sequence(scenario, seed=0, **params)` trả về `SynthSequence(kp, score, t_sec, truth, kp_true, ...)` cho SYN-01..09.
 - `make_pair(scenario, seed=0, **params)` trả về `SynthPair(ref, query, truth, ...)` cho SYN-10..11.
 - `make_scene(scenario, seed=0, **params)` trả về `SynthScene(kp, score, bbox, t_sec, truth, ...)` cho SYN-12 (đa người).

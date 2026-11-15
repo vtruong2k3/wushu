@@ -4,12 +4,18 @@ Rules: `AGENTS.md` §3. IDs are sequential (`BUG-NNNN`), never reused. Every bug
 Severity: **S1** critical · **S2** major · **S3** minor.
 Lifecycle: `OPEN → PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED` (or `WONT_FIX` with maintainer approval).
 
-**Next free ID:** `BUG-0030`
+**Next free ID:** `BUG-0036`
 
 ## Summary
 
 | ID       | Title                                                                                                                      | Sev | Status | Found in                                                                   | Fix task | Regression test                                                  | Opened     | Closed     |
 | -------- | -------------------------------------------------------------------------------------------------------------------------- | --- | ------ | -------------------------------------------------------------------------- | -------- | ---------------------------------------------------------------- | ---------- | ---------- |
+| BUG-0035 | New task files `X.10.md` and `X.11.md` have markdownlint warnings: X.10 line 19 starts with a plus sign (read as a list item: MD032, and MD004 on its 18 dash lists), X.11 has five bold-only labels (MD036); written by this agent and not checked with the IDE problems list | S3 | CLOSED | X.11 verification (`getDiagnostics`), `Docs/tasks/X.10.md:19`, `Docs/tasks/X.11.md` | X.11 | IDE diagnostics for both files show no warning (checked 2026-11-15) | 2026-11-15 | 2026-11-15 |
+| BUG-0034 | `Docs/tasks/P0.07.md` has a markdownlint MD022 warning: the heading "### Rework evidence" (line 338) has no blank line above it; in HEAD since the P0.07 rework commit `84c9bff` | S3 | CLOSED | X.11 check of the IDE problems list, pre-existing in HEAD | X.11 | IDE diagnostics for `Docs/tasks/P0.07.md` show no MD022 (checked 2026-11-15) | 2026-11-15 | 2026-11-15 |
+| BUG-0033 | `Docs/IMPLEMENTATION_PLAN_V1.md` §14.3 has a markdownlint MD032 warning (the list of the three F-SYN functions starts right after its paragraph, no blank line; about line 409); present in HEAD | S3 | CLOSED | X.10 edit of the plan (IDE diagnostics), pre-existing in HEAD | X.11 | IDE diagnostics for `Docs/IMPLEMENTATION_PLAN_V1.md` show no MD032 (checked 2026-11-15) | 2026-11-15 | 2026-11-15 |
+| BUG-0032 | `Docs/tasks/P0.06.md` §5 has two markdownlint MD031 warnings (fenced code blocks without blank lines around them, "Step 9" evidence, about lines 437–452); present since the P0.06 commit | S3 | CLOSED | X.07 edit of P0.06.md (IDE diagnostics), pre-existing in HEAD | X.11 | IDE diagnostics for `Docs/tasks/P0.06.md` show no MD031 (checked 2026-11-15) | 2026-11-15 | 2026-11-15 |
+| BUG-0031 | Task-file leftovers: BUG-0009 detail section is stale (Status FIXED, describes the first incomplete fix) and P0.06 §2.5 AC1–AC11 boxes are unticked while §8 says met | S3 | CLOSED | P0 review (2026-11-15), `Docs/tracking/BUGS.md` BUG-0009 detail, `Docs/tasks/P0.06.md` §2.5 | X.07 | Manual check list (BUG-0031 fix plan); `pytest -k bug_0009` (7 passed) | 2026-11-15 | 2026-11-15 |
+| BUG-0030 | Docs say the P0.06/P0.07 commits are "local, not pushed" on branch `feat/P0.07-synthetic-skeleton`; they are in `main` and pushed (`origin/main` = `22d3078`) | S3 | CLOSED | P0 review (2026-11-15), `Docs/tracking/CHANGELOG.md:40,52`, `Docs/tracking/TASK_STATUS.md` P0.06/P0.07 rows, `Docs/tasks/P0.07.md` §8 | X.07 | Manual check list (BUG-0030 fix plan): `grep "not pushed"`, `git merge-base --is-ancestor` | 2026-11-15 | 2026-11-15 |
 | BUG-0029 | SYN-12 `absent_s` that contains no frame raises `IndexError` instead of `ValueError` naming the parameter | S3 | CLOSED | P0.07 rework self-review, `taiji_ai/tests/helpers/synth.py` `build_syn_12` | P0.07 | `tests/unit/test_synth.py::test_t_syn_04_invalid_values_pair_and_scene[…absent_s…]` (red first; MN21) | 2026-11-15 | 2026-11-15 |
 | BUG-0028 | SYN-07 accepts `fps` (inherited from the common defaults) and ignores it; the rework of BUG-0020 left one accepted-but-unused parameter | S3 | CLOSED | P0.07 rework self-review, `taiji_ai/tests/helpers/synth.py` registry | P0.07 | `tests/unit/test_synth.py::test_t_syn_04_every_accepted_parameter_changes_the_output[SYN-01..12]` + `…unknown_parameter…` (SYN-07 case red first; MN22) | 2026-11-15 | 2026-11-15 |
 | BUG-0027 | P0.07 task file and TASK_STATUS overwritten with the pre-review versions at 18:00:11 (review §9 and the BUG-0019 note lost, P0.07 shown DONE again); a second writer is still active | S3 | CLOSED | P0.07 rework, `Docs/tasks/P0.07.md`, `Docs/tracking/TASK_STATUS.md` (mtime 2026-11-15 18:00:11-15) | P0.07 | Manual check list (P0.07 §9 present, TASK_STATUS rows) done 2026-11-15 | 2026-11-15 | 2026-11-15 |
@@ -43,6 +49,179 @@ Lifecycle: `OPEN → PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED` 
 ---
 
 ## Details
+
+### BUG-0035 — New task files X.10 / X.11: markdownlint warnings written by this agent
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3 (formatting; no content problem)                                                        |
+| Status          | CLOSED                                                                                     |
+| Found in        | `Docs/tasks/X.10.md` line 19; `Docs/tasks/X.11.md` lines 23, 35, 60, 72, 90                |
+| Found by / date | agent (Claude Code), 2026-11-15, `getDiagnostics` while verifying X.11                     |
+| Affects         | Markdown lint noise only (24 warnings as listed by the tool: X.10 one MD032 and 18 MD004, X.11 five MD036) |
+
+**Description:** (1) X.10 line 19 is the wrapped second half of a sentence and begins with a plus sign and a space, so markdown reads it as a
+list item: MD032 on that line, and MD004 ("expected plus") on every dash list of the file, since the first list is now a
+plus list. (2) X.11 uses bold-only lines ("**In scope**") as labels, which MD036 reports; X.07 and X.10 had the same
+problem and it was fixed there, but the habit was not applied to the next file. Root cause: new files were not checked
+with the IDE problems list before the task was closed; the hook output during the edits had not listed them.
+**Fix plan:** reflow X.10 so that no line starts with `+`; add `:` inside the bold labels of X.11; check
+`getDiagnostics` for both files; from now on call it for every new document before closing a task. Task X.11.
+
+**Fix:** task X.11, 2026-11-15 — `X.10.md`: the wrapped line no longer starts with a plus sign (the plus ends the
+previous line); `X.11.md`: a colon inside each of the five bold labels, as already done in X.07 and X.10.
+**Verified:** agent, 2026-11-15 — `getDiagnostics` for `X.10.md` (was 1 MD032 and 18 MD004) and `X.11.md` (was 5 MD036):
+no diagnostics; the global list (warnings and errors) is empty. Process: every new document is checked with
+`getDiagnostics` before its task is closed.
+
+**History:**
+
+- 2026-11-15 OPEN → PLANNED — found in the X.11 verification.
+- 2026-11-15 PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — fixed in X.11; see Fix and Verified above.
+
+### BUG-0034 — P0.07 task file: MD022 markdownlint warning on the "Rework evidence" heading
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3 (formatting; no content problem)                                                        |
+| Status          | CLOSED                                                                                     |
+| Found in        | `Docs/tasks/P0.07.md` line 338, heading "### Rework evidence (2026-11-15, machine A; outputs pasted)" |
+| Found by / date | agent (Claude Code), 2026-11-15, IDE problems list (`getDiagnostics`) during the X.11 bug check |
+| Affects         | Markdown lint noise only; `check.ps1` is not affected                                      |
+
+**Description:** the heading follows the "Timing: …" line directly, so markdownlint reports MD022
+(blanks-around-headings, "Expected 1, Actual 0, Above"). The same two lines are in `HEAD`; the heading was added by commit
+`84c9bff` (`git log -S` on the heading text), so it is not caused by X.07 / X.10.
+**Fix plan:** insert one empty line between the "Timing: …" line and the heading; no text change. Check the IDE problems
+list for the file afterwards. Task X.11.
+
+**Fix:** task X.11, 2026-11-15 — one empty line inserted between the "Timing: …" line and the heading in `P0.07.md`.
+**Verified:** agent, 2026-11-15 — `getDiagnostics` for `Docs/tasks/P0.07.md`: no diagnostics (MD022 was listed before
+the fix); `git diff -U0` shows the inserted line is empty.
+
+**History:**
+
+- 2026-11-15 OPEN → PLANNED — found in the X.11 bug check.
+- 2026-11-15 PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — fixed in X.11; see Fix and Verified above.
+
+### BUG-0033 — Plan §14.3: MD032 markdownlint warning on the F-SYN function list
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3 (formatting; no content problem)                                                        |
+| Status          | CLOSED                                                                                     |
+| Found in        | `Docs/IMPLEMENTATION_PLAN_V1.md` §14.3, the paragraph "Bộ sinh skeleton tổng hợp F-SYN (P0.07, …)" and the list under it (about lines 408-409) |
+| Found by / date | agent (Claude Code), 2026-11-15, IDE diagnostics after the X.10 edit of line 140 of the same file |
+| Affects         | Markdown lint noise only; `check.ps1` is not affected                                      |
+
+**Description:** the list of `make_sequence`, `make_pair`, `make_scene` follows the paragraph without a blank line, so
+markdownlint reports MD032 (blanks-around-lists). The same lines are in `HEAD` (checked with
+`git show HEAD:Docs/IMPLEMENTATION_PLAN_V1.md`) and the only hunk X.10 wrote in this file is line 140, so X.10 did not
+cause it.
+**Fix plan:** insert one blank line between the paragraph and the list; no change to the text. Do it with the next edit of
+§14.3 and check that the IDE diagnostics for the file are empty. Not done in X.10, which is limited to the acceptance
+sentence.
+
+**Fix:** task X.11, 2026-11-15 — one empty line inserted between the paragraph and the list of plan §14.3.
+**Verified:** agent, 2026-11-15 — `getDiagnostics` for `Docs/IMPLEMENTATION_PLAN_V1.md`: no diagnostics (MD032 was
+listed before the fix); `git diff -U0` shows the inserted line is empty.
+
+**History:**
+
+- 2026-11-15 OPEN → PLANNED — found during X.10.
+- 2026-11-15 PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — fixed in X.11; see Fix and Verified above.
+
+### BUG-0032 — P0.06 task file: two MD031 markdownlint warnings
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3 (formatting of pasted evidence; no content problem)                                     |
+| Status          | CLOSED                                                                                     |
+| Found in        | `Docs/tasks/P0.06.md` §5 "Step 9 — Manual smoke test on real API" (fences at HEAD lines 437, 443)  |
+| Found by / date | agent (Claude Code), 2026-11-15, IDE diagnostics after the BUG-0031 edit of the same file  |
+| Affects         | Markdown lint noise only; `check.ps1` is not affected (10/10 PASS)                         |
+
+**Description:** the fenced blocks after "Command:" and "Output captured:" start on the line right after the text, so
+markdownlint reports MD031 (blanks-around-fences). The lines are unchanged since the P0.06 commit (checked with
+`git show HEAD:Docs/tasks/P0.06.md`), so X.07 did not cause them; they were only noticed because X.07 edited the file.
+**Fix plan:** insert one blank line before each of the two fences (and after the closing fence where missing); no change
+to the pasted evidence itself. Do it with the next edit of `P0.06.md`; check the IDE diagnostics list is empty. Not done
+in X.07 to keep that task to its plan (documentation leftovers of the P0 review).
+
+**Fix:** task X.11, 2026-11-15 — one empty line between "Command:" and its fence and one between "Output captured:"
+and its fence (the closing fences already had one); the pasted evidence is unchanged.
+**Verified:** agent, 2026-11-15 — `getDiagnostics` for `Docs/tasks/P0.06.md`: no diagnostics (the two MD031 warnings
+were listed before the fix); `git diff -U0` shows the inserted lines are empty and outside the fences.
+
+**History:**
+
+- 2026-11-15 OPEN → PLANNED — found during X.07.
+- 2026-11-15 PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — fixed in X.11; see Fix and Verified above.
+
+### BUG-0031 — Task-file leftovers: BUG-0009 detail stale, P0.06 §2.5 AC boxes unticked
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3 (stale documentation, AGENTS.md §4.3)                                                   |
+| Status          | CLOSED                                                                                     |
+| Found in        | P0 phase review, `Docs/tracking/BUGS.md` (BUG-0009 detail), `Docs/tasks/P0.06.md` §2.5     |
+| Found by / date | agent (Claude Code), 2026-11-15, maintainer-requested review of Phase 0                    |
+| Affects         | Readers of the bug register and of the P0.06 task file                                     |
+
+**Description:** (1) the BUG-0009 detail section says `Status: FIXED`, its Fix/Verified lines describe the first fix
+(`is_file()` / `exists()` branches), which the P0.05 re-review found incomplete, and its History stops at 2026-11-14. The "Re-review 2026-11-15" section with the revised fix plan, which
+`Docs/tasks/P0.05.md` §9.1 refers to, is missing too. It is in no commit (checked in `4cee272` and `3f330bb`), so the
+content was lost, not only left stale, and it cannot be restored verbatim.
+The summary table, P0.05 §7 and the code say CLOSED on 2026-11-15 with the final fix (a `stat` error exits 2 and names
+the file; `test_bug_0009_*`, 7 tests). (2) `Docs/tasks/P0.06.md` §2.5 lists AC1–AC11 with empty boxes, while the
+close-out in §8 states "AC1–AC11 met" (P0.05 ticks its list in §2.7, P0.07 in §2.6).
+**Fix plan:** 1. BUG-0009 detail: set Status CLOSED, rebuild the lost re-review from `P0.05.md` §9 and the code (flagged as reconstructed), append (do not delete) the rework-2 fix, the real regression tests
+and a 2026-11-15 history line. 2. P0.06 §2.5: tick AC1–AC11 with a dated note "ticked 2026-11-15 from §8 and §5
+evidence". 3. Check by reading both places again. No code change.
+
+**Fix:** task X.07, 2026-11-15 — BUG-0009 detail: Status CLOSED, the old Fix / Verified lines relabelled (kept), the
+re-review rebuilt and flagged as reconstructed, the rework-2 fix, its verification and history lines added; P0.06 §2.5
+AC1–AC11 ticked with a dated note (11 lines, `git diff`).
+**Verified:** agent, 2026-11-15 — BUG-0009 Status, summary row, `P0.05.md` §7 and the code agree; `pytest -k bug_0009` (the
+tests named in the detail): 7 passed; P0.06 §2.5 has 11 ticked boxes and the note; full gate 10/10 PASS. Residual: the
+original wording of the BUG-0009 re-review and its revised fix plan are lost for good (not in any commit). A pre-existing
+MD031 warning in the same P0.06 file was found while editing it: BUG-0032.
+
+**History:**
+
+- 2026-11-15 OPEN → PLANNED — found in the P0 phase review.
+- 2026-11-15 PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — fixed in X.07; see Fix and Verified above. The
+  description was widened during the fix: the BUG-0009 re-review text had been lost, not only left stale.
+
+### BUG-0030 — Docs say P0.06/P0.07 are "local, not pushed"; they are in `main` and pushed
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3 (stale documentation)                                                                   |
+| Status          | CLOSED                                                                                     |
+| Found in        | P0 phase review: `Docs/tracking/CHANGELOG.md` lines 40 and 52, `TASK_STATUS.md` P0.06 and P0.07 rows, `Docs/tasks/P0.07.md` §8 |
+| Found by / date | agent (Claude Code), 2026-11-15, maintainer-requested review of Phase 0                    |
+| Affects         | Anyone judging what is on the remote                                                       |
+
+**Description:** the entries say commits `84c9bff` and `b060835` are "on branch `feat/P0.07-synthetic-skeleton` (local,
+not pushed)". The branch was fast-forward merged into `main` and pushed (CHANGELOG 2026-11-15 "Q7 decision" entry):
+`git ls-remote origin main` and `git rev-parse HEAD` both give `22d307823a7b`, working tree clean.
+**Fix plan:** 1. `TASK_STATUS.md` (live state, may be edited): P0.06 and P0.07 rows say "in `main`, pushed
+(`22d3078`)". 2. History is append-only (§4.3): add a dated line under the two CHANGELOG entries and under P0.07 §8
+instead of rewriting them. 3. Check with `git ls-remote origin main` against the recorded hash.
+
+**Fix:** task X.07, 2026-11-15 — the P0.06 and P0.07 rows of `TASK_STATUS.md` say "now in `main` and pushed (contained in
+`origin/main`, checked 2026-11-15)" — no bare hash, which would be wrong after the next commit (a deviation from fix plan
+item 1, which named `22d3078`); dated notes appended under the two CHANGELOG entries and under `P0.07.md` §8; the old
+text is kept.
+**Verified:** agent, 2026-11-15 — `git ls-remote origin main` = `22d307823a7b`; `84c9bff` and `b060835` are ancestors of
+`origin/main` (`git merge-base --is-ancestor`); `grep "not pushed"` over `Docs/` leaves only the preserved history (each
+followed by its note) and text that quotes the defect (BUGS.md, X.07); `TASK_STATUS.md` has no such text left.
+
+**History:**
+
+- 2026-11-15 OPEN → PLANNED — found in the P0 phase review.
+- 2026-11-15 PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — fixed in X.07; see Fix and Verified above.
 
 ### BUG-0029 — SYN-12 `absent_s` without a frame raises `IndexError`
 
@@ -718,7 +897,7 @@ full gate 10/10 PASS with the new tests running inside it.
 | Field           | Value                                                       |
 | --------------- | ----------------------------------------------------------- |
 | Severity        | S3 (swallowed exception, AGENTS.md §2 Step 4)               |
-| Status          | FIXED                                                       |
+| Status          | CLOSED                                                      |
 | Found in        | Task P0.05 rework, `taiji_ai/tools/repo_hygiene.py:189-194` |
 | Found by / date | agent (maintainer review), 2026-11-14                       |
 | Affects         | `repo_hygiene.py`                                           |
@@ -741,12 +920,34 @@ silently bypasses the R11 size limit check instead of reporting an error. Only f
    Any unexpected error will propagate to top-level handler and exit with exit code 2 and an error message.
 2. Add regression test asserting that non-existent files get `size = None` while existing files have their size checked.
 
-**Fix:** task P0.05, 2026-11-14 — explicitly check `if full.is_file(): size = full.stat().st_size elif full.exists(): size = 0 else: size = None` without swallowing unexpected errors  
-**Verified:** agent, 2026-11-14 — `test_t_tool_04_deleted_indexed_file_has_none_size` and `test_t_tool_05_repo_hygiene_git_flow` pass
+**Fix (2026-11-14, first version — incomplete, superseded by the 2026-11-15 fix below):** task P0.05, 2026-11-14 — explicitly check `if full.is_file(): size = full.stat().st_size elif full.exists(): size = 0 else: size = None` without swallowing unexpected errors  
+**Verified (2026-11-14 — wrong: these tests do not exercise a stat error, see the re-review below):** agent, 2026-11-14 — `test_t_tool_04_deleted_indexed_file_has_none_size` and `test_t_tool_05_repo_hygiene_git_flow` pass
+
+**Re-review 2026-11-15 (reconstructed):** the P0.05 re-review (`Docs/tasks/P0.05.md` §9.1, §9.2 F-2) found the first fix
+incomplete: a stat error such as `PermissionError` or EIO ended `main()` with a traceback and exit 1 (the documented
+contract is exit 2); errors that pathlib ignores (ELOOP, winerror 21 / 123 / 1921) skipped the R11 size rule silently;
+and the tests cited above do not exercise a stat error at all. *This section was lost in an uncommitted overwrite (same
+mechanism as BUG-0012 / BUG-0013; it is in no commit, checked 2026-11-15 in `4cee272` and `3f330bb`). It is rebuilt here
+from the P0.05 task file §9.2 / §9.4, the CHANGELOG and the code; the original wording and its revised fix plan could
+not be recovered (BUG-0031).*
+
+**Fix (2026-11-15, P0.05 rework 2):** `taiji_ai/tools/repo_hygiene.py` — `collect_entries()` calls `stat()` once per
+file: `FileNotFoundError` / `NotADirectoryError` give size `None` (listed by git, missing on disk), a non-regular entry
+gives `0`, any other `OSError` is collected as `(path, reason)`. `main()` prints `Error: cannot stat <path>: <reason>`
+for each, still prints the violations it found, and returns 2 — never 0 or 1 when a file could not be checked.
+**Verified:** agent, 2026-11-15 — `tests/unit/test_repo_hygiene.py::test_bug_0009_*` (7 cases: stat errors exit 2 and name
+the file, the error wins over violations but both are reported, a deleted file gets the path rules only, a directory
+entry is not an error, an oversized existing file is still flagged); 4 of the 7 failed on the first fix (`P0.05.md` §5);
+re-run 2026-11-15 in X.07: 7 passed; full gate 10/10 PASS.
 
 **History:**
 
-- 2026-11-14 OPEN → PLANNED → IN_PROGRESS → FIXED — fixed and verified with regression tests.
+- 2026-11-14 OPEN → PLANNED → IN_PROGRESS → FIXED — first fix, verified with tests that did not exercise a stat error.
+- 2026-11-15 FIXED → IN_PROGRESS — the P0.05 re-review found the first fix incomplete; revised fix plan written (its
+  text is lost, see the re-review above).
+- 2026-11-15 IN_PROGRESS → FIXED → VERIFIED → CLOSED — fixed in P0.05 rework 2; see Fix and Verified above.
+- 2026-11-15 (X.07, BUG-0031) this section was brought back in line with the summary table; it had reverted to the
+  2026-11-14 state.
 
 ### BUG-0008 — `test_t_tool_01_check_script_parses_cleanly_in_powershell` passes `[ref]$null`, silently ignoring syntax errors
 

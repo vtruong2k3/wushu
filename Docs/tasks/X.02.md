@@ -7,7 +7,7 @@
 | Phase | ad-hoc |
 | Estimate | 0.25 day |
 | Depends on | X.01 (DONE) |
-| Plan confirmed by | Maintainer, 2026-11-13 ("có" to the proposal) |
+| Plan confirmed by | Maintainer, 2026-11-13 (approved the proposal in the conversation) |
 | Started / Done | 2026-11-13 / 2026-11-13 |
 
 ## 1. Analysis
