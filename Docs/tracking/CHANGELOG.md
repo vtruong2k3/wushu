@@ -25,7 +25,7 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
   0.057–0.374, range_B 0.661–1.147 Lambda) — T-MET-05's "B more stable" is not asserted; decision Q7
 - Bugs: BUG-0019..BUG-0029 CLOSED
 - Decisions: DEC-0013 (corrected)
-- Commit: not committed
+- Commit: 84c9bff on branch `feat/P0.07-synthetic-skeleton` (local, not pushed)
 - Plan: `Docs/tasks/P0.07.md` (§9 review, §9.5 resolution, §5 rework evidence)
 
 ## 2026-11-15 — BUG-0019 P0.06 follow-up: stale `test_logs.py` and `posix_paths` default (DONE)
@@ -37,7 +37,7 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
 - Tests: red first (`'GET <path>' == 'GET /home/settings'` on `posix_paths=True`); P0.06 mutation set M1–M9 (incl. M5b)
   caught on the restored tests; gate 10/10
 - Bugs: BUG-0019 CLOSED; BUG-0018's history corrected (its Fix was a workaround)
-- Commit: not committed — commit as `BUG-0019: …` when the maintainer asks
+- Commit: b060835 on branch `feat/P0.07-synthetic-skeleton` (local, not pushed)
 - Plan: `Docs/tasks/P0.07.md` §4 R0
 
 ## 2026-11-15 — P0.07 Synthetic HALPE_26 skeleton generator F-SYN (DONE; reopened, superseded by the entry above)
