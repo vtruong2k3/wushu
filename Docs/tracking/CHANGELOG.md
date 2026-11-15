@@ -13,7 +13,7 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
   about X.08), `Docs/tasks/X.13.md` (new). No code, no `.github/`
 - Tests: documentation only; full gate 10/10 PASS (figure in `Docs/tasks/X.13.md` §5); `getDiagnostics` empty
 - Bugs: none
-- Commit: not committed
+- Commit: 9cce18f on branch `docs/X.07-X.13-p0-closeout` (local, not pushed)
 - Plan: `Docs/tasks/X.13.md`
 
 ## 2026-11-15 — X.12 Cut every verbatim quote of the maintainer's chat words from the logs (DONE)
@@ -31,7 +31,7 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
   (warnings and errors) empty
 - Not covered: commit messages in git history, and a rule against quoting chat in `AGENTS.md` / `DECISIONS.md` (not asked)
 - Bugs: none
-- Commit: not committed
+- Commit: 9cce18f on branch `docs/X.07-X.13-p0-closeout` (local, not pushed)
 - Plan: `Docs/tasks/X.12.md`
 
 ## 2026-11-15 — X.11 Fix the open markdownlint bugs; cut the chat quote from DEC-0015 (DONE)
@@ -50,7 +50,7 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
   phrases of the earlier confirmations); left unchanged until the maintainer decides
 - Note 2026-11-15 (X.12): the maintainer then asked to cut them all; done in X.12
 - Bugs: BUG-0032..0035 CLOSED; no open bug in the register
-- Commit: not committed
+- Commit: 9cce18f on branch `docs/X.07-X.13-p0-closeout` (local, not pushed)
 - Plan: `Docs/tasks/X.11.md`
 
 ## 2026-11-15 — X.10 Drop the "machine B" part of the P0 acceptance (DONE)
@@ -64,7 +64,7 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
   2026-11-15 P0.05 entry) are kept as history and are superseded by this entry. No code
 - Tests: documentation only; full gate 10/10 PASS in 18.9 s; manual checks C-1..C-4
 - Bugs: BUG-0033 found (pre-existing MD032 in plan §14.3, S3, PLANNED)
-- Commit: not committed
+- Commit: 9cce18f on branch `docs/X.07-X.13-p0-closeout` (local, not pushed)
 - Plan: `Docs/tasks/X.10.md`
 
 ## 2026-11-15 — X.07 Close the P0 review leftovers (DONE)
@@ -81,7 +81,7 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
 - Note 2026-11-15 (X.10): the machine B item is dropped (DEC-0015); only the go for X.08 remains open
 - Note 2026-11-15 (X.13): the go for X.08 was answered: deferred, not needed now (X.08 stays TODO)
 - Bugs: BUG-0030, BUG-0031 CLOSED; BUG-0032 PLANNED
-- Commit: not committed
+- Commit: 9cce18f on branch `docs/X.07-X.13-p0-closeout` (local, not pushed)
 - Plan: `Docs/tasks/X.07.md`
 
 ## 2026-11-15 — Q7 decision: hip-height variants A and B (DONE)
