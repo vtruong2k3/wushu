@@ -24,8 +24,8 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
   restored P0.05 tests; real-API smoke re-run
 - Bugs: BUG-0012..BUG-0017 CLOSED (BUG-0011 closed in the first pass)
 - Decisions: DEC-0012 (corrected)
-- Open: maintainer to confirm Q1–Q6 explicitly (task file F-8); commits
-- Commit: not committed
+- Open: maintainer to confirm Q1–Q6 explicitly (task file F-8)
+- Commit: 4cee272
 - Plan: `Docs/tasks/P0.06.md` (§9 review, §9.4 rework plan, §9.5 resolution, §5 rework evidence)
 
 ## 2026-11-15 — P0.06 Unified logging and path redaction (DONE; reopened, superseded by the entry above)
@@ -64,7 +64,7 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
   the guard test; fault injection (lint error), stale lock, `-SkipWeb`, `-NoGpu` from `%TEMP%`, nested run, empty root
 - Bugs: BUG-0008, BUG-0009, BUG-0010 CLOSED (with BUG-0006, BUG-0007 from the original task)
 - Not covered: a run on machine B (maintainer); GitHub Actions CI (follow-up)
-- Commit: not committed
+- Commit: b69f8ee
 - Plan: `Docs/tasks/P0.05.md` (§3.1 rework plan, §4 step 13, §5 rework-2 evidence, §9 re-review)
 
 ## 2026-11-14 — P0.05 One-command quality gate `tools/check.ps1` (IN_REVIEW; superseded by the 2026-11-15 entry above)
