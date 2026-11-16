@@ -4,6 +4,49 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
 
 ---
 
+## 2026-11-16 — P2.02 `ingest_recording`: read-only copy, SHA-256, `pts.parquet`, VFR rule, `taiji ingest` (DONE)
+
+- Changed: `taiji_ai/src/taiji_ai/io/ingest.py` (new), `taiji_ai/src/taiji_ai/store/recordings.py` (new),
+  `taiji_ai/src/taiji_ai/io/frames.py` (`PtsScan`, `scan_pts_ticks`, VFR rule, `is_vfr(t_sec, tick_s)`),
+  `taiji_ai/src/taiji_ai/io/probe.py` (`NoVideoStreamError`, `AudioMeta`, container name), `store/artifacts.py`
+  (`atomic_write_parquet`), `schemas/recording.py` (`CAMERA_ROLES`), `config.py` (size and duration limits), `cli.py`
+  (`taiji ingest`), `taiji_ai/tests/conftest.py` (fixtures), new tests `tests/unit/test_vfr.py`,
+  `tests/contract/test_ingest.py`, `tests/contract/test_cli_ingest.py`, changed `tests/contract/test_video_io.py`,
+  `tests/unit/test_core.py`, `tests/unit/test_config.py`, `taiji_ai/README.md`, `Docs/IMPLEMENTATION_PLAN_V1.md` (T-IO-12..19),
+  `Docs/tasks/{P2.02,P2.03}.md`, `Docs/tracking/{TASK_STATUS,BUGS,DECISIONS,CHANGELOG}.md`
+- Behaviour: one video becomes `data/recordings/<id>/` with `source.<ext>` (read-only copy, hash checked), `pts.parquet` (real
+  integer timestamps) and `recording.json` (written last), then one database row; built in a staging folder and renamed
+  atomically, a failed insert leaves only an `.orphan-` folder; refused before anything is written: unsupported extension,
+  not a file, empty, over 20 GB or 30 minutes, no video stream, unreadable, no frames; the same file returns the existing
+  record, under other IDs or for a taken take and camera it is refused; a recording needs a registered participant with
+  analysis consent; VFR is decided on integer ticks (rule `tick_median` v1: 1 tick and 1 % of the median, more than 1 % of
+  intervals), so a constant 30 fps clip with a 1 ms time base is no longer VFR; messages, logs and CLI output hold IDs only
+- Tests: T-IO-06..09 and T-IO-12..19, written red first; mutation check 89 of 90 caught (the survivor is an older filter that
+  is equivalent for every fixture); full suite `663 passed` (the summary line of pytest, 565 before); gate 10/10 PASS
+- Decisions: DEC-0028
+- Bugs: BUG-0046 (S3, `is_vfr` on a coarse time base) fixed and closed; BUG-0051 (S3, the first tests passed with 22 broken
+  rules, one dead check) found and closed
+- Commit: not committed
+- Plan: Docs/tasks/P2.02.md
+
+## 2026-11-16 — P2.08 Participant registry and the `taiji participant` command (DONE)
+
+- Changed: `taiji_ai/src/taiji_ai/store/participants.py` (new), `taiji_ai/src/taiji_ai/cli.py` (new),
+  `taiji_ai/pyproject.toml` (`[project.scripts] taiji`), `taiji_ai/tests/unit/test_participants.py` and `test_cli.py` (new),
+  `taiji_ai/README.md`, `Docs/consent_form.md` (B1 note), `Docs/tasks/{P2.08,P2.02}.md`,
+  `Docs/tracking/{TASK_STATUS,BUGS,DECISIONS,CHANGELOG}.md`
+- Behaviour: a pseudonym is registered with the answers of a signed consent form; every answer (analysis, train, share) is
+  required and explicit, analysis must be yes, the retention date is an ISO date not in the past (or none, with a warning),
+  the actor is a role code, never a name; every write is one transaction with its audit row (consent fields only);
+  `update_consent` changes train, share and retention only; messages and logs hold IDs only; `taiji participant add`, `set`
+  and `show` with exit codes 0, 1 and 2
+- Tests: T-DATA-05a..j, 93 tests written red first; mutation check 46 of 46 caught; full suite 565 passed (the summary
+  line of pytest); gate 10/10 PASS in 16.5 s
+- Decisions: DEC-0027
+- Bugs: BUG-0050 (S3, `show` echoed an unchecked `--id`) found in the self-review and closed
+- Commit: not committed
+- Plan: Docs/tasks/P2.08.md
+
 ## 2026-11-15 — P2.01 Manifest schemas: recording, proxy, sync (DONE)
 
 - Changed: `taiji_ai/src/taiji_ai/schemas/{_base,recording,sync}.py` (new), `taiji_ai/tests/unit/test_schemas_recording.py`

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from dataclasses import dataclass
+from fractions import Fraction
 from pathlib import Path
 
 import av
@@ -41,27 +42,103 @@ def _start_pts(stream: av.video.stream.VideoStream) -> int:
     return int(stream.start_time) if stream.start_time is not None else 0
 
 
+@dataclass(frozen=True)
+class PtsScan:
+    """Presentation timestamps of a video stream as the container stores them.
+
+    ``pts`` are integer ticks of ``time_base`` seconds, sorted (presentation order); ``start_pts`` is the stream start.
+    The time convention is ``t_sec = (pts - start_pts) * time_base``.
+    """
+
+    pts: np.ndarray  # int64, ticks
+    time_base: Fraction  # seconds per tick, e.g. 1/90000
+    start_pts: int
+
+    @property
+    def t_sec(self) -> np.ndarray:
+        """Seconds from the stream start (float64)."""
+        return (self.pts - self.start_pts) * float(self.time_base)
+
+
+def scan_pts_ticks(path: str | Path) -> PtsScan:
+    """Demux the video stream and return its sorted integer timestamps, without decoding."""
+    with av.open(str(path)) as container:
+        stream = container.streams.video[0]
+        tb = Fraction(stream.time_base.numerator, stream.time_base.denominator)
+        start = _start_pts(stream)
+        pts = [p.pts for p in container.demux(stream) if p.pts is not None and p.size > 0]
+    return PtsScan(np.sort(np.asarray(pts, dtype=np.int64)), tb, start)
+
+
 def scan_pts(path: str | Path) -> tuple[np.ndarray, float]:
     """Return sorted presentation timestamps (seconds from stream start) without decoding.
 
     Returns (t_sec array, time_base as float).
     """
-    with av.open(str(path)) as container:
-        stream = container.streams.video[0]
-        tb = float(stream.time_base)
-        start = _start_pts(stream)
-        pts = [p.pts for p in container.demux(stream) if p.pts is not None and p.size > 0]
-    arr = (np.sort(np.asarray(pts, dtype=np.int64)) - start) * tb
-    return arr, tb
+    scan = scan_pts_ticks(path)
+    return scan.t_sec, float(scan.time_base)
 
 
-def is_vfr(t_sec: np.ndarray, rel_tol: float = 0.01) -> bool:
-    """True when frame intervals vary by more than ``rel_tol`` (std/median of dt)."""
-    if len(t_sec) < 3:
-        return False
-    dt = np.diff(t_sec)
-    med = float(np.median(dt))
-    return med > 0 and float(np.std(dt)) / med > rel_tol
+@dataclass(frozen=True)
+class VfrRuleParams:
+    """The rule that decides variable frame rate (BUG-0046), recorded in ``recording.json`` as ``vfr_rule``.
+
+    An interval between two frames deviates when it differs from the median interval by more than ``tick_tol`` ticks
+    **and** by more than ``rel_tol`` of the median; the video is VFR when more than ``max_share`` of its intervals
+    deviate. The tick tolerance is what keeps a constant 30 fps video with a coarse time base (intervals of 33 and 34
+    ticks of 1 ms) from being called VFR: its spread is rounding.
+    """
+
+    name: str = "tick_median"
+    version: int = 1
+    rel_tol: float = 0.01
+    tick_tol: int = 1
+    max_share: float = 0.01
+
+
+VFR_RULE = VfrRuleParams()
+
+
+@dataclass(frozen=True)
+class VfrVerdict:
+    vfr: bool
+    n_intervals: int
+    n_deviating: int
+    deviating_share: float
+    median_dt_ticks: float | None  # None without any interval (fewer than two frames)
+    n_duplicates: int  # intervals of 0 ticks: frames that share a timestamp (counted, never dropped)
+
+
+def vfr_verdict(pts: np.ndarray, rule: VfrRuleParams = VFR_RULE) -> VfrVerdict:
+    """Apply the rule to sorted integer timestamps (ticks). Fewer than two intervals are never VFR.
+
+    When more than half of the intervals are 0 the median is 0: the timestamps are not those of a constant frame rate,
+    so the verdict is VFR (the caller decides whether such a file is usable at all).
+    """
+    dt = np.diff(np.asarray(pts, dtype=np.int64))
+    n = int(dt.size)
+    n_dup = int(np.count_nonzero(dt == 0))
+    if n == 0:
+        return VfrVerdict(False, 0, 0, 0.0, None, n_dup)
+    median = float(np.median(dt))
+    if n < 2:
+        return VfrVerdict(False, n, 0, 0.0, median, n_dup)
+    if median <= 0:
+        return VfrVerdict(True, n, int(np.count_nonzero(dt != 0)), 1.0, 0.0, n_dup)
+    tol = max(float(rule.tick_tol), rule.rel_tol * median)
+    n_dev = int(np.count_nonzero(np.abs(dt - median) > tol))
+    share = n_dev / n
+    return VfrVerdict(share > rule.max_share, n, n_dev, share, median, n_dup)
+
+
+def is_vfr(t_sec: np.ndarray, tick_s: float, rel_tol: float = 0.01, max_share: float = 0.01, tick_tol: int = 1) -> bool:
+    """True when the frame intervals of ``t_sec`` (seconds) are not those of a constant frame rate.
+
+    ``tick_s`` is the time base in seconds per tick: the timestamps are rounded back to whole ticks and the rule of
+    ``vfr_verdict`` is applied, so quantisation noise is not mistaken for a change of the frame rate (BUG-0046).
+    """
+    ticks = np.rint(np.asarray(t_sec, dtype=np.float64) / tick_s).astype(np.int64)
+    return vfr_verdict(ticks, VfrRuleParams(rel_tol=rel_tol, tick_tol=tick_tol, max_share=max_share)).vfr
 
 
 def iter_frames(

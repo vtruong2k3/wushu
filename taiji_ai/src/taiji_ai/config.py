@@ -1,7 +1,8 @@
 """Project paths and runtime settings.
 
 Values can be overridden with environment variables, read when ``Settings()`` is constructed (not at import):
-TAIJI_DATA_DIR, TAIJI_MODELS_DIR, TAIJI_WEB_DIST_DIR, TAIJI_DEVICE, TAIJI_API_PORT, TAIJI_LOG_LEVEL.
+TAIJI_DATA_DIR, TAIJI_MODELS_DIR, TAIJI_WEB_DIST_DIR, TAIJI_DEVICE, TAIJI_API_PORT, TAIJI_LOG_LEVEL,
+TAIJI_MAX_SOURCE_BYTES, TAIJI_MAX_SOURCE_DURATION_S.
 
 The API host is deliberately not configurable: the server only listens on the loopback interface
 (AGENTS.md §5.7).
@@ -31,6 +32,11 @@ class Settings:
     device: str = field(default_factory=lambda: os.environ.get("TAIJI_DEVICE", "cuda"))
     api_port: int = field(default_factory=lambda: int(os.environ.get("TAIJI_API_PORT", "8007")))
     log_level: str = field(default_factory=lambda: os.environ.get("TAIJI_LOG_LEVEL", "INFO").upper())
+    # One source video is limited in size and duration (TECH_WORKFLOW 10.2); a take is 4-6 minutes, about 0.5-1 GB.
+    max_source_bytes: int = field(default_factory=lambda: int(os.environ.get("TAIJI_MAX_SOURCE_BYTES", 20 * 1024**3)))
+    max_source_duration_s: float = field(
+        default_factory=lambda: float(os.environ.get("TAIJI_MAX_SOURCE_DURATION_S", "1800"))
+    )
 
     @property
     def db_path(self) -> Path:

@@ -117,6 +117,112 @@ def rotated_video(video_dir: Path, cfr_video: Path) -> Path:
 
 
 @pytest.fixture(scope="session")
+def one_frame_video(video_dir: Path) -> Path:
+    """A valid video with a single frame: it has no frame interval at all."""
+    out = video_dir / "one_frame.mp4"
+    _ffmpeg(
+        "-f", "lavfi", "-i", "testsrc2=size=320x240:rate=30",
+        "-frames:v", "1", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-an", str(out),
+    )  # fmt: skip
+    return out
+
+
+@pytest.fixture(scope="session")
+def offset_video(video_dir: Path) -> Path:
+    """Like cfr_video but the video starts at 5.0 s (start_pts 76800 at 1/15360) and the audio about 0.5 s later."""
+    out = video_dir / "offset.mp4"
+    _ffmpeg(
+        "-f", "lavfi", "-i", "testsrc2=size=320x240:rate=30:duration=2",
+        "-itsoffset", "0.5", "-f", "lavfi", "-i", "sine=frequency=1000:duration=2",
+        "-output_ts_offset", "5",
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-g", "15", "-c:a", "aac", "-shortest", str(out),
+    )  # fmt: skip
+    return out
+
+
+@pytest.fixture
+def ingest_settings(tmp_path: Path):
+    """Settings with an empty data folder, a migrated database and one registered participant ``P03`` (invented)."""
+    from taiji_ai.config import Settings
+    from taiji_ai.store.db import connect
+    from taiji_ai.store.participants import register_participant
+
+    settings = Settings(data_dir=tmp_path / "data")
+    conn = connect(settings.db_path, settings.migrations_dir)
+    try:
+        register_participant(
+            conn,
+            "P03",
+            "CONSENT-2026-011",
+            analysis=True,
+            train=False,
+            share=False,
+            retention_until=None,
+            actor="cli:O",
+        )
+    finally:
+        conn.close()
+    return settings
+
+
+def _coarse_cfr(video_dir: Path, name: str, rate: str) -> Path:
+    """4 s of constant frame rate at the given rate, 160x120, video time base 1/1000 (BUG-0046), no audio."""
+    out = video_dir / name
+    _ffmpeg(
+        "-f", "lavfi", "-i", f"testsrc2=size=160x120:rate={rate}:duration=4",
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-video_track_timescale", "1000", "-an", str(out),
+    )  # fmt: skip
+    return out
+
+
+@pytest.fixture(scope="session")
+def coarse_cfr_30(video_dir: Path) -> Path:
+    """30 fps at time base 1/1000: the frame intervals are 33 or 34 ms, yet the video is constant frame rate."""
+    return _coarse_cfr(video_dir, "coarse30.mp4", "30")
+
+
+@pytest.fixture(scope="session")
+def coarse_cfr_2997(video_dir: Path) -> Path:
+    """29.97 fps (30000/1001) at time base 1/1000."""
+    return _coarse_cfr(video_dir, "coarse2997.mp4", "30000/1001")
+
+
+@pytest.fixture(scope="session")
+def dropped_frame_video(video_dir: Path) -> Path:
+    """10 s at 30 fps with frame 150 removed: 299 frames, one interval twice as long as the others."""
+    out = video_dir / "dropped.mp4"
+    _ffmpeg(
+        "-f", "lavfi", "-i", "testsrc2=size=160x120:rate=30:duration=10",
+        "-vf", r"select='not(eq(n\,150))'", "-fps_mode", "vfr",
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-an", str(out),
+    )  # fmt: skip
+    return out
+
+
+@pytest.fixture(scope="session")
+def audio_only_video(video_dir: Path) -> Path:
+    """An MP4 with an audio track and no video stream."""
+    out = video_dir / "audio_only.mp4"
+    _ffmpeg("-f", "lavfi", "-i", "sine=frequency=1000:duration=2", "-c:a", "aac", str(out))
+    return out
+
+
+@pytest.fixture(scope="session")
+def truncated_video(video_dir: Path, cfr_video: Path) -> Path:
+    """The first 600 bytes of a real MP4: the index (moov atom) is missing, so it cannot be read."""
+    out = video_dir / "truncated.mp4"
+    out.write_bytes(cfr_video.read_bytes()[:600])
+    return out
+
+
+@pytest.fixture(scope="session")
+def empty_video(video_dir: Path) -> Path:
+    out = video_dir / "empty.mp4"
+    out.write_bytes(b"")
+    return out
+
+
+@pytest.fixture(scope="session")
 def ffmpeg_first_frame():
     """Decode the first frame with ffmpeg's own autorotation, as BGR ndarray."""
     import numpy as np

@@ -56,10 +56,11 @@ Flags (`-NoGpu`, `-SkipWeb`, `-DryRun`) and exit codes: `AGENTS.md` §7.
 
 ```text
 src/taiji_ai/
-  config.py            paths/settings (TAIJI_DATA_DIR, TAIJI_MODELS_DIR, TAIJI_DEVICE, TAIJI_LOG_LEVEL)
+  config.py            paths/settings (TAIJI_DATA_DIR, TAIJI_MODELS_DIR, TAIJI_DEVICE, TAIJI_LOG_LEVEL, TAIJI_MAX_SOURCE_BYTES, TAIJI_MAX_SOURCE_DURATION_S)
   logs.py              unified logging, per-run log file, absolute path redaction
-  io/probe.py          ffprobe metadata (rotation, fps, audio)
-  io/frames.py         PyAV frames with real PTS timestamps, VFR detection, display rotation
+  io/probe.py          ffprobe metadata (rotation, fps, container, audio)
+  io/frames.py         PyAV frames with real PTS timestamps, integer-tick scan, VFR rule (`tick_median`), display rotation
+  io/ingest.py         `ingest_recording`: read-only copy, SHA-256, `pts.parquet`, `recording.json`, database row (P2.02)
   pose/skeleton.py     HALPE_26 definition (halpe26/1)
   pose/registry.py     verified model registry
   pose/rtm.py          YOLOX + RTMPose wrapper (detect / estimate separately)
@@ -69,6 +70,9 @@ src/taiji_ai/
   schemas/_base.py     manifest base: strict models, atomic write, validated read (ManifestError)
   schemas/recording.py recording.json, proxy.json and the ingest input (recording/1, proxy/1)
   schemas/sync.py      sync.json and the time mapping between two cameras (sync/1)
+  store/participants.py participant registry: consent answers and audit log (P2.08)
+  store/recordings.py  queries and insert of the `recording` table (P2.02)
+  cli.py               command line: `taiji participant add, set, show` and `taiji ingest` (later: proxy, sync)
   track/ quality/ metrics/ compare/ pipeline/ report/   (to be implemented)
   api/                 FastAPI app (`python -m taiji_ai.api`, 127.0.0.1 only): /api/health, SPA serving
 config/                ontology_v0.yaml: the 24-form actions, sides, views, flags (draft until the coach signs)
@@ -82,7 +86,8 @@ tests/helpers/         synth.py synthetic HALPE_26 skeleton generator (F-SYN, SY
 
 | Module | State |
 |---|---|
-| io (probe, frames) | done, tested (CFR, VFR, rotation) |
+| io (probe, frames) | done, tested (CFR, VFR, rotation, coarse time bases: T-IO-12, BUG-0046) |
+| ingest (io/ingest.py, store/recordings.py, `taiji ingest`) | done, tested (T-IO-06..09, 12..19); proxy, audio and sync are P2.03..P2.06 |
 | pose (registry, rtm) | done, tested on GPU |
 | store (artifacts, db) | done, tested |
 | logging (unified logging, run.log, path redaction) | done, tested (T-CORE-01a..p, BUG-0011) |
@@ -91,8 +96,41 @@ tests/helpers/         synth.py synthetic HALPE_26 skeleton generator (F-SYN, SY
 | tooling (check.ps1 gate, repo_hygiene) | done, tested (T-TOOL-01..05) |
 | test helpers (F-SYN skeleton generator, SYN-01..12) | done, tested (T-SYN-01..04) |
 | ontology (schemas/ontology.py, config/ontology_v0.yaml, tools/render_ontology_review.py) | code done, tested (T-DATA-01a..l); the 24-action content is `draft_unconfirmed` until the coach signs; `Docs/discovery/ontology_review_sheet.md` is generated from the YAML (stale-guard test) |
-| manifests (schemas/_base, recording, sync) | done, tested (T-SCH-01a..i); nothing writes them yet (ingest is P2.02) |
+| manifests (schemas/_base, recording, sync) | done, tested (T-SCH-01a..i); `recording.json` is written by ingest, `proxy.json` and `sync.json` by P2.03 and P2.06 |
+| participants + CLI (store/participants.py, cli.py) | done, tested (T-DATA-05a..j); the consent form maps to it (`Docs/consent_form.md` B1) |
 | track, quality, metrics, compare, pipeline, report | not started |
+
+## Command line
+
+`taiji` is declared in `pyproject.toml`; run `py -3.12 -m uv sync` once to install the command, or call
+`.venv\Scripts\python.exe -m taiji_ai.cli`. Register a pseudonym with the answers of a signed consent form before any
+recording is ingested:
+
+```powershell
+taiji participant add --id P03 --consent-ref CONSENT-2026-011 --analysis yes --train no --share no --retention 2027-12-31 --actor cli:O
+taiji participant set --id P03 --train yes --actor cli:O
+taiji participant show --id P03
+```
+
+Every consent answer is required (`yes` or `no`); `--analysis no` is refused, because without analysis consent no
+recording is accepted. `--actor` is a role code (`cli:O`, `cli:H1`), never a person's name, and goes to the audit log.
+Exit codes: 0 ok, 1 refused (the message says why), 2 usage error. The commands `proxy` and `sync` come with Phase 2.
+
+Bring one phone video into the system (the participant must be registered with analysis consent; the file is only read):
+
+```powershell
+taiji ingest "D:\phone\clip.mp4" --participant P03 --session S01 --take S01-P03-T02 --camera camA --role main_axis --camera-height-m 1.1 --camera-distance-m 4.5 --fps-setting 30
+```
+
+The command prints `ingested <recording_id> (take ..., camA)`, or `already ingested <recording_id>` when the same file was
+ingested before under the same IDs. It copies the video to `data/recordings/<recording_id>/source.<ext>` (read-only) and
+writes `pts.parquet` (the real frame timestamps), then `recording.json` last, then one row in the database. A file that
+cannot be read, has no video stream, is longer than 30 minutes or larger than 20 GB (`TAIJI_MAX_SOURCE_DURATION_S`,
+`TAIJI_MAX_SOURCE_BYTES`), or belongs to a take and camera that already has a recording, is refused and leaves nothing
+behind. The second camera of a take uses the same `--take` and its own `--camera`; a retake needs a new take ID. Neither
+the path nor the file name is printed or logged. `data/` is never committed. If a folder named `.orphan-<id>` appears
+under `data/recordings/`, the database row could not be written: the folder is complete but unused. Ingest the file
+again, then delete the orphan folder by hand (no tool lists orphans yet; the database never points to one).
 
 ## Logging
 

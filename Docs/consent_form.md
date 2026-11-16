@@ -80,7 +80,8 @@ Tôi đã đọc (hoặc được đọc cho nghe) và hiểu nội dung trên, 
 
 ### B1. Ánh xạ từ phiếu sang cơ sở dữ liệu
 
-Bảng `participant` của migration 0001.
+Bảng `participant` của migration 0001. Lệnh `taiji participant add` (task P2.08) đặt các cột này từ phiếu đã ký; mọi câu trả lời
+phải được cho rõ (`yes` hoặc `no`) và ô (a) không tích thì lệnh từ chối.
 
 | Trên phiếu | Cột | Giá trị |
 | ---------- | --- | ------- |

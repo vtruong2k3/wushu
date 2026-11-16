@@ -14,7 +14,7 @@ Units and conventions
 from __future__ import annotations
 
 import re
-from typing import Annotated, Literal, Self
+from typing import Annotated, Literal, Self, get_args
 
 from pydantic import AwareDatetime, Field, StrictBool, field_validator, model_validator
 
@@ -62,10 +62,14 @@ class TakeIds(FrozenModel):
         return self
 
 
+CameraRole = Literal["main_axis", "side_left", "side_right"]
+CAMERA_ROLES: tuple[str, ...] = get_args(CameraRole)
+
+
 class CaptureInfo(FrozenModel):
     """How the camera was set up, from the capture sheet (structured values only, no free text)."""
 
-    camera_role: Literal["main_axis", "side_left", "side_right"]
+    camera_role: CameraRole
     height_m: Positive | None = None  # camera height [m]
     distance_m: Positive | None = None  # distance from the camera to the centre of the capture area [m]
     fps_setting: Positive | None = None  # frame rate set in the app [Hz]

@@ -15,6 +15,8 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+import pyarrow as pa
+import pyarrow.parquet as pq
 
 
 def sha256_file(path: str | Path, chunk: int = 1 << 20) -> str:
@@ -60,6 +62,13 @@ def atomic_save_npz(path: str | Path, **arrays: np.ndarray) -> Path:
             raise ValueError(f"Object arrays cannot be saved without pickle: {name!r}")
     buf = io.BytesIO()
     np.savez_compressed(buf, allow_pickle=False, **arrays)
+    return atomic_write_bytes(path, buf.getvalue())
+
+
+def atomic_write_parquet(path: str | Path, table: pa.Table) -> Path:
+    """Write an Arrow table as Parquet atomically; schema metadata (for example ``time_base``) is kept."""
+    buf = io.BytesIO()
+    pq.write_table(table, buf)
     return atomic_write_bytes(path, buf.getvalue())
 
 

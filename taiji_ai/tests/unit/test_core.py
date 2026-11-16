@@ -4,12 +4,20 @@ import json
 import sqlite3
 
 import numpy as np
+import pyarrow as pa
+import pyarrow.parquet as pq
 import pytest
 
 from taiji_ai.config import PROJECT_ROOT
 from taiji_ai.pose import skeleton as sk
 from taiji_ai.pose.registry import ModelIntegrityError, ModelRegistry
-from taiji_ai.store.artifacts import atomic_save_npz, atomic_write_json, read_json, sha256_file
+from taiji_ai.store.artifacts import (
+    atomic_save_npz,
+    atomic_write_json,
+    atomic_write_parquet,
+    read_json,
+    sha256_file,
+)
 from taiji_ai.store.db import apply_migrations, connect
 
 MIGRATIONS = PROJECT_ROOT / "migrations"
@@ -34,6 +42,22 @@ def test_atomic_writes_leave_no_tmp_and_keep_nan(tmp_path):
     q = atomic_save_npz(tmp_path / "pose.npz", kp=arr)
     with np.load(q) as z:
         assert np.array_equal(np.isnan(z["kp"]), np.isnan(arr))
+    assert not list(tmp_path.rglob("*.tmp"))
+
+
+def test_atomic_write_parquet_keeps_columns_types_and_metadata_and_leaves_no_tmp(tmp_path):
+    table = pa.table(
+        {
+            "frame_index": pa.array([0, 1, 2], pa.int32()),
+            "pts": pa.array([0, 512, 1024], pa.int64()),
+            "t_sec": pa.array([0.0, 1 / 30, 2 / 30], pa.float64()),
+        }
+    ).replace_schema_metadata({b"time_base": b"1/15360", b"start_pts": b"0"})
+    p = atomic_write_parquet(tmp_path / "rec" / "pts.parquet", table)
+    back = pq.read_table(p)
+    assert back.equals(table, check_metadata=True)
+    assert back.schema.types == [pa.int32(), pa.int64(), pa.float64()]
+    assert back.schema.metadata[b"time_base"] == b"1/15360"
     assert not list(tmp_path.rglob("*.tmp"))
 
 

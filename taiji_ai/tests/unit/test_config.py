@@ -20,6 +20,18 @@ def test_bug_0004_env_read_at_construction(monkeypatch, tmp_path):
     assert s.log_level == "DEBUG"
 
 
+def test_source_limits_default_and_follow_the_environment(monkeypatch):
+    """P2.02: one source file is limited in size and duration (TECH_WORKFLOW 10.2); both can be overridden."""
+    for name in ("TAIJI_MAX_SOURCE_BYTES", "TAIJI_MAX_SOURCE_DURATION_S"):
+        monkeypatch.delenv(name, raising=False)
+    s = Settings()
+    assert s.max_source_bytes == 20 * 1024**3 and s.max_source_duration_s == 1800.0
+    monkeypatch.setenv("TAIJI_MAX_SOURCE_BYTES", "1000")
+    monkeypatch.setenv("TAIJI_MAX_SOURCE_DURATION_S", "12.5")
+    s = Settings()
+    assert s.max_source_bytes == 1000 and s.max_source_duration_s == 12.5
+
+
 def test_defaults_without_env(monkeypatch):
     for name in ("TAIJI_DEVICE", "TAIJI_API_PORT", "TAIJI_WEB_DIST_DIR", "TAIJI_LOG_LEVEL"):
         monkeypatch.delenv(name, raising=False)

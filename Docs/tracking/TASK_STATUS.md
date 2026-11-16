@@ -3,7 +3,7 @@
 Live status of every task. Rules: `AGENTS.md` §2. Task definitions: `Docs/IMPLEMENTATION_PLAN_V1.md`.
 Update this file whenever a task changes status. Statuses: `TODO`, `ANALYZING`, `PLAN_READY`, `IN_PROGRESS`, `IN_REVIEW`, `DONE`, `BLOCKED`, `CANCELLED`.
 
-**Last updated:** 2026-11-15
+**Last updated:** 2026-11-16
 
 ## Summary
 
@@ -11,7 +11,7 @@ Update this file whenever a task changes status. Statuses: `TODO`, `ANALYZING`, 
 | -------------------------------------------------------- | ------: | ----: | ----------: | ------: | -----: |
 | P0 Nền tảng code (còn lại)                               |       7 |     7 |           0 |       0 |      0 |
 | P1 Discovery, ontology, protocol (v3 P00)                |      10 |     3 |           5 |       2 |      0 |
-| P2 Ingest và đồng bộ camera (W1, W2)                     |       8 |     1 |           7 |       0 |      0 |
+| P2 Ingest và đồng bộ camera (W1, W2)                     |       8 |     3 |           5 |       0 |      0 |
 | P3 Pose và khóa người tập (W4, W5)                       |       9 |     0 |           0 |       0 |      9 |
 | P4 Quality mask và lọc (W6)                              |       8 |     0 |           0 |       0 |      8 |
 | P5 Ba metric (W7)                                        |      10 |     0 |           0 |       0 |     10 |
@@ -21,7 +21,7 @@ Update this file whenever a task changes status. Statuses: `TODO`, `ANALYZING`, 
 | P9 Thu dữ liệu pilot và gán nhãn (v3 P02)                |       9 |     0 |           0 |       0 |      9 |
 | P10 Kiểm chứng metric và so sánh (v3 P03 / G03)          |       7 |     0 |           0 |       0 |      7 |
 | P11 Pilot giá trị và quyết định (v3 P05 / G05)           |       5 |     0 |           0 |       0 |      5 |
-| **Total**                                                | **101** | **13** |      **12** |   **2** | **74** |
+| **Total**                                                | **101** | **15** |      **10** |   **2** | **74** |
 
 `In progress` counts ANALYZING, PLAN_READY, IN_PROGRESS and IN_REVIEW. For P1 it means: plan written, work not started.
 
@@ -84,13 +84,13 @@ Update this file whenever a task changes status. Statuses: `TODO`, `ANALYZING`, 
 | ID    | Task                                                                                                   | Owner | Est. (d) | Depends on          | Status | Plan | Updated | Evidence / notes |
 | ----- | ------------------------------------------------------------------------------------------------------ | ----- | -------- | ------------------- | ------ | ---- | ------- | ---------------- |
 | P2.01 | Schema Pydantic `RecordingManifest`, `SyncManifest` (`schemas/`)                                       | B     | 0,5      | P0                  | DONE | `Docs/tasks/P2.01.md` | 2026-11-15 | `schemas/_base.py`, `recording.py`, `sync.py`: `recording/1`, `proxy/1`, `sync/1`, `IngestMeta`; time mapping `t_b = t_a + offset_s + drift × (t_a − t_ref_s)` (DEC-0026, TECH_WORKFLOW §4.2); unknown = null, never 0; `usable_for_metrics` needs the flash at both ends; T-SCH-01a..i (136 tests), mutations 79/81 (2 equivalent), gate 10/10, suite 472 passed; BUG-0047 and BUG-0048 closed, BUG-0049 planned (X.22) |
-| P2.02 | `ingest_recording(path, meta)`: copy read-only, SHA-256, probe, `pts.parquet`, cờ VFR, ghi DB          | B     | 1        | P2.01               | PLAN_READY | `Docs/tasks/P2.02.md` | 2026-11-15 | Plan confirmed by the maintainer 2026-11-15 (DEC-0025). Order of steps so that no half record can remain; consent checked before anything is written; fixes BUG-0046 (`is_vfr` on a coarse time base); CLI `taiji ingest`; Q1–Q4 (idempotent re-ingest, 20 GB / 30 min limits) |
+| P2.02 | `ingest_recording(path, meta)`: copy read-only, SHA-256, probe, `pts.parquet`, cờ VFR, ghi DB          | B     | 1        | P2.01               | DONE | `Docs/tasks/P2.02.md` | 2026-11-16 | Gate 10/10, `663 passed`; mutation check 89 of 90 caught (the survivor is equivalent); BUG-0046 fixed (VFR rule `tick_median` on integer ticks) and BUG-0051 (weak first tests) closed; CLI `taiji ingest`; DEC-0028 |
 | P2.03 | Tạo proxy H.264 720p, giữ timestamp nguồn; kiểm tra sai lệch proxy ↔ nguồn ≤ 1 frame tại 10 điểm       | B     | 0,5      | P2.02               | PLAN_READY | `Docs/tasks/P2.03.md` | 2026-11-15 | Planning experiment: timestamps kept (0 ms) on VFR and rotated sources; `scale=-2:720` enlarges small sources, so the height is capped; `-fps_mode passthrough` explicit |
 | P2.04 | Tách audio mono 16 kHz; tìm offset bằng tương quan chéo envelope ở cửa sổ đầu và cuối take; tính drift | A     | 1        | P2.02               | PLAN_READY | `Docs/tasks/P2.04.md` | 2026-11-15 | Plan confirmed by the maintainer 2026-11-15 (DEC-0025). Audio offset converted to video time via each file's audio start offset; "not found" instead of a guess; Q1 (15 s search), Q2 (keep `audio.wav` as a cache) |
 | P2.05 | Kiểm chứng bằng mốc flash: dò frame có độ sáng nhảy vọt; tính residual (ms, frame)                     | A     | 0,5      | P2.04               | PLAN_READY | `Docs/tasks/P2.05.md` | 2026-11-15 | Robust step detection on mean luma; residual in ms and frames; no flash → validation `none` |
 | P2.06 | Quy tắc dùng sync: residual ≤ 1 frame thì cho ghép metric, lớn hơn thì chỉ hiển thị song song          | A     | 0,25     | P2.05               | PLAN_READY | `Docs/tasks/P2.06.md` | 2026-11-15 | Unknown residual is never "small": usable only with status ok, flash at start and end, residual ≤ 1 frame; writes `sync.json` + row; CLI `taiji sync`; 0,25 → 0,5 d with the writing and CLI |
 | P2.07 | Chạy ingest + sync trên 2 video thử của P1.09; ghi báo cáo ngắn                                        | A+B   | 0,25     | P2.03, P2.06, P1.09 | PLAN_READY | `Docs/tasks/P2.07.md` | 2026-11-15 | Waits for P1.09 and the consent review (P1.06). Q1 proposes a rehearsal without any person (claps and light only, throwaway data folder) to test real phones earlier |
-| P2.08 | *(added 2026-11-15, DEC-0025)* Đăng ký người tập: mã giả danh + cờ consent, audit log, CLI `taiji participant` | A | 0,5 | P2.01, P1.06 | PLAN_READY | `Docs/tasks/P2.08.md` | 2026-11-15 | Approved by the maintainer as a scope change. Gap: ingest needs a participant with consent, but no task wrote `participant` rows; refuses `consent_analysis = 0`; plan §3 and §6 updated |
+| P2.08 | *(added 2026-11-15, DEC-0025)* Đăng ký người tập: mã giả danh + cờ consent, audit log, CLI `taiji participant` | A | 0,5 | P2.01, P1.06 | DONE | `Docs/tasks/P2.08.md` | 2026-11-16 | `store/participants.py` and `cli.py` (`taiji participant add`, `set`, `show`; `[project.scripts] taiji`): consent answers required and explicit, `analysis` must be yes, retention not in the past, actor is a role code, one transaction with its audit row, IDs only in messages (DEC-0027); T-DATA-05a..j (93 tests), mutations 46/46, gate 10/10, suite 565 passed; BUG-0050 found and closed |
 
 ## P3 — Pose và khóa người tập (W4, W5)
 

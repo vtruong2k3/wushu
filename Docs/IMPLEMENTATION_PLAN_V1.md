@@ -173,7 +173,7 @@ Con số này cao hơn 30–44 ngày công của v3 vì có thêm phần dựng 
 | Mã | Task | Ai | Ngày | Phụ thuộc | Đầu ra | Kiểm tra |
 |---|---|---|---:|---|---|---|
 | P2.01 | Schema Pydantic `RecordingManifest`, `SyncManifest` (`schemas/`); *2026-11-15: thêm `ProxyManifest`, `IngestMeta`, quy ước ánh xạ thời gian* | B | 0,5 → 0,75 | P0 | `schemas/recording.py`, `schemas/sync.py` | T-SCH-01 (a..i) |
-| P2.02 | `ingest_recording(path, meta)`: copy read-only, SHA-256, probe, `pts.parquet`, cờ VFR, ghi DB; *2026-11-15: sửa BUG-0046 (`is_vfr`), giới hạn kích thước/thời lượng, CLI `taiji ingest`* | B | 1 → 1,25 | P2.01 | `io/ingest.py`, `cli.py` | T-IO-06..09, T-IO-12..16 |
+| P2.02 | `ingest_recording(path, meta)`: copy read-only, SHA-256, probe, `pts.parquet`, cờ VFR, ghi DB; *2026-11-15: sửa BUG-0046 (`is_vfr`), giới hạn kích thước/thời lượng, CLI `taiji ingest`* | B | 1 → 1,25 | P2.01 | `io/ingest.py`, `cli.py` | T-IO-06..09, T-IO-12..19 (*12..19 chi tiết ở bảng test, 2026-11-16*) |
 | P2.03 | Tạo proxy H.264 720p, giữ timestamp nguồn; kiểm tra sai lệch proxy ↔ nguồn ≤ 1 frame tại 10 điểm | B | 0,5 | P2.02 | `io/proxy.py` | T-IO-10, T-IO-11 |
 | P2.04 | Tách audio mono 16 kHz; tìm offset bằng tương quan chéo envelope ở cửa sổ đầu và cuối take; tính drift | A | 1 | P2.02 | `io/audio_sync.py` | T-SYNC-01..03 |
 | P2.05 | Kiểm chứng bằng mốc flash: dò frame có độ sáng nhảy vọt; tính residual (ms, frame) | A | 0,5 | P2.04 | `io/flash.py` | T-SYNC-04 |
@@ -481,6 +481,14 @@ Cột **Loại**: U = unit, C = contract, G = golden, I = integration, M = manua
 | T-IO-09 | C | `pts.parquet` khớp `scan_pts`; cờ VFR lưu đúng | P2.02 |
 | T-IO-10 | C | Proxy: số frame và timestamp khớp nguồn (≤ 1 frame tại 10 điểm) | P2.03 |
 | T-IO-11 | C | Proxy từ video xoay: hiển thị đúng chiều, map thời gian không đổi | P2.03 |
+| T-IO-12 | C | *2026-11-16:* BUG-0046: video CFR 30 và 29,97 fps với time base 1/1000 không bị coi là VFR; quy tắc `tick_median` trên tick nguyên | P2.02 |
+| T-IO-13 | C | *2026-11-16:* Ingest từ chối người tham gia chưa đăng ký, không có đồng ý phân tích hoặc mã đồng ý không hợp lệ; không ghi gì | P2.02 |
+| T-IO-14 | C | *2026-11-16:* `meta` không hợp lệ (take_id không chứa session và người tham gia, khóa lạ, thiếu trường) bị từ chối; không ghi gì | P2.02 |
+| T-IO-15 | C | *2026-11-16:* Thông báo lỗi và log của ingest không chứa đường dẫn hay tên file nguồn | P2.02 |
+| T-IO-16 | C | *2026-11-16:* Lỗi sau khi copy không để lại dòng hay thư mục; lỗi ghi dòng DB chỉ để lại thư mục `.orphan-`; manifest ghi sau cùng; dòng chỉ được chèn khi thư mục đã đủ | P2.02 |
+| T-IO-17 | C | *2026-11-16:* File thứ hai cho cùng take và camera bị từ chối | P2.02 |
+| T-IO-18 | C | *2026-11-16:* Giới hạn kích thước (20 GB) và thời lượng (30 phút), tính cả biên; thời lượng là giá trị lớn hơn của container và timestamp | P2.02 |
+| T-IO-19 | C | *2026-11-16:* Lệnh `taiji ingest`: in `recording_id`, không in đường dẫn; mã thoát 0, 1, 2 | P2.02 |
 
 ### 15.3 Đồng bộ
 

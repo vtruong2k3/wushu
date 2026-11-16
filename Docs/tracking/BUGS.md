@@ -4,16 +4,18 @@ Rules: `AGENTS.md` §3. IDs are sequential (`BUG-NNNN`), never reused. Every bug
 Severity: **S1** critical · **S2** major · **S3** minor.
 Lifecycle: `OPEN → PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED` (or `WONT_FIX` with maintainer approval).
 
-**Next free ID:** `BUG-0050`
+**Next free ID:** `BUG-0052`
 
 ## Summary
 
 | ID       | Title                                                                                                                      | Sev | Status | Found in                                                                   | Fix task | Regression test                                                  | Opened     | Closed     |
 | -------- | -------------------------------------------------------------------------------------------------------------------------- | --- | ------ | -------------------------------------------------------------------------- | -------- | ---------------------------------------------------------------- | ---------- | ---------- |
+| BUG-0051 | The first version of the P2.02 tests passed with 22 broken rules (a mutation run on a copy; 24 of 88 mutants survived in two runs: 22 test gaps, one dead check and one equivalent): the size and duration limits at their exact value and the two sources of the duration, an upper-case extension, the PyAV error branch, zero frames, a zero median interval, a path in the "not a regular file" message, the stored `start_pts` and the audio offset (no fixture started at a non-zero timestamp), the duplicate count, the container frame rates, the relative spread, the numbers of the VFR rule and the ffprobe version in the manifest, a zero median and a single interval in the VFR rule, the float rounding in `is_vfr`, the audio start in the probe, `--participant` optional; the self-review found two more (the row may only be inserted when the folder is complete; a video with one frame, which has no interval); `_parse_meta` also held a type check that `parse_manifest` already made | S3 | CLOSED | P2.02 mutation check and self-review, `taiji_ai/tests/contract/test_ingest.py`, `tests/unit/test_vfr.py`, `tests/contract/test_cli_ingest.py`, `taiji_ai/src/taiji_ai/io/ingest.py` | P2.02 | 21 test cases added (collected: 116 → 125 → 135 → 137 in the files of the task; `test_ingest.py`, `test_vfr.py`, `test_cli_ingest.py`) and the fixtures `offset_video` and `one_frame_video`; the dead check removed; mutation runs 89 of 90 caught, the survivor is `p.size > 0` in the older `scan_pts_ticks` filter (equivalent for every fixture) (2026-11-16) | 2026-11-16 | 2026-11-16 |
+| BUG-0050 | `taiji participant show --id <text>` echoed the text typed by the user in its "not registered" message without checking that it is a pseudonym, so a name typed there would reach the terminal (and a log or screenshot); found in the P2.08 re-read of the first version; the first tests only used valid IDs | S3 | CLOSED | P2.08 self-review, `taiji_ai/src/taiji_ai/cli.py` (`show`) | P2.08 | `test_cli.py::test_t_data_05i_a_name_given_as_a_value_is_refused_and_never_echoed[show]`, `test_participants.py::test_t_data_05j_require_participant_*` (red first); mutation of the check caught (2026-11-16) | 2026-11-16 | 2026-11-16 |
 | BUG-0049 | `Docs/TECH_WORKFLOW_V1.md` has 15 markdownlint warnings that were there before P2.01 and that the IDE showed when P2.01 edited the file (it had never been analysed): MD032 (nine lists without a blank line: W0, W1, W2, W5, §9, Appendix B), MD040 (two fenced blocks without a language: the folder tree in §4.1 and the block of §5.1), MD031 (the `run_manifest.json` fence), MD036 (three bold labels used as headings in Appendix B) | S3 | PLANNED | P2.01 edit of the workflow (IDE diagnostics), pre-existing | X.22 | IDE diagnostics for `TECH_WORKFLOW_V1.md` show no warning | 2026-11-15 | |
 | BUG-0048 | The "full suite" test counts in the P1.04 and X.18 records are wrong: the P1.04 task file §5 and its CHANGELOG entry say 161 passed, the X.18 task file §5 and its CHANGELOG entry say 191 passed; the true totals were 305 and 335 (non-ontology files 246, plus the ontology and sheet tests of that day); I added up the dots of the last three progress lines only, a cut-off view of the output | S3 | CLOSED | P2.01 (a count taken from `pytest --collect-only`), `Docs/tasks/P1.04.md:198`, `Docs/tasks/X.18.md:167`, `Docs/tracking/CHANGELOG.md:65,84` | P2.01 | Each place now shows the old number struck through and the recomputed one; the current full run is 472 passed (2026-11-15) | 2026-11-15 | 2026-11-15 |
 | BUG-0047 | The first version of the P2.01 sync tests matched only the field name in the error, so five rules could be removed and the tests still passed (found by a mutation run: 60 of 67 caught); one was a real gap, because `usable_for_metrics` was also accepted with the flash residual at one end only, against DEC-0025 (flash needed at both ends); the validator and a test said the opposite | S3 | CLOSED | P2.01 mutation check, `taiji_ai/src/taiji_ai/schemas/sync.py` and `taiji_ai/tests/unit/test_schemas_sync.py` | P2.01 | Cases now match the message of the right rule (`_EXPECT`); `usable` needs both ends; mutation run caught all but the two equivalent ones (2026-11-15) | 2026-11-15 | 2026-11-15 |
-| BUG-0046 | `io.frames.is_vfr` flags a constant-frame-rate video as VFR when the time base is coarse: a 30 fps CFR clip with time base 1/1000 has frame intervals of 33 and 34 ms (rounding to the tick), std/median = 1.43 % > the 1 % tolerance, so `is_vfr` returns True; same for 29.97 fps | S3 (S2 once a stage acts on the flag) | PLANNED | Phase 2 planning experiment (2026-11-15), `taiji_ai/src/taiji_ai/io/frames.py` `is_vfr`, pre-existing since P0.03 | P2.02 | New T-IO-12: CFR 30 and 29.97 fps fixtures with `-video_track_timescale 1000` are not VFR; the existing VFR fixture still is | 2026-11-15 | |
+| BUG-0046 | `io.frames.is_vfr` flags a constant-frame-rate video as VFR when the time base is coarse: a 30 fps CFR clip with time base 1/1000 has frame intervals of 33 and 34 ms (rounding to the tick), std/median = 1.43 % > the 1 % tolerance, so `is_vfr` returns True; same for 29.97 fps | S3 (S2 once a stage acts on the flag) | CLOSED | Phase 2 planning experiment (2026-11-15), `taiji_ai/src/taiji_ai/io/frames.py` `is_vfr`, pre-existing since P0.03 | P2.02 | T-IO-12: `test_vfr.py` (26 tests), `test_video_io.py` and `test_ingest.py` (CFR 30 and 29.97 fps with `-video_track_timescale 1000` are not VFR; the real VFR fixture still is); every weakening of the rule is caught by the mutation run (2026-11-16) | 2026-11-15 | 2026-11-16 |
 | BUG-0045 | `AGENTS.md` has two markdownlint MD040 warnings: the lifecycle diagram (line 40) and the changelog-entry example (line 177) are fenced blocks without a language; present before P1.06, shown by the IDE when P1.06 edited the file for BUG-0044 | S3 | CLOSED | P1.06 (IDE diagnostics after the BUG-0044 fix), `AGENTS.md:40,177`, pre-existing | P1.06 | IDE diagnostics for `AGENTS.md` show no warning after the fix (checked 2026-11-15) | 2026-11-15 | 2026-11-15 |
 | BUG-0044 | The deletion task is cited as P8.12 in `AGENTS.md` §9.5 item 3, `Docs/tasks/P0.06.md` (two places) and `Docs/tasks/P1.06.md` (three places); the plan gives deletion of a participant's data to P8.14 (`tools/delete_participant.py`, T-STORE-07), and P8.12 is the report export | S3 | CLOSED | P1.06 analysis (2026-11-15), `AGENTS.md:357`, `Docs/tasks/P0.06.md:145,379`, `Docs/tasks/P1.06.md:26,48,79` | P1.06 | Manual check: `grep -rn "P8.12"` over `*.md` shows only export contexts after the fix (2026-11-15) | 2026-11-15 | 2026-11-15 |
 | BUG-0043 | `taiji_ai/README.md` has a markdownlint MD040 warning: the fenced block of the Layout section (line 57) has no language; present before X.18, shown by the IDE when X.18 edited the file (the P1.04 check of this file returned an empty answer because the IDE had not analysed it) | S3 | CLOSED | X.18 edit of the README (IDE diagnostics), pre-existing | X.18 | IDE diagnostics for the README show no warning after the fix (checked 2026-11-15) | 2026-11-15 | 2026-11-15 |
@@ -63,6 +65,65 @@ Lifecycle: `OPEN → PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED` 
 ---
 
 ## Details
+
+### BUG-0051 — P2.02 tests passed with 22 broken rules (mutation run)
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3 (test strength and one dead check; no wrong data was written)                           |
+| Status          | CLOSED                                                                                     |
+| Found in        | `taiji_ai/tests/contract/test_ingest.py`, `tests/unit/test_vfr.py`, `tests/contract/test_cli_ingest.py` (first versions), `taiji_ai/src/taiji_ai/io/ingest.py` (`_parse_meta`) |
+| Found by / date | agent (Claude Code), 2026-11-16, the mutation check of P2.02 (two runs) and a review of the order of writes |
+| Affects         | A later change could break one of these rules with every test still green                  |
+
+**Description:** the first versions of the P2.02 tests were all green at the first run, so a mutation run on a copy (88
+one-rule breakages) was the only evidence of their strength. 24 mutants survived in two runs: 22 test gaps, one dead check
+(`_parse_meta` tested the type of `meta`, which `parse_manifest` already rejects, so the check could not be reached) and one
+equivalent mutant. The gaps: the size and duration limits at their exact value; the two sources of the duration (the
+container value and the timestamps); an upper-case extension; the branch for a PyAV error; zero frames; a zero median
+interval; a path inside the message "not a regular file"; the stored `start_pts` and the audio start offset (no fixture
+started at a non-zero timestamp, so `t_sec` from zero and `start_pts` 0 were both accepted); the duplicate count; the
+container frame rates; the relative spread; the numbers of the VFR rule and the ffprobe version in the manifest; a zero
+median and a single interval in the VFR rule; floor instead of round in `is_vfr` (float noise of one ulp turns into a 2-tick
+deviation for some start offsets, found by a search); the audio start in the probe; `--participant`, `--session` and
+`--camera` optional on the command line. The self-review found two more: nothing tested that the row is inserted only when
+the folder is complete under its final name, and no test ingested a video with one frame (the manifest has a separate
+branch for it: no interval, no fps, no spread).
+**Fix plan:** a test for each gap, matching the specific rule; the fixtures `offset_video` (video starting at 5.0 s, audio
+about 0.5 s later) and `one_frame_video`; remove the dead check; rerun the mutations until every survivor is caught or shown
+to be equivalent.
+**Fix:** task P2.02, 2026-11-16 — as planned: 21 test cases, two fixtures, the dead check removed.
+**Verified:** agent, 2026-11-16 — the full run caught 86 of 87; the three mutations added after the self-review (insert
+order, two for the one-frame video) were run on their own and are all caught: 89 of 90. The survivor is `p.size > 0` in
+`scan_pts_ticks` (code older than this task; the end-of-stream packet has no timestamp and is already excluded, and no
+fixture can make an empty packet with a timestamp), so it is equivalent for every fixture.
+
+**History:**
+
+- 2026-11-16 OPEN → PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — found and fixed in P2.02.
+
+### BUG-0050 — `taiji participant show` echoed an unchecked `--id`
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3 (a path for personal text to reach the terminal; nothing is stored; no real data was involved) |
+| Status          | CLOSED                                                                                     |
+| Found in        | `taiji_ai/src/taiji_ai/cli.py`, the `show` branch of `_participant` (first version)        |
+| Found by / date | agent (Claude Code), 2026-11-16, re-reading the code written for P2.08 before the mutation run |
+| Affects         | The rule "log and print IDs only, never free text" (AGENTS.md section 6, `logs.py` rule 2)  |
+
+**Description:** `show` looked the id up with `get_participant` and, when it found nothing, wrote
+`participant <id> is not registered` with the id exactly as typed. `add` and `set` were safe because the library functions
+check the pattern first, and their messages are generic. The tests used valid ids only, so they could not see it.
+**Fix plan:** a library function `require_participant(conn, id)` that checks the pattern, then looks up, with generic
+messages (no echo of an invalid value); `show` and `update_consent` use it; tests with a name given as `--id` for `add`,
+`set` and `show` that assert the name appears nowhere in the output.
+**Fix:** task P2.08, 2026-11-16 — as planned.
+**Verified:** agent, 2026-11-16 — the tests are red before the fix; the mutation run catches the removal of the check.
+
+**History:**
+
+- 2026-11-16 OPEN → PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — found and fixed in P2.08.
 
 ### BUG-0049 — TECH_WORKFLOW_V1.md: 15 older markdownlint warnings
 
@@ -142,7 +203,7 @@ usable; rerun the mutations.
 | Field           | Value                                                                                      |
 | --------------- | ------------------------------------------------------------------------------------------ |
 | Severity        | S3 now (the flag is only stored); S2 once a stage acts on it (a wrong abstain or warning)  |
-| Status          | PLANNED (fix in P2.02)                                                                     |
+| Status          | CLOSED (fixed and verified in P2.02, 2026-11-16)                                           |
 | Found in        | `taiji_ai/src/taiji_ai/io/frames.py` `is_vfr` (since P0.03)                                |
 | Found by / date | agent (Claude Code), 2026-11-15, an experiment while planning Phase 2                      |
 | Affects         | `recording.vfr` and the P2 acceptance "VFR video is detected correctly"; containers with a 1/1000 time base (Matroska and WebM always, some MP4) |
@@ -158,12 +219,20 @@ more than one tick **and** by more than `rel_tol` of the median; VFR when such i
 in P2.02 from fixtures, recorded in the manifest as the VFR rule version). `scan_pts` gets a variant that returns the integer
 PTS and the time base, which P2.02 needs for `pts.parquet` anyway. Regression test T-IO-12 (CFR at time base 1/1000, 30 and
 29.97 fps: not VFR) next to T-IO-03 (the real VFR fixture: still VFR).
-**Fix:** —
-**Verified:** —
+**Fix:** task P2.02, 2026-11-16 — as planned: `scan_pts_ticks` (integer ticks, `Fraction` time base); the rule `tick_median`
+version 1 in `io/frames.py` (`VFR_RULE`, `vfr_verdict`): an interval deviates beyond 1 tick **and** 1 % of the median, VFR when
+more than 1 % of the intervals deviate; fewer than two intervals are never VFR; a zero median is VFR; `is_vfr(t_sec, tick_s)`
+rounds seconds back to ticks and calls the same rule; the rule and its numbers are stored in `recording.json` (`vfr_rule`).
+Decision DEC-0028 (5).
+**Verified:** agent, 2026-11-16 — T-IO-12 (CFR at time base 1/1000, 30 and 29.97 fps, is not VFR, end to end through
+`ingest_recording` too, with the 1.4 % spread kept as measured); the real VFR fixture is still VFR; the mutation run catches
+the rule without the tick tolerance, without the relative tolerance, with inclusive boundaries, with a zero median treated as
+constant, with a single interval judged, and with floor instead of round in `is_vfr`; the diff of `frames.py` re-read.
 
 **History:**
 
 - 2026-11-15 OPEN → PLANNED — found while planning Phase 2; scheduled in P2.02.
+- 2026-11-16 PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — fixed in P2.02.
 
 ### BUG-0045 — AGENTS.md: two fenced blocks without a language (MD040)
 
