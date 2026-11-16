@@ -340,3 +340,35 @@ def test_t_pose_08i_a_run_saved_and_loaded_is_the_same_run(cfr_video: Path, inge
     assert int(raw.person_offsets[-1]) == raw.n_frames + raw.stats.n_detector_calls
     assert loaded.recording_id == rec.manifest.recording_id
     assert loaded.stats.n_detector_calls == raw.stats.n_detector_calls and loaded.stats.elapsed_s is None
+
+
+def test_t_pose_08c_offsets_that_are_one_short_but_end_at_the_row_count_are_refused(saved: Path):
+    """Only the length of ``person_offsets`` is wrong here: the arrays hold exactly as many rows as its last value says."""
+    arrays = _arrays(saved)
+    off = arrays["person_offsets"]
+    short = off[: off.size - 1]
+    rows = int(short[-1])
+    _rewrite(
+        saved,
+        person_offsets=short,
+        bboxes=arrays["bboxes"][:rows],
+        keypoints=arrays["keypoints"][:rows],
+        scores=arrays["scores"][:rows],
+        from_detector=arrays["from_detector"][:rows],
+    )
+
+    with pytest.raises(PoseRawError, match="person_offsets"):
+        load_pose_raw(saved)
+
+
+def test_t_pose_08c_offsets_that_do_not_start_at_zero_but_fit_the_rows_are_refused(saved: Path):
+    """Only the start of ``person_offsets`` is wrong: shifted by one, with one more row in every person array."""
+    arrays = _arrays(saved)
+    more = {
+        name: np.concatenate([arrays[name], arrays[name][:1]])
+        for name in ("bboxes", "keypoints", "scores", "from_detector")
+    }
+    _rewrite(saved, person_offsets=arrays["person_offsets"] + 1, **more)
+
+    with pytest.raises(PoseRawError, match="person_offsets must start at 0"):
+        load_pose_raw(saved)
