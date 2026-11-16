@@ -1,7 +1,7 @@
 """HALPE_26 skeleton definition (schema ``halpe26/1``).
 
-Index order follows the HALPE-26 / RTMPose body7-halpe26 output. Verify against real model
-output during P01 (task S01) before freezing; bump the version if anything changes.
+Index order follows the HALPE-26 / RTMPose body7-halpe26 output. Verified on real model output on 2026-11-16
+(P3.01, ``Docs/reports/p3_01_joint_order.md``): ``halpe26/1`` is confirmed; bump the version if anything changes.
 Note: Sports2D/Pose2Sim export columns in tree order, not in this index order.
 """
 

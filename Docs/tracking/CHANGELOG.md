@@ -4,6 +4,225 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
 
 ---
 
+## 2026-11-16 — P3.02 run_pose: raw pose of everyone in a segment, by real PTS (DONE)
+
+- Changed: `taiji_ai/src/taiji_ai/pose/runner.py` (new), `taiji_ai/tests/helpers/fake_pose.py` (new), `tests/unit/test_pose_box.py` (new), `tests/contract/test_pose_runner.py` (new),
+  `tests/golden/test_pose_d20.py` (new), `taiji_ai/README.md`, `Docs/IMPLEMENTATION_PLAN_V1.md` (T-POSE-05, 06 rows), `Docs/tasks/P3.02.md`, `Docs/tracking/{TASK_STATUS,CHANGELOG}.md`
+- Behaviour: `run_pose(recording_dir, start_s, end_s, model)` reads the frames of `[start - 1 s, end + 1 s]` of the original video by the rows of `pts.parquet` (display rotation applied), runs the detector on the first frame and every N frames
+  (default 5) and takes the boxes of the frames between from the previous keypoints (+12 %), runs the detector at once when nobody is followed, and returns the raw persons as compressed rows (`PoseRaw`: `frame_index` = row of the table, `t_sec`,
+  boxes, keypoints and scores as the model returned them, `from_detector`). Persons with few valid keypoints are kept (the maintainer's decision) and not followed. A file that does not match its table, a bad segment, a size change or a model
+  failure is a `PoseRunError`, never a partial result
+- Tests: T-POSE-05a..e, 05g, 06a..h (47, CPU, scripted model), T-POSE-05f and T-POSE-07 (GPU, 2 passed); mutation of `runner.py` 22 of 23 (1 equivalent); real clip of D20: 4.7 s of work for 12 s of 1080p video at N = 5
+  (11.0 s at N = 1), N = 5 against N = 1: median 1.6 px, 95th percentile 5.7 px; gate 10/10 PASS (156.4 s, 1023 tests)
+- Decisions: none new (Q6 of the plan: persons with few keypoints are kept; recorded in the task file)
+- Bugs: none
+- Commit: not committed
+- Plan: Docs/tasks/P3.02.md
+
+## 2026-11-16 — P3.01 Joint order of the pose model verified on real frames (DONE)
+
+- Changed: `taiji_ai/src/taiji_ai/pose/order_check.py` (new), `taiji_ai/src/taiji_ai/pose/skeleton.py` (header comment only), `taiji_ai/tests/unit/test_pose_order_check.py` (new),
+  `taiji_ai/tools/pose_order_check.py` (new), `Docs/reports/p3_01_joint_order.md` (new), `Docs/DATASET_REGISTRY_TAIJI.md` (D20 allowed use), `Docs/tasks/P3.01.md`,
+  `Docs/IMPLEMENTATION_PLAN_V1.md`, `taiji_ai/README.md`, `Docs/tracking/{TASK_STATUS,DECISIONS,CHANGELOG}.md`
+- Behaviour: `halpe26/1` is confirmed: on five real frames (one web video, D20, used under DEC-0036) every structure check passes and, in the frontal frames with the face seen, the `L...` joints are on the
+  person's left (image right). A first draft of the check failed a correct profile frame because the turned head put the hidden ear on the other side: eyes and ears no longer vote on the side rule
+- Tests: T-POSE-04a (16 unit tests; mutation 10 of 10), T-POSE-04 (manual, report); gate 10/10 PASS (133.8 s, 974 tests)
+- Decisions: DEC-0036 (D20 used without licence restriction for internal development, maintainer's decision)
+- Bugs: none
+- Commit: not committed
+- Plan: Docs/tasks/P3.01.md
+
+## 2026-11-16 — X.26 Web Tai Chi videos registered (D20) and an ingest + proxy smoke test (DONE)
+
+- Changed: `Docs/DATASET_REGISTRY_TAIJI.md` (D20: summary row and detail with SHA-256), `Docs/tasks/{X.26,P2.07}.md`, `Docs/tracking/{TASK_STATUS,CHANGELOG}.md`. No code.
+- Behaviour: none. The four videos of `video/` (third-party web content, licence unknown) may be used for `dev-test`, technical only. Smoke test in a throwaway folder with a test participant:
+  H.264 file 92.4 s and AV1 file 132.9 s, proxy check passed (max deviation 0.000 frames), originals unchanged (SHA-256), no VFR; the folder was deleted. Not the acceptance of P2.07 (no phone files, no claps, one camera)
+- Tests: none added; gate 10/10 PASS (129.6 s, 958 tests)
+- Decisions: none (the allowed use is the registry's)
+- Bugs: none
+- Commit: not committed
+- Plan: Docs/tasks/X.26.md
+
+## 2026-11-16 — P2.05 rework after the review: no dead arguments, recording pair checked, tests that bite (BUG-0067, BUG-0068) (DONE)
+
+- Changed: `taiji_ai/src/taiji_ai/io/flash.py` (no `settings` / `rotation_deg`; `FlashError` for other recordings than the audio result's and for a missing `median_dt_s`;
+  a missing `t_ref_s` gives `method = none`), `pipeline/sync_take.py` (call), `tests/contract/test_flash_review.py` (new), `tests/unit/test_flash_detector.py` (new),
+  `tests/helpers/flash_media.py` (`fps_b`), `test_flash.py` and `test_flash_pairs.py` (call), `Docs/tasks/P2.05.md` (§4-§8 corrected, §10), `Docs/IMPLEMENTATION_PLAN_V1.md`,
+  `taiji_ai/README.md`, `Docs/tracking/{TASK_STATUS,BUGS,DECISIONS,CHANGELOG}.md`
+- Behaviour: the validation of recordings that are not those of the audio result is refused (it ran silently); no invented 30 fps or reference time 0.0; the tests now
+  catch a mapping that ignores drift or `t_ref_s`, a swapped folder order, the faster camera's frame, a search margin of 0, a noise-blind threshold and a missing refractory time
+- Tests: T-SYNC-04g..n (17 tests); mutation of `flash.py`: 15 of 17 caught, 2 equivalent (before: 4 of 14 caught by the tests of P2.05); gate 10/10 PASS (159.8 s, 958 tests)
+- Decisions: DEC-0032 item (3) marked as replaced by DEC-0034
+- Bugs: BUG-0067 and BUG-0068 (S3) closed; BUG-0066 (S2, weak and split flashes) stays planned until the P2.07 numbers
+- Commit: not committed
+- Plan: Docs/tasks/P2.05.md §10
+
+## 2026-11-16 — X.25 The `sync` database row only for usable takes (BUG-0065) (DONE)
+
+- Changed: `taiji_ai/src/taiji_ai/pipeline/sync_take.py` (row only when `usable_for_metrics`, else delete), docstrings in `store/sync.py` and
+  `schemas/sync.py`, `tests/contract/test_sync_take_wrong_lag.py` (T-SYNC-05f), `Docs/IMPLEMENTATION_PLAN_V1.md`, `Docs/tasks/{X.25,P2.01}.md`,
+  `Docs/tracking/{TASK_STATUS,BUGS,DECISIONS,CHANGELOG}.md`
+- Behaviour: a take that the usability rule refuses (`residual_too_large`, `flash_not_found`, `start_only`, ...) has no `sync` row and an old row is removed
+  on a re-run; before, the row existed for every `ok` take with `validated_by = 'flash'` and a wrong offset. `sync.json` is unchanged
+- Tests: T-SYNC-05f (4); `test_sync_take.py` and `test_sync_rule.py` unchanged; 2 of 2 mutants caught; gate 10/10 PASS (121.4 s, 945 tests)
+- Decisions: DEC-0035 (amends DEC-0025 item 7 and P2.01 Q4)
+- Bugs: BUG-0065 (S2) closed
+- Commit: not committed
+- Plan: Docs/tasks/X.25.md
+
+## 2026-11-16 — X.24 End-to-end test of `sync_take` with an audio lag wrong by 1 s; BUG-0065 found (DONE)
+
+- Changed: `taiji_ai/tests/contract/test_sync_take_wrong_lag.py` (new), `Docs/IMPLEMENTATION_PLAN_V1.md` (T-SYNC-05e), `Docs/tasks/{X.24,P2.07}.md`,
+  `Docs/tracking/{TASK_STATUS,BUGS,CHANGELOG}.md`
+- Behaviour: none in `src/`. T-SYNC-05e shows through `sync_take` and `sync.json` that an audio lag wrong by ±1 s is not usable (`residual_too_large`, or
+  `flash_not_found` when camera A hides a flash of each pair). The probe also showed that the `sync` database row is written for such a take with the wrong
+  offset and `validated_by = 'flash'` (BUG-0065)
+- Tests: T-SYNC-05e (4 cases); gate 10/10 PASS (145.3 s, 941 tests)
+- Bugs: BUG-0065 (S2) registered, waits for the maintainer's choice (A: row only for usable takes; B: usable columns by migration 0002)
+- Commit: not committed
+- Plan: Docs/tasks/X.24.md
+
+## 2026-11-16 — X.23 Flash check: one-to-one pair matching (BUG-0064, S1) (DONE)
+
+- Changed: `taiji_ai/src/taiji_ai/io/flash.py` (`match_flashes` replaces `match_residuals`; `FlashParams.min_flashes`),
+  `tests/unit/test_flash_match.py` (new), `tests/contract/test_flash_pairs.py` (new), `tests/helpers/flash_media.py` (new),
+  `Docs/TECH_WORKFLOW_V1.md` (W2 step 4), `Docs/capture_protocol.md`, `Docs/IMPLEMENTATION_PLAN_V1.md` (T-SYNC-04e, 04f),
+  `taiji_ai/README.md`, `Docs/tasks/{X.23,P2.05}.md`, `Docs/tracking/{TASK_STATUS,BUGS,DECISIONS,CHANGELOG}.md`
+- Behaviour: a time mapping wrong by one pair gap (1 s) is never `usable_for_metrics`: before, it passed (residual 0.0 ms) when one camera showed
+  one flash of a pair, because the check took the closest flash, ignored flashes without a partner and averaged the distances; now the flashes of a
+  window are matched one to one in time order, both cameras must show the same number of flashes (at least two) or the window is not judged
+  (`flash_not_found`), and the residual is the largest distance. A flash not seen now makes the take unusable for metrics even with the right offset
+- Tests: T-SYNC-04e (15), T-SYNC-04f (10 cases; 7 failed on the old code); mutation: 8 of 8 caught; gate 10/10 PASS (179.9 s, 937 tests)
+- Decisions: DEC-0034
+- Bugs: BUG-0064 (S1) closed; BUG-0063 (S2) stays planned (audio-side limits)
+- Commit: not committed
+- Plan: Docs/tasks/X.23.md
+
+## 2026-11-16 — P2.06 Sync usability rule, sync.json and SQLite sync row, CLI taiji sync (DONE)
+
+- Changed: `taiji_ai/src/taiji_ai/io/sync_rule.py` (new), `taiji_ai/src/taiji_ai/pipeline/sync_take.py` (new),
+  `taiji_ai/src/taiji_ai/store/sync.py` (new), `taiji_ai/src/taiji_ai/store/recordings.py` (added `find_by_take`),
+  `taiji_ai/src/taiji_ai/schemas/sync.py` (added `to_db_row`), `taiji_ai/src/taiji_ai/cli.py` (added `sync` subcommand),
+  `taiji_ai/tests/unit/test_sync_rule.py` (new), `taiji_ai/tests/contract/test_sync_take.py` (new),
+  `Docs/tasks/P2.06.md`, `Docs/tracking/{TASK_STATUS,CHANGELOG}.md`, `taiji_ai/README.md`
+- Behaviour: pure decision function `decide_usability` maps audio sync result and flash validation to
+  `usable_for_metrics` (true iff audio `status == "ok"`, `validation.method == "flash"`, residuals at both ends present,
+  and `residual_frames <= 1.0`; false with explicit documented reason `"no_audio"`, `"audio_not_found"`, `"start_only"`,
+  `"flash_not_found"`, or `"residual_too_large"`); `sync_take(take_id, settings=...)` verifies recordings exist for take,
+  runs audio synchronization and flash validation, atomically writes `data/takes/<take_id>/sync.json`, and manages SQLite
+  `sync` table (`upsert_sync` when `status == "ok"`, `delete_sync` otherwise per DEC-0025 item 7); CLI `taiji sync <take_id>`
+  exits 0 on usable take, 1 on unusable or missing take.
+- Tests: T-SYNC-05 (1.0 vs 1.0001 frame threshold), T-SYNC-05b (each reason), T-SYNC-05c (`sync_take` writes `sync.json` and
+  SQLite row on `ok`; `start_only` writes `sync.json` without SQLite row), T-SYNC-05d (missing camera refusal), and CLI tests;
+  13 tests pass in `test_sync_rule.py` and `test_sync_take.py`; full test suite 912 passed;
+  quality gate 10/10 PASS in 134.4 s
+- Bugs: none
+- Commit: not committed
+- Plan: Docs/tasks/P2.06.md
+
+## 2026-11-16 — P2.05 Flash validation: brightness series, onset detection, residual in ms and frames (DONE)
+
+- Changed: `taiji_ai/src/taiji_ai/io/flash.py` (new), `taiji_ai/tests/contract/test_flash.py` (new),
+  `Docs/tasks/P2.05.md`, `Docs/tracking/{TASK_STATUS,DECISIONS,CHANGELOG}.md`, `taiji_ai/README.md`
+- Behaviour: extracts frame timestamps and mean luma on downscaled grayscale grid (`brightness_series`);
+  detects rising steps using robust difference statistics ($\Delta L \ge \max(\text{min\_step}, \text{median}(\Delta L) + k_{\text{mad}} \times 1.4826 \times \text{MAD})$)
+  with refractory separation to ignore sustained illumination and reject slow auto-exposure ramps; pairs Camera A and B
+  onsets in start/end windows via audio sync mapping ($a\_to\_b(t_a)$); calculates residuals in ms and in frames of
+  slower camera ($\max(dt_A, dt_B)$); returns strict `SyncValidation` (`method = "none"` with `None` residuals if flashes
+  are missing or audio sync is not `ok`, per `AGENTS.md` §5.1)
+- Tests: T-SYNC-04, T-SYNC-04b..d; 5 contract tests pass; full test suite 722 passed;
+  quality gate 10/10 PASS in 44.4 s
+- Decisions: DEC-0032
+- Bugs: none
+- Commit: not committed
+- Plan: Docs/tasks/P2.05.md
+
+## 2026-11-16 — P2.04 rework after an independent review: end window, guard zones, honest numbers, dropped audio (DONE)
+
+- Changed: `taiji_ai/src/taiji_ai/io/audio.py` (no `settings`; refuses audio with dropped samples; `read_wav` scales before averaging
+  channels), `io/audio_sync.py` (rewritten: end window on the stretch both cameras recorded, guard zones, 0.2 s radius, `t_match_s`,
+  500 ppm cross-check, NaN guard, `SyncError`/`TakeMismatch`/`SyncInputError`), `schemas/sync.py` (docstring: `t_ref_s`),
+  `tests/helpers/sync_media.py` (new), `tests/contract/test_audio_sync_long.py`, `test_audio_sync_status.py`, `test_audio_io.py`,
+  `tests/unit/test_audio_matcher.py` (new), `test_audio_sync.py` (cleaned), `tests/contract/test_flash.py` (two call sites),
+  `taiji_ai/README.md`, `Docs/TECH_WORKFLOW_V1.md` (W2), `Docs/IMPLEMENTATION_PLAN_V1.md` (test list), `Docs/tasks/P2.04.md` §9,
+  `Docs/tracking/{TASK_STATUS,BUGS,DECISIONS,CHANGELOG}.md`
+- Behaviour: the end window no longer depends on which phone stopped first (the first version lost the end, or accepted a 1 s wrong lag as
+  `ok`, when B stopped before A in takes of 60 s or more: BUG-0058, S1); `t_ref_s` and the drift are taken at the claps on A's video
+  timeline (100 ppm was read as 118 ppm); a window is searched wider than it is accepted so that a single clap of a pair cannot win
+  at an edge; the drift limit is 500 ppm and is the cross-check of the two windows; audio with dropped samples is refused; no sentinel
+  numbers, no swallowed errors, no `settings`; the envelope is computed on windows only (141 MB for 10 min instead of 476 MB)
+- Tests: T-SYNC-01c (real container), 06..10; 187 tests in five files (first version 10); 80 of the first 149 new tests were red on the
+  old code; mutation: first rework 43 of 43 caught, new logic 12 of 14 mutants caught by the existing tests; the 2 survivors (B's end slice not widened at the start / at the end) got T-SYNC-06f (a clap at the edge of the window pushed by +/-400 ppm) and are caught: 14 of 14; an adversarial pass of seven lenses (about 1100 probe cases);
+  full suite 899 passed; gate 10/10 PASS
+- Decisions: DEC-0033
+- Bugs: BUG-0058 (S1), BUG-0059..0062 closed; BUG-0063 (S2, limits of the audio match) planned for P2.06 and P2.07
+- Commit: not committed
+- Plan: Docs/tasks/P2.04.md §9
+
+## 2026-11-16 — P2.04 Audio synchronization: mono 16 kHz, ZNCC envelope cross-correlation, offset and drift (first version; its close-out was wrong, see the entry above)
+
+- Changed: `taiji_ai/src/taiji_ai/io/audio.py` (new), `taiji_ai/src/taiji_ai/io/audio_sync.py` (new),
+  `taiji_ai/tests/contract/test_audio_sync.py` (new), `Docs/tasks/P2.04.md`,
+  `Docs/tracking/{TASK_STATUS,DECISIONS,CHANGELOG}.md`, `taiji_ai/README.md`
+- Behaviour: extracts mono 16 kHz WAV (`audio.wav`) cached in recording directory; computes 4th-order Butterworth
+  bandpass envelope (f_hp = 300 Hz, f_lp = 50 Hz); performs Zero-Mean Normalized
+  Cross-Correlation (ZNCC) with sub-sample parabolic interpolation (< 0.01 ms precision); applies crest
+  factor gating (≥ 2.5) to reject continuous tones or noise lacking transient claps; partitions search windows
+  adaptively for short clips (dur < 2 w_s); converts audio lag to video timeline via container `audio.start_offset_s`;
+  calculates clock drift in ppm; unconfirmed claps or missing audio stream return `status = "not_found"` without
+  fabricated values (`AGENTS.md` §5.1)
+- Tests: T-SYNC-01, T-SYNC-01b..d, T-SYNC-02, T-SYNC-03; 10 contract tests pass; full test suite 717 passed;
+  quality gate 10/10 PASS in 46.7 s
+- Decisions: DEC-0031
+- Bugs: ~~none~~ (BUG-0058..0063, see the entry above)
+- Commit: not committed
+- Plan: Docs/tasks/P2.04.md
+
+## 2026-11-16 — P2.03 rework after an independent review: trimmed clips, honest proxy check, failures reported (DONE)
+
+- Changed: `taiji_ai/src/taiji_ai/io/frames.py` (`scan_pts_ticks` skips discard-flagged packets), `io/proxy.py` (rewritten: one
+  command, no `settings`, no made-up numbers, no stale manifest), `io/ingest.py` (`IngestResult.proxy_error`), `cli.py`
+  (exit 1, the ID always printed), `taiji_ai/tests/conftest.py` (fixtures `trim_base_video`, `trimmed_video`, `trimmed_mov`,
+  `yuv444_video`), `tests/helpers/media.py` (new), `tests/contract/test_trimmed_clip.py` (new), `test_proxy.py`,
+  `test_cli_ingest.py`, `taiji_ai/README.md`, `Docs/TECH_WORKFLOW_V1.md` (W1 steps 3 and 5),
+  `Docs/IMPLEMENTATION_PLAN_V1.md` (test list), `Docs/tasks/P2.03.md` §9, `Docs/tracking/{TASK_STATUS,BUGS,DECISIONS,CHANGELOG}.md`
+- Behaviour: a clip trimmed on a phone (stream copy that starts between two keyframes, an edit list) is stored with its
+  decoded frames only: 99 rows in `pts.parquet`, not 105, so row *i* is decoded frame *i* and the proxy check passes
+  (BUG-0052, S1: every timestamp was 0.2 s early in the probe); the proxy's timestamp check raises instead of writing
+  `999.0` or `0.0` for what it cannot measure; `proxy.json` records the command that really ran; an old `proxy.json` is
+  removed before a new proxy replaces its file; `taiji proxy` and `taiji ingest --proxy` exit 1 when the check failed or the
+  proxy step failed, and still print the recording ID (the recording is stored); `make_proxy(recording_dir)` has no
+  `settings` argument
+- Tests: T-IO-20..22 (trimmed clip as `.mp4` and `.mov`, oracle = PyAV decode on 10 fixtures), T-IO-23..27; 15 of the new or
+  changed tests were red on the old code; `test_proxy.py` 22, `test_cli_ingest.py` 21, `test_trimmed_clip.py` 16 (44 new in
+  total); mutation run on a copy of `src`: 41 of 41 caught (first review run: 8 of 23); suite 717 passed (663 at the P2.02
+  commit + 44 + 10 of P2.04 by another writer); gate 10/10 PASS
+- Decisions: DEC-0030
+- Bugs: BUG-0052 (S1), BUG-0053, BUG-0054, BUG-0055, BUG-0056 — fixed and closed in this task
+- Commit: not committed
+- Plan: Docs/tasks/P2.03.md §9
+
+## 2026-11-16 — P2.03 Proxy H.264 720p: timestamp check, metadata stripping, `taiji proxy` (first version; its close-out was wrong, see the entry above)
+
+- Changed: `taiji_ai/src/taiji_ai/io/proxy.py` (new), `taiji_ai/src/taiji_ai/io/ingest.py` (`proxy` option),
+  `taiji_ai/src/taiji_ai/cli.py` (`taiji proxy`, `taiji ingest --proxy`), `taiji_ai/tests/conftest.py` (fixtures
+  `hd_video_1080p`, `sd_video_480p`, `tagged_video`), `taiji_ai/tests/contract/test_proxy.py` (new),
+  `taiji_ai/tests/contract/test_cli_ingest.py`, `taiji_ai/README.md`, `Docs/TECH_WORKFLOW_V1.md` (W1 step 5),
+  `Docs/tasks/P2.03.md`, `Docs/tracking/{TASK_STATUS,DECISIONS,CHANGELOG}.md`
+- Behaviour: creates `proxy.mp4` (H.264 720p, yuv420p, +faststart, no audio) and `proxy.json` (`proxy/1`) in
+  `data/recordings/<recording_id>/`; scaling uses `scale=-2:'min(720,ih)'` to downscale 1080p without enlarging sources
+  smaller than 720 lines (e.g. 480p); autorotates rotated sources upright (`rotation = 0`) and records `rotation_applied`;
+  strips container metadata (`location`, `comment`, device info) with `-map_metadata -1`; ensures zero-based presentation
+  time for web playback; timestamp verification verifies equal frame counts and deviation <= 1.0 frame across sample points;
+  CLI provides `taiji proxy <recording_id>` and `taiji ingest --proxy`
+- Tests: T-IO-10, T-IO-10b, T-IO-10c, T-IO-11, T-IO-11b, T-IO-19; 8 proxy contract tests and 3 new CLI tests pass red-first;
+  ~~full test suite 673 passed; quality gate 10/10 PASS in 25.6 s~~ (wrong: 674 tests, 11 new; the gate of the reviewed tree
+  gave 8/10)
+- Decisions: DEC-0029
+- Bugs: none
+- Commit: not committed
+- Plan: Docs/tasks/P2.03.md
+
 ## 2026-11-16 — P2.02 `ingest_recording`: read-only copy, SHA-256, `pts.parquet`, VFR rule, `taiji ingest` (DONE)
 
 - Changed: `taiji_ai/src/taiji_ai/io/ingest.py` (new), `taiji_ai/src/taiji_ai/store/recordings.py` (new),
@@ -627,7 +846,7 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
 
 ## 2026-11-14 — X.03 Rules for third-party code, models and datasets (DONE)
 
-- Changed: `AGENTS.md` — new §9 _Third-party code, models and datasets_ (license tiers, repositories, weights,
+- Changed: `AGENTS.md` — new §9 *Third-party code, models and datasets* (license tiers, repositories, weights,
   datasets, own recordings, where to record); "When in doubt" renumbered §9 → §10 (no existing reference used §9);
   §1 table and §5.10/§5.11 point to §9
 - Added: `taiji_ai/THIRD_PARTY_NOTICES.md` (direct deps with metadata licenses, NVIDIA proprietary CUDA/cuDNN wheels,

@@ -489,6 +489,17 @@ Cột **Loại**: U = unit, C = contract, G = golden, I = integration, M = manua
 | T-IO-17 | C | *2026-11-16:* File thứ hai cho cùng take và camera bị từ chối | P2.02 |
 | T-IO-18 | C | *2026-11-16:* Giới hạn kích thước (20 GB) và thời lượng (30 phút), tính cả biên; thời lượng là giá trị lớn hơn của container và timestamp | P2.02 |
 | T-IO-19 | C | *2026-11-16:* Lệnh `taiji ingest`: in `recording_id`, không in đường dẫn; mã thoát 0, 1, 2 | P2.02 |
+| T-IO-10b | C | *2026-11-16:* Proxy từ nguồn bắt đầu ở timestamp khác 0 (`-output_ts_offset`): cùng bản đồ thời gian tính từ frame đầu | P2.03 |
+| T-IO-10c | C | *2026-11-16:* Proxy: 1920×1080 thành 1280×720; 640×480 không bị phóng to; chiều rộng chẵn | P2.03 |
+| T-IO-11b | C | *2026-11-16:* Proxy không mang metadata container (vị trí, thiết bị) | P2.03 |
+| T-IO-20 | C | *2026-11-16:* BUG-0052: quét packet bằng frame decoder xuất ra, trên mọi fixture video, gồm clip cắt có edit list (mp4 và mov) | P2.03 |
+| T-IO-21 | C | *2026-11-16:* BUG-0052: ingest clip cắt lưu đúng số frame đã decode, không có `t_sec` âm, frame đầu ở 0 | P2.03 |
+| T-IO-22 | C | *2026-11-16:* BUG-0052: proxy của clip cắt qua kiểm tra (số frame bằng nhau, ≤ 1 frame) | P2.03 |
+| T-IO-23 | C | *2026-11-16:* Proxy sẵn sàng cho trình duyệt: `moov` trước `mdat`, không có audio, `yuv420p` từ nguồn 4:4:4, keyframe cách nhau ≤ 30 frame | P2.03 |
+| T-IO-24 | C | *2026-11-16:* `proxy.json` đúng sự thật: hash, số frame, chiều cao, phiên bản ffmpeg; `args` bằng lệnh đã chạy | P2.03 |
+| T-IO-25 | C | *2026-11-16:* ffmpeg lỗi, hết giờ, thiếu hoặc không đọc được phiên bản: `ProxyError`, không để lại file; cặp cũ giữ nguyên; không còn `proxy.json` cũ khi ghi manifest lỗi | P2.03 |
+| T-IO-26 | C | *2026-11-16:* Kiểm tra fail: proxy được giữ và đánh dấu với số frame thật; điều không đo được báo lỗi, không có số bịa | P2.03 |
+| T-IO-27 | C | *2026-11-16:* `ingest(proxy=True)` trên file đã ingest; lỗi proxy sau ingest giữ recording (`proxy_error`); CLI thoát mã 1 và in recording ID khi proxy lỗi hoặc kiểm tra fail | P2.03 |
 
 ### 15.3 Đồng bộ
 
@@ -497,8 +508,21 @@ Cột **Loại**: U = unit, C = contract, G = golden, I = integration, M = manua
 | T-SYNC-01 | C | Hai fixture có click ở thời điểm biết trước, lệch Δ: offset tìm được ≈ Δ (± 1 ms ở 16 kHz) | P2.04 |
 | T-SYNC-02 | C | Drift tổng hợp (kéo giãn audio 0,01%): drift ước lượng đúng dấu và độ lớn | P2.04 |
 | T-SYNC-03 | C | Không có click: báo "không tìm được", không trả offset bịa | P2.04 |
+| T-SYNC-01b | C | *2026-11-16:* Như T-SYNC-01 với nhiễu nhẹ và một tông nền dưới tiếng vỗ tay | P2.04 |
+| T-SYNC-01c | C | *2026-11-16:* Audio của một camera bắt đầu muộn hơn video trong container thật (`-itsoffset`): offset trên trục video đúng (± 1,5 ms) | P2.04 |
+| T-SYNC-01d | C | *2026-11-16:* Truyền A và B theo thứ tự nào kết quả cũng như nhau (camera A là camera xếp trước theo tên) | P2.04 |
 | T-SYNC-04 | C | Flash ở frame biết trước: phát hiện đúng frame | P2.05 |
+| T-SYNC-04e | U | `match_flashes`: ghép một-một theo thứ tự, residual là lớn nhất, khác số flash hoặc ít hơn hai thì không kết luận (BUG-0064) | X.23 |
+| T-SYNC-04g..n | C+U | `validate_sync`: ánh xạ có drift và `t_ref_s`, thứ tự hai thư mục, residual theo frame của camera chậm, sai lệch 3 s trong biên tìm, cửa sổ của clip dài ở đúng frame, nhiễu, flash tăng qua hai frame, từ chối cặp recording khác và manifest thiếu `median_dt_s` (BUG-0067, BUG-0068) | P2.05 |
+| T-SYNC-04f | C | Mapping lệch 1 s (±) không bao giờ `usable`, kể cả khi một camera không thấy một flash của cặp (BUG-0064) | X.23 |
 | T-SYNC-05 | U | Residual > 1 frame thì `usable_for_metrics = false` | P2.06 |
+| T-SYNC-05f | C | Dòng DB `sync` chỉ có khi take `usable_for_metrics`; chạy lại thành không dùng được thì dòng cũ bị xóa (BUG-0065) | X.25 |
+| T-SYNC-05e | C | `sync_take` với audio lệch 1 s (±): `sync.json` có `usable_for_metrics = false` (residual quá lớn hoặc không thấy flash) (BUG-0063, BUG-0064) | X.24 |
+| T-SYNC-06 | C | *2026-11-16:* BUG-0058: take 60, 120, 300 s; B dừng trước hoặc sau A, bắt đầu sớm hoặc muộn: `ok`, sai offset ≤ 1 ms, drift ≤ 20 ppm | P2.04 |
+| T-SYNC-07 | C | *2026-11-16:* BUG-0059: drift ±100 ppm đúng trong 10 % ở take 120 và 300 s; `t_ref_s` ở tiếng vỗ tay; cửa sổ trên trục video của A khi audio của A bắt đầu muộn | P2.04 |
+| T-SYNC-08 | C | *2026-11-16:* Trạng thái: `start_only`, `not_found`, drift vượt 500 ppm thì `start_only`, lag sai không bao giờ `ok`, audio giống hệt không lỗi schema, không audio thì có cửa sổ thật | P2.04 |
+| T-SYNC-09 | U | *2026-11-16:* Bộ so khớp: độ chính xác dưới mẫu < 0,01 ms, các cổng `min_peak`, `min_peak_ratio`, `min_crest`, `ratio_floor`, cửa sổ quá ngắn, offset ngoài `max_lag_s`, `t_match_s` | P2.04 |
+| T-SYNC-10 | C | *2026-11-16:* Audio vào/ra: khác take, sample rate khác, cache, stereo, ffmpeg lỗi hoặc hết giờ, camera thiếu audio, audio mất mẫu bị từ chối, header WAV hỏng, bộ nhớ của take 10 phút | P2.04 |
 
 ### 15.4 Pose và tracking
 
@@ -507,9 +531,10 @@ Cột **Loại**: U = unit, C = contract, G = golden, I = integration, M = manua
 | T-POSE-01 ✅ | C | Registry: hash đúng thì load; file bị sửa thì từ chối | P0.02 |
 | T-POSE-02 ✅ | C | Registry: thiếu file thì báo lỗi | P0.02 |
 | T-POSE-03 ✅ | C/GPU | Session dùng CUDA; shape output (N,26,2); bbox rỗng trả mảng rỗng | P0.02 |
-| T-POSE-04 | M | Thứ tự khớp trên ảnh thật khớp `halpe26/1` | P3.01 |
-| T-POSE-05 | C/GPU | Detector mỗi N frame: frame giữa dùng bbox từ keypoint; khi không thấy người thì chạy detector ngay | P3.02 |
-| T-POSE-06 | C | `run_pose` chỉ đọc frame trong `[start−1s, end+1s]`, timestamp tăng dần | P3.02 |
+| T-POSE-04 ✅ | M | Thứ tự khớp trên ảnh thật khớp `halpe26/1` (2026-11-16: 5 frame, `Docs/reports/p3_01_joint_order.md`) | P3.01 |
+| T-POSE-04a | U | `check_joint_order`: bộ khung đúng đạt; đảo trái/phải một cặp, đảo Head/Neck, ngón chân xa cổ chân, điểm thấp hoặc người không đứng thẳng đều được xử lý đúng; đầu quay không quyết định luật trái/phải | P3.01 |
+| T-POSE-05 | C/GPU | Detector mỗi N frame: frame giữa dùng bbox từ keypoint; khi không thấy người thì chạy detector ngay *(2026-11-16: 05a..e, 05g contract/unit với mô hình giả, 05f GPU; người ít keypoint được giữ trong lớp thô nhưng không được theo ở frame sau)* | P3.02 |
+| T-POSE-06 | C | `run_pose` chỉ đọc frame trong `[start−1s, end+1s]`, timestamp tăng dần *(2026-11-16: 06a..h: cửa sổ, VFR, xoay, biên, bảng PTS lệch, lỗi mô hình, tính xác định, keypoint ngoài ảnh không bị cắt)* | P3.02 |
 | T-POSE-07 | G/GPU | Video người thật cố định (1 clip ngắn trong fixture riêng, có quyền dùng): số người, keypoint ổn định so với lần chạy trước (± ngưỡng) | P3.02 |
 | T-POSE-08 | C | `pose_raw.npz` đúng schema; lưu và đọc lại giống hệt | P3.03 |
 | T-TRK-01 | U | Chọn mặc định: bbox lớn nhất gần tâm; chỉ định bbox thì theo người đó | P3.04 |

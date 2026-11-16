@@ -61,9 +61,17 @@ src/taiji_ai/
   io/probe.py          ffprobe metadata (rotation, fps, container, audio)
   io/frames.py         PyAV frames with real PTS timestamps, integer-tick scan, VFR rule (`tick_median`), display rotation
   io/ingest.py         `ingest_recording`: read-only copy, SHA-256, `pts.parquet`, `recording.json`, database row (P2.02)
-  pose/skeleton.py     HALPE_26 definition (halpe26/1)
+  io/proxy.py          `make_proxy`: browser H.264 720p, strips metadata, timestamp check, `proxy.json` (P2.03)
+  io/audio.py          audio extraction to 16 kHz mono WAV (`audio.wav`), cached in recording folder; refuses a track with dropped samples (P2.04)
+  io/audio_sync.py     ZNCC envelope cross-correlation, sub-ms parabolic peak, end window on the stretch both cameras recorded, video timeline, drift with a 500 ppm cross-check (P2.04)
+  io/flash.py          brightness series, MAD flash onset detection, one-to-one pair matching and residual validation (P2.05, X.23)
+  io/sync_rule.py      sync usability decision rule: residual ≤ 1 frame (P2.06)
+  pose/skeleton.py     HALPE_26 definition (halpe26/1, verified on real frames in P3.01)
+  pose/order_check.py  structure check of one skeleton: does the index mean what skeleton.py says (P3.01)
   pose/registry.py     verified model registry
   pose/rtm.py          YOLOX + RTMPose wrapper (detect / estimate separately)
+  pose/runner.py       `run_pose`: raw pose of everyone in a segment by real PTS, detector every N frames (P3.02)
+  pipeline/sync_take.py `sync_take`: orchestrate audio sync, flash validation, write `sync.json`, manage DB (P2.06)
   store/artifacts.py   atomic writes, checksums
   store/db.py          SQLite + numbered migrations (migrations/*.sql)
   schemas/ontology.py  ontology v0 models, loader and `check_segment` (reads config/ontology_v0.yaml)
@@ -72,8 +80,9 @@ src/taiji_ai/
   schemas/sync.py      sync.json and the time mapping between two cameras (sync/1)
   store/participants.py participant registry: consent answers and audit log (P2.08)
   store/recordings.py  queries and insert of the `recording` table (P2.02)
-  cli.py               command line: `taiji participant add, set, show` and `taiji ingest` (later: proxy, sync)
-  track/ quality/ metrics/ compare/ pipeline/ report/   (to be implemented)
+  store/sync.py        queries and upsert/delete of the `sync` table (P2.06)
+  cli.py               command line: `taiji participant add, set, show`, `taiji ingest`, `taiji proxy`, and `taiji sync`
+  track/ quality/ metrics/ compare/ report/   (to be implemented)
   api/                 FastAPI app (`python -m taiji_ai.api`, 127.0.0.1 only): /api/health, SPA serving
 config/                ontology_v0.yaml: the 24-form actions, sides, views, flags (draft until the coach signs)
 web/                   React + Vite + TypeScript UI: src/{api,components,pages}, tests/ (Vitest)
@@ -87,8 +96,11 @@ tests/helpers/         synth.py synthetic HALPE_26 skeleton generator (F-SYN, SY
 | Module | State |
 |---|---|
 | io (probe, frames) | done, tested (CFR, VFR, rotation, coarse time bases: T-IO-12, BUG-0046) |
-| ingest (io/ingest.py, store/recordings.py, `taiji ingest`) | done, tested (T-IO-06..09, 12..19); proxy, audio and sync are P2.03..P2.06 |
-| pose (registry, rtm) | done, tested on GPU |
+| ingest (io/ingest.py, store/recordings.py, `taiji ingest`) | done, tested (T-IO-06..09, 12..21; clips trimmed on a phone count decoded frames only, BUG-0052); audio and sync are P2.04..P2.06 |
+| proxy (io/proxy.py, `taiji proxy`) | done, tested (T-IO-10..11, 22..27; height-capped, metadata stripped, web-ready, timestamps checked, failures reported) |
+| audio sync & flash validation (io/audio.py, io/audio_sync.py, io/flash.py) | done, tested (T-SYNC-01..04, 01b..d, 04b..n, 06..10; 16 kHz mono WAV cache, ZNCC cross-correlation, sub-ms peak, drift, flash onset detection on real PTS, residual in ms and frames of slower camera) |
+| sync usability & pipeline (io/sync_rule.py, pipeline/sync_take.py, store/sync.py, `taiji sync`) | done, tested (T-SYNC-05, 05b..d; usability decision rule residual ≤ 1 frame, atomic sync.json, SQLite sync row, CLI) |
+| pose (registry, rtm, order check, runner) | done, tested on GPU; `halpe26/1` verified on real frames (P3.01); `run_pose` (P3.02) |
 | store (artifacts, db) | done, tested |
 | logging (unified logging, run.log, path redaction) | done, tested (T-CORE-01a..p, BUG-0011) |
 | api (app factory, /api/health, errors, SPA serving) | done, tested (T-API-01..04) |
@@ -96,7 +108,7 @@ tests/helpers/         synth.py synthetic HALPE_26 skeleton generator (F-SYN, SY
 | tooling (check.ps1 gate, repo_hygiene) | done, tested (T-TOOL-01..05) |
 | test helpers (F-SYN skeleton generator, SYN-01..12) | done, tested (T-SYN-01..04) |
 | ontology (schemas/ontology.py, config/ontology_v0.yaml, tools/render_ontology_review.py) | code done, tested (T-DATA-01a..l); the 24-action content is `draft_unconfirmed` until the coach signs; `Docs/discovery/ontology_review_sheet.md` is generated from the YAML (stale-guard test) |
-| manifests (schemas/_base, recording, sync) | done, tested (T-SCH-01a..i); `recording.json` is written by ingest, `proxy.json` and `sync.json` by P2.03 and P2.06 |
+| manifests (schemas/_base, recording, sync) | done, tested (T-SCH-01a..i); `recording.json` and `proxy.json` are written by ingest and P2.03, `sync.json` by P2.06 |
 | participants + CLI (store/participants.py, cli.py) | done, tested (T-DATA-05a..j); the consent form maps to it (`Docs/consent_form.md` B1) |
 | track, quality, metrics, compare, pipeline, report | not started |
 
@@ -114,13 +126,25 @@ taiji participant show --id P03
 
 Every consent answer is required (`yes` or `no`); `--analysis no` is refused, because without analysis consent no
 recording is accepted. `--actor` is a role code (`cli:O`, `cli:H1`), never a person's name, and goes to the audit log.
-Exit codes: 0 ok, 1 refused (the message says why), 2 usage error. The commands `proxy` and `sync` come with Phase 2.
+Exit codes: 0 ok, 1 refused (the message says why) or a proxy that is missing or failed its timestamp check, 2 usage
+error. The command `sync` comes with P2.06.
 
 Bring one phone video into the system (the participant must be registered with analysis consent; the file is only read):
 
 ```powershell
-taiji ingest "D:\phone\clip.mp4" --participant P03 --session S01 --take S01-P03-T02 --camera camA --role main_axis --camera-height-m 1.1 --camera-distance-m 4.5 --fps-setting 30
+taiji ingest "D:\phone\clip.mp4" --participant P03 --session S01 --take S01-P03-T02 --camera camA --role main_axis --camera-height-m 1.1 --camera-distance-m 4.5 --fps-setting 30 [--proxy]
 ```
+
+Generate or remake the H.264 720p browser proxy for a recording:
+
+```powershell
+taiji proxy <recording_id>
+```
+
+The proxy keeps the source timestamps and is checked against `pts.parquet`. A proxy that fails the check (or that cannot
+be made after `taiji ingest --proxy`) exits with code 1 and still prints the recording ID: the recording is stored, the
+failed proxy stays on disk marked `passed: false` in `proxy.json`, and the web UI must not use it for frame-accurate
+work. Run `taiji proxy <recording_id>` again to remake it.
 
 The command prints `ingested <recording_id> (take ..., camA)`, or `already ingested <recording_id>` when the same file was
 ingested before under the same IDs. It copies the video to `data/recordings/<recording_id>/source.<ext>` (read-only) and

@@ -4,12 +4,30 @@ Rules: `AGENTS.md` §3. IDs are sequential (`BUG-NNNN`), never reused. Every bug
 Severity: **S1** critical · **S2** major · **S3** minor.
 Lifecycle: `OPEN → PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED` (or `WONT_FIX` with maintainer approval).
 
-**Next free ID:** `BUG-0052`
+**Next free ID:** `BUG-0070`
 
 ## Summary
 
 | ID       | Title                                                                                                                      | Sev | Status | Found in                                                                   | Fix task | Regression test                                                  | Opened     | Closed     |
 | -------- | -------------------------------------------------------------------------------------------------------------------------- | --- | ------ | -------------------------------------------------------------------------- | -------- | ---------------------------------------------------------------- | ---------- | ---------- |
+| BUG-0069 | `store/artifacts.atomic_write_bytes` leaves `<name>.tmp` behind when the write or `os.replace` fails, and creates missing parent folders silently: a failed save litters the run folder and a typo in a path creates a new tree | S3 | IN_PROGRESS | `taiji_ai/src/taiji_ai/store/artifacts.py`, found by the agent while planning the atomic test of P3.03 | P3.03 | T-ART-01 (to write) | 2026-11-16 | |
+| BUG-0068 | P2.05 tests and records do not show what they claim: the tests of `test_flash.py` leave 10 of 14 mutants of `flash.py` alive (9 after the tests of X.23 and X.24; 2 of the 9 are equivalent): the drift and `t_ref_s` of the mapping (every fixture has drift 0), the swap of the folder order, the slower-camera frame (both cameras 30 fps), the search margin, the adaptive threshold (`k_mad`), the refractory time; step 4 of the plan ("run mutation checks") has no evidence; §7 says "None found" (BUG-0064 was in this task); "edge cases: empty input, single flash" are not tested; LaTeX in the task file and DEC-0032; counts of a moving tree (722, 44.4 s) | S3 | CLOSED | P2.05 review, `Docs/tasks/P2.05.md`, `taiji_ai/tests/contract/test_flash.py` | P2.05 rework | T-SYNC-04g..n (13 tests) | 2026-11-16 | 2026-11-16 |
+| BUG-0067 | `io/flash.py` breaks repository rules: dead arguments (`settings` of `validate_sync`, `rotation_deg` of `brightness_series`), a made-up frame interval (`median_dt_s or 1/30`), and no check that the two recording folders are the ones the audio result was made from (`recording_id_a/b`, take): the validation of another pair runs silently | S3 | CLOSED | P2.05 review, `taiji_ai/src/taiji_ai/io/flash.py` | P2.05 rework | T-SYNC-04n (4 tests) | 2026-11-16 | 2026-11-16 |
+| BUG-0066 | The flash detector needs a frame-mean luma step of 15 levels: a lamp that lights 5 % of a 640x360 frame (step 8) or 2 % (step 3) is not found, 10 % (step 16) only just; a flash whose first step is split over two frames is found one frame late (step 40, 0.3 split) or not at all (step 25, 0.5 split), so two cameras can differ by a frame on a perfect mapping, against a limit of one frame; the thresholds rest on synthetic full-frame flashes only | S2 | PLANNED | P2.05 review, `taiji_ai/src/taiji_ai/io/flash.py` (`find_flash_onsets`), DEC-0032 | to open after the maintainer's decision | regression tests named in the fix plan | 2026-11-16 | |
+| BUG-0065 | `sync_take` writes the `sync` database row for every take with `status = ok`, also when `usable_for_metrics` is false, and the row has no usable column: a take whose mapping is wrong by 1 s (flash residual 1000 ms) has a row with `offset_s` 1.5 (true 0.5) and `validated_by = 'flash'`; no code reads the row yet | S2 | CLOSED | P2.06 `taiji_ai/src/taiji_ai/pipeline/sync_take.py`, `schemas/sync.py` (`to_db_row`), migration 0001 (`sync`), found by the agent while writing the end-to-end test of X.24 | X.25 | T-SYNC-05f (4 tests) | 2026-11-16 | 2026-11-16 |
+| BUG-0064 | The flash check passes a take as usable when the audio lag is wrong by one pair gap (1 s) and one camera shows only one flash of a pair: unmatched flashes are ignored and there is no check of the pair structure (probe: residual 0.0 ms, `usable_for_metrics = true`) | S1 | CLOSED | P2.05 `taiji_ai/src/taiji_ai/io/flash.py` `validate_sync`/`match_residuals`, found while planning the fix of BUG-0063 | X.23 | T-SYNC-04e (15 tests) and T-SYNC-04f (10 cases) | 2026-11-16 | 2026-11-16 |
+| BUG-0063 | Known limits of the audio match that sound alone cannot remove: (1) a clap pair damaged the same way at both ends on one camera (one clap missing or swallowed, a tap of the phone louder than the claps, unequal claps) gives a lag wrong by one pair gap that the two windows agree on, so `ok` is possible with a wrong offset; (2) takes under 60 s keep the 45 % windows (a large start difference abstains); (3) weak claps (amplitude 0.3 with noise 0.02) are refused by `min_crest` 2.5 and `min_peak` 0.25 | S2 | PLANNED | P2.04 adversarial pass (about 1100 probe cases), `taiji_ai/src/taiji_ai/io/audio_sync.py` | P2.06, P2.07 | P2.06: a take whose audio lag is wrong by 1 s is `usable_for_metrics = false` through the flash residual | 2026-11-16 | |
+| BUG-0062 | The P2.04 records do not match the code: "Bugs: none" (see BUG-0058..0061), AC1 "mutations caught" ticked and plan step 5 (mutation check) missing from the log, the claim "< 0.01 ms precision" (DEC-0031, CHANGELOG, README) is not asserted by any test, T-SYNC-01b..d are not in the plan's test list, the reason of `min_peak` and `min_peak_ratio` is not recorded (AC2), LaTeX in the records | S3 | CLOSED | P2.04 review, `Docs/tasks/P2.04.md`, `Docs/tracking/{TASK_STATUS,CHANGELOG,DECISIONS}.md` | P2.04 | Gate 10/10 on the final tree; records match the output | 2026-11-16 | 2026-11-16 |
+| BUG-0061 | `io/audio.py` and `io/audio_sync.py` break repository rules (the same kinds as BUG-0054): dead `settings` argument, an `except OSError: pass` and two broad `except Exception`, invented numbers (`peak_ratio` 999.0, a placeholder window `(0.0, 1.0)` for "no audio", `drift` 0.0), the sample rate of the files ignored, generic `ValueError`, a 1.15 GB envelope for a 30 min take, a duplicated block | S3 | CLOSED | P2.04 review, `taiji_ai/src/taiji_ai/io/{audio,audio_sync}.py` | P2.04 | T-SYNC-10 (50 tests: refusals, cache, ffmpeg failure, windows only, dropped audio, damaged headers) | 2026-11-16 | 2026-11-16 |
+| BUG-0060 | The P2.04 tests passed with 13 broken rules (a mutation run on a copy: 34 mutants, 14 survived, one is equivalent): sub-sample interpolation (removed or with the wrong sign), the A/V offset of the end window, the status `start_only`, the `min_peak` and `min_peak_ratio` gates, the take-mismatch refusal, the `audio.wav` cache, the stereo downmix, the low-pass cut-off, the 15 s search limit; no test on a take of 60 s or more; T-SYNC-01c fakes the A/V offset by editing `recording.json`; debug prints left in two tests | S3 | CLOSED | P2.04 mutation check, `taiji_ai/tests/contract/test_audio_sync.py` | P2.04 | 187 tests in five files (the first version had 10); every mutant of the review's list is caught | 2026-11-16 | 2026-11-16 |
+| BUG-0059 | `estimate_sync` takes `t_ref_s` and the drift at the centres of the 30 s search windows, not at the claps: a 100 ppm drift is reported as 118.5 ppm on a 120 s take (+18 %) and 106 ppm on a 300 s take, with 0.8 ms of offset error at `t_ref_s`; `window_a_s` and `t_ref_s` are on A's audio timeline, the schema says video timeline | S3 | CLOSED | P2.04 review (probe E2), `taiji_ai/src/taiji_ai/io/audio_sync.py` | P2.04 | T-SYNC-07a..g in `test_audio_sync_long.py` (red first); the mutations are caught | 2026-11-16 | 2026-11-16 |
+| BUG-0058 | `estimate_sync` loses the end window or accepts a wrong lag when camera B stops before camera A (takes of 60 s or more): at 120 s and 300 s, B stopping 3 s early gives `start_only` although both files hold both claps; B stopping 0.4 s early (or starting early and stopping 1 s early) gives `status ok` with the end lag exactly 1 s wrong (the other clap of the pair): drift −11111 ppm at 120 s, −3704 ppm at 300 s, `peak_ratio` 120+. No test has a take longer than 16 s | S1 | CLOSED | P2.04 review (probe E1), `taiji_ai/src/taiji_ai/io/audio_sync.py` (end window, lines 314–344) | P2.04 | T-SYNC-06 (30 cases), 06b, 06d, 06e, 06f, T-SYNC-08 (drift of either sign around the limit); 80 of the 149 new tests were red first | 2026-11-16 | 2026-11-16 |
+| BUG-0057 | `Docs/tracking/CHANGELOG.md` has two markdownlint MD049 warnings in the X.03 entry (2026-11-14, in HEAD): the words _Third-party code, models and datasets_ use underscore emphasis where the project style is the asterisk; shown by the IDE when the P2.03 rework edited the file | S3 | CLOSED | P2.03 rework, `Docs/tracking/CHANGELOG.md` (X.03 entry) | P2.03 | IDE diagnostics clean for that line after the edit (2026-11-16) | 2026-11-16 | 2026-11-16 |
+| BUG-0056 | The P2.03 records do not match the tree: the gate is red now (`cli.py:158`, E501 and format), the suite has 674 tests (records say 673, "10 new" is 11), step 2 is logged done without the planned edit-list fixture, the self-review claims "no bugs" and "errors never swallowed", the test IDs `T-IO-10b/10c/11b` are not in the plan | S3 | CLOSED | P2.03 review, `Docs/tasks/P2.03.md`, `Docs/tracking/{TASK_STATUS,CHANGELOG,DECISIONS}.md`, `taiji_ai/src/taiji_ai/cli.py` | P2.03 | Gate 10/10 on the final tree (2026-11-16); counts measured from the run output | 2026-11-16 | 2026-11-16 |
+| BUG-0055 | A proxy whose timestamp check failed is reported as success (INFO log, exit code 0), and `taiji ingest --proxy` reports "error" without the recording ID when the proxy step fails after the recording was stored | S3 | CLOSED | P2.03 review (probes P2 and P3), `taiji_ai/src/taiji_ai/io/proxy.py`, `io/ingest.py`, `cli.py` | P2.03 | T-IO-27 in `test_proxy.py` and `test_cli_ingest.py` (red first); the mutations are caught (2026-11-16) | 2026-11-16 | 2026-11-16 |
+| BUG-0054 | `io/proxy.py` breaks repository rules: a Vietnamese docstring line, the `settings` argument is never used, two `except OSError: pass`, invented numbers in `proxy.json` (`999.0`, `points=1` with nothing measured), the command is written twice (manifest `args` can drift from what runs), `PtsScan.t_sec` re-implemented, `proxy.mp4` replaced before `proxy.json` | S3 | CLOSED | P2.03 review, `taiji_ai/src/taiji_ai/io/proxy.py`, `io/ingest.py` | P2.03 | T-IO-24, 25, 26 in `test_proxy.py`; the mutations are caught (2026-11-16) | 2026-11-16 | 2026-11-16 |
+| BUG-0053 | The P2.03 tests passed with 14 broken rules (a mutation run on a copy: 15 of 23 mutants survived, one is equivalent): `+faststart`, `-an`, `-pix_fmt`, `-g`, `-crf`, the source/proxy hashes, `n_frames_source` and `args` in `proxy.json`, an ignored ffmpeg failure, the temporary-file cleanup, **AC2 (a failed check keeps and marks the proxy) has no test**, and `ingest` with `proxy=True` on an already ingested file | S3 | CLOSED | P2.03 mutation check, `taiji_ai/tests/contract/test_proxy.py`, `tests/contract/test_cli_ingest.py` | P2.03 | T-IO-23..27 in `test_proxy.py` and `test_cli_ingest.py`; mutation run 41 of 41 caught (2026-11-16) | 2026-11-16 | 2026-11-16 |
+| BUG-0052 | `scan_pts_ticks` counts packets that are never shown: a clip trimmed on a phone (stream copy that starts between two keyframes, so the file has an edit list) gives `pts.parquet` and `n_frames` with 6 extra rows that have negative times, so row *i* is no longer decoded frame *i* (every timestamp is 0.2 s early in the probe) and the proxy check fails (105 source frames, 99 proxy frames) | S1 | CLOSED | P2.03 review (probe P1), `taiji_ai/src/taiji_ai/io/frames.py` (`scan_pts_ticks`, P2.02 code), `io/ingest.py` | P2.03 | `test_trimmed_clip.py` (T-IO-20..22: 16 cases, 6 red first); the mutation is caught (2026-11-16) | 2026-11-16 | 2026-11-16 |
 | BUG-0051 | The first version of the P2.02 tests passed with 22 broken rules (a mutation run on a copy; 24 of 88 mutants survived in two runs: 22 test gaps, one dead check and one equivalent): the size and duration limits at their exact value and the two sources of the duration, an upper-case extension, the PyAV error branch, zero frames, a zero median interval, a path in the "not a regular file" message, the stored `start_pts` and the audio offset (no fixture started at a non-zero timestamp), the duplicate count, the container frame rates, the relative spread, the numbers of the VFR rule and the ffprobe version in the manifest, a zero median and a single interval in the VFR rule, the float rounding in `is_vfr`, the audio start in the probe, `--participant` optional; the self-review found two more (the row may only be inserted when the folder is complete; a video with one frame, which has no interval); `_parse_meta` also held a type check that `parse_manifest` already made | S3 | CLOSED | P2.02 mutation check and self-review, `taiji_ai/tests/contract/test_ingest.py`, `tests/unit/test_vfr.py`, `tests/contract/test_cli_ingest.py`, `taiji_ai/src/taiji_ai/io/ingest.py` | P2.02 | 21 test cases added (collected: 116 → 125 → 135 → 137 in the files of the task; `test_ingest.py`, `test_vfr.py`, `test_cli_ingest.py`) and the fixtures `offset_video` and `one_frame_video`; the dead check removed; mutation runs 89 of 90 caught, the survivor is `p.size > 0` in the older `scan_pts_ticks` filter (equivalent for every fixture) (2026-11-16) | 2026-11-16 | 2026-11-16 |
 | BUG-0050 | `taiji participant show --id <text>` echoed the text typed by the user in its "not registered" message without checking that it is a pseudonym, so a name typed there would reach the terminal (and a log or screenshot); found in the P2.08 re-read of the first version; the first tests only used valid IDs | S3 | CLOSED | P2.08 self-review, `taiji_ai/src/taiji_ai/cli.py` (`show`) | P2.08 | `test_cli.py::test_t_data_05i_a_name_given_as_a_value_is_refused_and_never_echoed[show]`, `test_participants.py::test_t_data_05j_require_participant_*` (red first); mutation of the check caught (2026-11-16) | 2026-11-16 | 2026-11-16 |
 | BUG-0049 | `Docs/TECH_WORKFLOW_V1.md` has 15 markdownlint warnings that were there before P2.01 and that the IDE showed when P2.01 edited the file (it had never been analysed): MD032 (nine lists without a blank line: W0, W1, W2, W5, §9, Appendix B), MD040 (two fenced blocks without a language: the folder tree in §4.1 and the block of §5.1), MD031 (the `run_manifest.json` fence), MD036 (three bold labels used as headings in Appendix B) | S3 | PLANNED | P2.01 edit of the workflow (IDE diagnostics), pre-existing | X.22 | IDE diagnostics for `TECH_WORKFLOW_V1.md` show no warning | 2026-11-15 | |
@@ -65,6 +83,677 @@ Lifecycle: `OPEN → PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED` 
 ---
 
 ## Details
+
+### BUG-0069 — `atomic_write_bytes` leaves a `.tmp` file after a failure
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3                                                                                         |
+| Status          | IN_PROGRESS (task P3.03)                                                                   |
+| Found in        | `taiji_ai/src/taiji_ai/store/artifacts.py` `atomic_write_bytes` (used by every artifact writer) |
+| Found by / date | agent (Claude Code), 2026-11-16, reading the helper while planning the atomic-write test of P3.03 |
+| Affects         | any failed write: disk full, a failing `os.replace` (file in use on Windows)               |
+
+**Description:** the function writes `<name>.tmp`, fsyncs and calls `os.replace`; there is no cleanup, so when the write or the replace raises, the `.tmp` stays in the folder. The old file is intact (the guarantee that matters holds), but a re-run finds
+a stale `.tmp`, and the run folder is littered. The function also creates missing parent folders (`mkdir(parents=True)`), so a wrong path silently creates a new tree; some callers rely on it (ingest), so it stays and the P3.03 writer checks the folder itself.
+
+**Steps to reproduce:** monkeypatch `os.replace` to raise in `store.artifacts`, call `atomic_write_bytes(path, b"x")`: the exception is raised and `path.with_name(path.name + ".tmp")` exists.
+**Expected:** the exception is raised, the old file is intact, no `.tmp` remains. **Actual:** the `.tmp` remains.
+
+**Fix plan:** wrap the write and the replace in `try/except BaseException`: remove the `.tmp` (ignore a failure to remove, log it) and re-raise; keep the parent-folder creation. Regression test `T-ART-01` (replace fails, write fails, old content kept, no `.tmp`).
+**Fix:** —
+**Verified:** —
+
+**History:**
+
+- 2026-11-16 OPEN → PLANNED → IN_PROGRESS — found while planning P3.03; fixed in that task (small).
+
+### BUG-0068 — P2.05 tests and records do not show what they claim
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3                                                                                         |
+| Status          | CLOSED                                                                                     |
+| Found in        | `Docs/tasks/P2.05.md`, `taiji_ai/tests/contract/test_flash.py`, DEC-0032                    |
+| Found by / date | agent (Claude Code), review of P2.05, 2026-11-16                                           |
+
+**Description / evidence:** mutation run on copies of `src` (14 mutants of `flash.py`). With `test_flash.py` alone 4 are caught (onset one frame early, `min_step` 0.1,
+residual in seconds, `min` instead of `max` of the two ends) and 10 survive; with all flash and sync tests of today (X.23, X.24) 5 are caught and 9 survive:
+drift ignored in the mapping, `t_ref_s` ignored, camera swap removed, slower camera replaced by the faster, search margin 0, `k_mad` 0, refractory removed, and two
+that are equivalent (the backward seek is an optimisation: the frames before `t0` are skipped anyway; the `status` check repeats the `offset_s` and `drift` checks). The
+records: plan step 4 says "run mutation checks" and no result is recorded; §7 says "None found during this task" (BUG-0064 was in it); §6 lists "empty input, single flash"
+as edge cases but no test has them; LaTeX in the task file and in DEC-0032; "722 passed, 44.4 s" is a count of a moving tree; DEC-0032 item (3) (closest onset) is replaced by DEC-0034.
+
+**Fix plan:** tests (all on encoded fixtures, red first on the mutant): a take with a drift of ±300 ppm whose start and end flashes are only mapped right if `drift` and `t_ref_s` are used;
+the two folders given in the opposite order; cameras of 30 and 60 fps (residual in frames of the slower); a flash in B that lies beyond the margin; a noisy window (adaptive threshold);
+a two-step onset (refractory); an empty window; a clip longer than the 30 s window (a flash outside the window is not seen). Records: strike through the false statements in the task file,
+record the mutation result, replace LaTeX, mark DEC-0032 (3) as replaced by DEC-0034.
+**Fix:** P2.05 rework (task file §10), 2026-11-16 — T-SYNC-04g..n (drift and `t_ref_s`, folder order, slower camera, search margin, window of a long clip, noisy window, two-frame onset, refusals); the false statements of §4-§8 of the task file are struck through, LaTeX replaced, DEC-0032 item (3) marked as replaced by DEC-0034; the mutation result is recorded.
+**Verified:** agent, 2026-11-16 — mutation on copies of `src`: 17 mutants of `flash.py`, 15 caught, 2 alive and equivalent (backward seek; `status` check), before: 4 of 14 caught by `test_flash.py` alone; gate 10/10 PASS (159.8 s, 958 tests).
+
+**History:**
+
+- 2026-11-16 OPEN → PLANNED — found by the review of P2.05; scheduled with the rework after the maintainer's approval.
+- 2026-11-16 PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — approved by the maintainer; fixed and verified in the P2.05 rework.
+
+### BUG-0067 — `io/flash.py` has dead arguments, a made-up frame interval and no check of the recording pair
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3                                                                                         |
+| Status          | CLOSED                                                                                     |
+| Found in        | `taiji_ai/src/taiji_ai/io/flash.py` (`validate_sync`, `brightness_series`)                  |
+| Found by / date | agent (Claude Code), review of P2.05, 2026-11-16                                           |
+
+**Description:** (1) `validate_sync(..., settings=None)` and `brightness_series(..., rotation_deg=0)` never use these arguments (the same kind as BUG-0061); (2) `man.median_dt_s or (1.0 / 30.0)`
+invents 30 fps when the manifest has no interval (only a one-frame video; the residual in frames would use a number nobody measured, AGENTS.md §5.1); (3) the function never compares
+`audio_sync.recording_id_a/b` or the take with the two folders it is given, so the validation of another pair, or of an old audio result against new files, runs silently and can give a
+usable result for a mapping that belongs to something else.
+
+**Fix plan:** remove the two dead arguments (update `sync_take.py` and the tests that pass `settings=`); raise `FlashError` when `median_dt_s` is `None`; raise `FlashError` when the recording ids
+of the folders are not those of the audio result (after the camera sort); tests: other take, swapped but right folders (still works), one-frame video.
+**Fix:** P2.05 rework (task file §10), 2026-11-16 — no `settings` argument of `validate_sync`, no `rotation_deg` of `brightness_series`; `FlashError` for recordings that are not those of the audio result (checked after the camera sort, before the status check), for a manifest without `median_dt_s` (no 1/30 s), and a missing `t_ref_s` gives `method = none` (no 0.0).
+**Verified:** agent, 2026-11-16 — T-SYNC-04n: the two refusals failed on the old code (no error was raised); the `t_ref_s` case; mutants 'recording pair not checked', 'missing frame interval not refused' and 'missing t_ref not refused' are caught; callers updated; gate 10/10 PASS (159.8 s, 958 tests).
+
+**History:**
+
+- 2026-11-16 OPEN → PLANNED — found by the review of P2.05.
+- 2026-11-16 PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — approved by the maintainer; fixed and verified in the P2.05 rework.
+
+### BUG-0066 — The flash detector misses weak flashes and is a frame late on split flashes
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S2 (wrong abstain: a real flash is not seen and the take is refused; a one frame timing jitter against a limit of one frame) |
+| Status          | PLANNED                                                                                    |
+| Found in        | `taiji_ai/src/taiji_ai/io/flash.py` `find_flash_onsets`, `brightness_series`; DEC-0032      |
+| Found by / date | agent (Claude Code), review of P2.05, 2026-11-16, probe on synthetic data                  |
+| Affects         | `validate_sync`: windows are `flash_not_found`, so takes are not usable for metrics         |
+
+**Description / evidence (probe, scratch script):**
+
+| Lit area of a 640x360 frame (white box, encoded, grey scene with noise) | 50 % | 20 % | 10 % | 5 % | 2 % |
+| --- | --- | --- | --- | --- | --- |
+| largest step of the frame-mean luma | 80.3 | 32.0 | 16.4 | 8.0 | 3.3 |
+| onset found at frame 45 (true) | yes | yes | yes | **no** | **no** |
+
+A lamp held at the chest in a wide frame can light far less than 10 % of the image. Split onsets (frame 45 holds a share of the step): step 40 with 0.3 in frame 45 is reported at frame 46
+(one frame late); step 25 with 0.5 is not found; step 18 with 0.3 is not found. A frame late on one camera and on time on the other is a residual of one frame on a perfect mapping, which is the
+whole budget of the usability rule.
+
+**Root cause:** the detector uses the mean luma of the whole frame, a fixed absolute step of 15 levels, and the first single frame difference above it as the onset. The values come from synthetic
+full-frame flashes (DEC-0032); the plan's real-data check is P2.07.
+
+**Fix plan (needs the maintainer's approval: it changes the algorithm, about 0.5 to 1 day):** (1) P2.07 rehearsal (Q1) first measures the real lamp in the real scene (area, step, how many frames it takes to
+rise) with the current detector and reports the numbers; (2) block-wise detection: mean luma on a coarse grid (for example 16 x 9 blocks), a rise is flagged when a block (or a few neighbours) rises by more than
+k times the noise of that block in the window, which does not depend on the lit area of the whole frame; (3) onset by the cumulative rise over two consecutive frames (the frame where the cumulative step crosses half
+of the plateau, so a split onset gives the same frame on both cameras up to the sub-frame phase); (4) thresholds recorded with their reason in a DEC; (5) tests: lit area 2 to 50 % on encoded video,
+split onsets at several phases, a perfect mapping gives a residual of at most half a frame whatever the phase; (6) the capture protocol says how large and how bright the lamp must be, from the P2.07 numbers.
+**Fix:** —
+**Verified:** —
+
+**History:**
+
+- 2026-11-16 OPEN → PLANNED — found by the review of P2.05; waits for the maintainer's decision and the P2.07 numbers.
+
+### BUG-0065 — The sync database row is written for takes that are not usable and does not say so
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S2 (no code reads the row yet; S1 once P3, P5 or P8 reads it without `sync.json`: the row would carry a wrong time mapping and `validated_by = 'flash'`; the maintainer may raise it) |
+| Status          | CLOSED                                                                                     |
+| Found in        | `taiji_ai/src/taiji_ai/pipeline/sync_take.py` (writes the row when `status = ok`), `schemas/sync.py` `to_db_row`, migration 0001 table `sync` (no usable column), P2.06 |
+| Found by / date | agent (Claude Code), 2026-11-16, probe while writing the end-to-end test of X.24           |
+| Affects         | any reader of the `sync` table (P3, P5, P8 are expected to read the mapping)                |
+
+**Description:** P2.01 Q4 and DEC-0025 item 7 say "a row only for `status = ok`". The table has `offset_s`, `drift`, `residual_ms`, `method`,
+`validated_by` and no `usable_for_metrics`. `sync_take` writes the row for every `ok` take, including takes that the usability rule refuses
+(`residual_too_large`, `flash_not_found`). `validated_by` is `'flash'` whenever the flash method ran, also when its residual failed.
+
+**Steps to reproduce (probe, synthetic take with every flash seen, audio result forced +1.0 s wrong after the real audio sync):**
+`sync_take("S01-P03-T01")` gives `sync.json` with `usable_for_metrics = false`, `usable_reason = residual_too_large`; `SELECT * FROM sync` returns
+a row with `offset_s = 1.4999979` (true 0.5), `residual_ms = 999.998`, `validated_by = 'flash'`.
+
+**Expected:** a reader of the database cannot take a mapping that the rule refused. **Actual:** the row looks like a validated mapping.
+
+**Root cause:** the row was defined (P2.01 Q4) before the usability rule existed (P2.06); P2.06 kept the "row for `ok`" condition and did not add the usable condition.
+
+**Fix plan (the maintainer chooses):** (A, recommended) write the row only when `usable_for_metrics` is true and delete it otherwise (as for `start_only` now):
+a small change in `sync_take` (`if manifest.usable_for_metrics`), `sync.json` keeps the full result of unusable takes, DEC-0025 item 7 and P2.01 Q4 are amended,
+T-SYNC-05c/05f updated (an `ok` but unusable take writes the file and no row). (B) keep the row and add `usable_for_metrics` and `usable_reason` columns with
+migration 0002 (a schema change: every reader must then filter on it; more work and more ways to forget). Regression test T-SYNC-05f: after `sync_take` of
+a take whose audio lag is wrong by 1 s there is no `sync` row (A) or the row says `usable_for_metrics = 0` (B).
+**Fix:** task X.25, 2026-11-16 — option A chosen by the maintainer: `sync_take` writes the row only when `usable_for_metrics` and deletes the row otherwise; DEC-0035 amends DEC-0025 item 7 and P2.01 Q4; no migration.
+**Verified:** agent, 2026-11-16 — T-SYNC-05f (4 tests; 3 failed on the old code); `test_sync_take.py`, `test_sync_rule.py` unchanged and passing; 2 mutants of the new condition caught (row for every ok take again, old row not deleted); gate 10/10 PASS (121.4 s, 945 tests).
+
+**History:**
+
+- 2026-11-16 OPEN → PLANNED — found by a probe in X.24; waits for the maintainer's choice between A and B.
+- 2026-11-16 PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — option A chosen by the maintainer (severity kept S2); fixed and verified in X.25.
+
+### BUG-0064 — The flash check misses an audio lag wrong by one pair gap when a flash of a pair is not seen
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S1 (raised by the maintainer on 2026-11-16: two faults must coincide, BUG-0063 and a flash not seen, but the result is a wrong time mapping marked usable) |
+| Status          | CLOSED                                                                                     |
+| Found in        | `taiji_ai/src/taiji_ai/io/flash.py` (`validate_sync`, `match_residuals`), P2.05; `io/sync_rule.py` (P2.06) trusts its result |
+| Found by / date | agent (Claude Code), 2026-11-16, probe on synthetic takes (scratch script, not in the repository) |
+| Affects         | `sync.json.usable_for_metrics`, the `sync` row                                              |
+
+**Description:** `match_residuals` takes each flash of camera A, predicts its place in B with the audio mapping, picks the closest flash of B
+(within 1.5 s) and averages the distances. A flash of A without a partner is ignored, the number of flashes of the two cameras is not compared,
+and one flash of B may serve two flashes of A. The flashes come in pairs 1 s apart, like the claps, so a mapping wrong by one pair gap
+(BUG-0063) lands the first flash of A on the second flash of B at 0 ms; the pair is caught only because the second flash of A has no partner
+and adds 1000 ms to the mean. If a flash of the pair is not seen on camera A (hidden, too weak, over exposure), nothing adds that 1000 ms.
+
+**Steps to reproduce (probe on synthetic takes, 30 fps, flash pairs at 2.0/3.0 s and 12.0/13.0 s, B delayed by 0.5 s, audio offset given as
+true + 1.0 s):**
+
+| Case | Flashes seen A / B | Residual | `usable_for_metrics` |
+| ---- | ------------------ | -------- | -------------------- |
+| right offset | 4 / 4 | 0.0 ms | true |
+| +1.0 s and -1.0 s | 4 / 4 | 500 ms (15 frames) | false (`residual_too_large`) |
+| +1.0 s, A shows only the first flash of each pair | 2 / 4 | **0.0 ms** | **true** |
+| -1.0 s, A shows only the second flash of each pair | 2 / 4 | **0.0 ms** | **true** |
+| +1.0 s, B shows only the first flash of each pair | 4 / 2 | 1000 ms | false |
+
+**Expected:** a time mapping wrong by one second is never usable. **Actual:** it is usable when A shows one flash per pair.
+
+**Root cause:** the check matches by the closest flash and ignores the structure that makes the flashes identifiable (two flashes, the
+gap between them).
+
+**Fix plan:** (1) compare the pair structure in each window: A and B must show the same number of flashes, at least two, and the gap between
+the two flashes of A must equal the gap between the two flashes of B within one frame of the slower camera; otherwise `flash_not_found`
+(no new reason: the reason is logged); (2) match one to one (a flash of B serves one flash of A), an
+unmatched flash of either camera makes the window `flash_not_found`; (3) the residual of a window is the largest matched distance, not the
+mean (a mean can dilute one bad match); (4) regression tests: the five cases of the table above plus +1.0 s with the pair of the end window
+only damaged; (5) the capture protocol (`Docs/capture_protocol.md`) must say that both flashes of each pair must be visible on both cameras
+(the check of the coach/operator at the take). Where to fix: task X.23 (maintainer approved on 2026-11-16, including the code of P2.05); P2.06's rule needs no change.
+**Fix:** task X.23, 2026-11-16 — `match_flashes` (one to one in time order, equal counts and at least two flashes, largest distance) replaces `match_residuals`; `FlashParams.min_flashes` = 2; no schema change, no new reason (`flash_not_found`); DEC-0034; the capture protocol asks for both flashes of each signal on both cameras. Difference from the plan: the pair gap is not a second number, the per-flash residual covers it (task file §3).
+**Verified:** agent, 2026-11-16 — the 10 cases of T-SYNC-04f pass (7 of them failed on the old code: the old code gave `usable = true` when A showed one flash per pair, also with the right offset, and when each camera hid a different flash); T-SYNC-04e (15 tests, ImportError before); `test_flash.py`, `test_sync_take.py`, `test_sync_rule.py` unchanged and passing; 8 mutants of `match_flashes` caught (count check removed, `min_flashes` 1 in two places and not passed on, mean instead of max, no sorting (needed a stronger test), mapping not applied, residual in seconds); gate 10/10 PASS (179.9 s, 937 tests). Not claimed: real recordings (P2.07), and the audio part of BUG-0063 (consistent damage at both ends) is still open.
+
+**History:**
+
+- 2026-11-16 OPEN → PLANNED — found while planning the fix of BUG-0063; the probe is reproducible with `tests/contract/test_flash.py` helpers.
+- 2026-11-16 PLANNED → IN_PROGRESS — severity raised S2 → S1 and the fix approved by the maintainer; task X.23 opened.
+- 2026-11-16 IN_PROGRESS → FIXED → VERIFIED → CLOSED — fixed and verified in X.23.
+
+### BUG-0063 — Known limits of the audio match that sound alone cannot remove
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S2 (a documented limit of the method, mitigated by the flash check; the maintainer may raise it to S1, then P2.04 cannot close) |
+| Status          | PLANNED                                                                                    |
+| Found in        | `taiji_ai/src/taiji_ai/io/audio_sync.py`, found by the adversarial pass of the P2.04 rework |
+| Found by / date | agent (Claude Code), 2026-11-16, seven attack lenses, about 1100 probe cases, independent verifiers |
+| Affects         | `status = ok` from sound alone: it is not proof of a right offset                          |
+
+**Description:**
+
+1. *Consistent damage.* One camera hears only one clap of the pair (or the claps with unequal amplitudes, or a louder tap of the
+   phone at the start and stop) at **both** ends: both windows match the wrong clap, so both lags are wrong by one pair gap
+   and agree with each other (drift 0). Nothing in the sound tells the claps apart. Damage at **one** end only is caught by the
+   drift limit (500 ppm cross-check) for takes up to 2000 s (1 s error) or 600 s (0.3 s error).
+2. *Short takes.* A take under 60 s uses windows of 45 % of the take: a start difference larger than the window abstains
+   (not found), a pair cut by the window edge gives a start lag that the end rejects (`start_only`).
+3. *Weak claps.* Claps of amplitude 0.3 with noise 0.02 (a 15:1 ratio) are refused by the crest gate (2.07 against 2.5) and
+   would be refused by `min_peak` 0.25 (0.13). The refusal is safe (never a wrong lag).
+
+**Fix plan:** (0) 2026-11-16: the flash check that this plan relies on had its own hole, BUG-0064 (a flash of a pair not seen): fixed in X.23, so a mapping wrong by 1 s is not usable (T-SYNC-04f tests it through `estimate_sync`, `validate_sync` and `decide_usability`); item (a) below is covered at that level, a test through `sync_take` and `sync.json` was added in X.24 (T-SYNC-05e: audio forced 1 s wrong, `sync.json` not usable); the database row of such a take is BUG-0065. (a) P2.06 (usability rule): a test that a take whose audio lag is wrong by one second is not usable because the flash
+residual at the start and at the end exceeds one frame, and that `ok` from sound alone is never usable (DEC-0025 (6)); (b) P2.07
+(real pairs): measure the peak, ratio and crest of real claps and the real drift of the phones, set `min_peak`, `min_peak_ratio`,
+`min_crest` and `max_drift` from them, and evaluate a pair-structure check (the number and spacing of the transients must agree on
+the two cameras) if real recordings show damaged pairs; (c) capture protocol: both claps must be clearly audible on both phones.
+**Fix:** —
+**Verified:** —
+
+**History:**
+
+- 2026-11-16 OPEN → PLANNED — found by the adversarial pass of the P2.04 rework; the limits are in DEC-0033 and the README.
+
+### BUG-0062 — P2.04 records do not match the code
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3 (records; the code is not affected)                                                     |
+| Status          | CLOSED                                                                                     |
+| Found in        | `Docs/tasks/P2.04.md` §2, §4–§8, `Docs/tracking/{TASK_STATUS,CHANGELOG,DECISIONS}.md`, `taiji_ai/README.md` |
+| Found by / date | agent (Claude Code), 2026-11-16, independent review of P2.04                               |
+| Affects         | The `DONE` status of P2.04 and the value of its evidence                                   |
+
+**Description:**
+
+1. "Bugs: none" / "None found during this task" (task file §7 and the CHANGELOG entry) and "No open S1/S2 bug": see BUG-0058 (S1)
+   and BUG-0059..0061.
+2. AC1 is ticked "mutations caught" and plan step 5 asks for a mutation check (sign of the lag, the window choice, the found gate),
+   but the implementation log has no mutation run. The review's run (34 mutants) left 14 alive (BUG-0060).
+3. DEC-0031, the CHANGELOG and the README say "< 0.01 ms" / "sub-ms" precision from the parabolic interpolation. No test asserts it: the
+   contract tolerance is 1 ms (16 samples) and the unit tolerance 1e-4 s (1.6 samples); removing the interpolation passes.
+4. AC2 says the parameters and the found/not-found minimums are recorded "with their reason". DEC-0031 gives the reason of ZNCC and
+   of the crest factor; `min_peak = 0.25`, `min_peak_ratio = 1.25`, the 30 s window and the 15 s limit (Q1) have a value and no
+   evidence of how they were chosen on the fixtures (plan step 4).
+5. The test IDs T-SYNC-01b, 01c and 01d are used in the test names and the task file, but the plan's test list has only T-SYNC-01..03.
+6. The records write formulas in LaTeX (`$f_{\text{hp}} = 300\text{ Hz}$`) in the task file, DEC-0031 and the CHANGELOG; the other
+   records use plain text (BUG-0056 item 6 replaced it in P2.03).
+7. The implementation log writes `extract_audio(recording_dir, settings)`; the argument is keyword-only (and unused, BUG-0061).
+
+**Fix plan:** after BUG-0058..0061 are fixed: record the mutation run and the real gate output; correct "Bugs" and the AC1/AC2 text
+(strike through, keep the history); record how each minimum was chosen (a short table of the peak and ratio seen on the fixtures and
+on the new long takes) in DEC-0031 or a new DEC; add a test that asserts the sub-sample precision (a pulse delayed by a
+fractional number of samples, error < 0.01 ms) or remove the claim; register T-SYNC-01b..d and the new IDs in `IMPLEMENTATION_PLAN_V1.md`;
+replace the LaTeX; ask the maintainer to put P2.04 back to `IN_PROGRESS` until then.
+**Fix:** task P2.04 (rework), 2026-11-16 — the false statements of §5–§8 of the task file are struck through and listed in §9.12; the mutation run, the gate and the counts are recorded from the real output; T-SYNC-01b..d and 06..10 are in the plan's test list; the reason of each parameter is in DEC-0033; LaTeX replaced by plain text in the task file, DEC-0031 and the CHANGELOG.
+**Verified:** agent, 2026-11-16 — final gate 10/10 (task file §9.11).
+
+**History:**
+
+- 2026-11-16 OPEN → PLANNED — found by the P2.04 review; `TASK_STATUS.md` and the task file were **not** edited by the reviewer
+  because another writer is changing them (recommendation: reopen P2.04).
+- 2026-11-16 PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — fixed and verified in P2.04 (rework, task file §9).
+
+### BUG-0061 — `io/audio.py` and `io/audio_sync.py` break repository rules
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3 (conventions, dead code, made-up numbers in rare paths, memory; the normal path is correct) |
+| Status          | CLOSED                                                                                     |
+| Found in        | `taiji_ai/src/taiji_ai/io/audio.py`, `taiji_ai/src/taiji_ai/io/audio_sync.py`              |
+| Found by / date | agent (Claude Code), 2026-11-16, P2.04 review (reading the code, probe E9)                 |
+| Affects         | Maintainability; AGENTS.md §5.1, §6, §2 Step 4 checklist ("errors never swallowed")        |
+
+**Description:**
+
+1. `extract_audio(..., settings=...)` reads `settings = settings or get_settings()` (audio.py line 46) and never uses it; `estimate_sync`
+   accepts `settings` only to pass it on. A dead argument (the same as BUG-0054 item 2).
+2. `except OSError: pass` around the cleanup (audio.py lines 108–111); `except Exception` in `extract_audio` (line 104, which also turns
+   a timeout into the same message as any other error) and in `read_wav` (line 125).
+3. Invented numbers: `ratio = 999.0` when there is no second peak (two places in `xcorr_lag`); one clean pulse then passes the
+   ratio gate on a made-up value (checked: `xcorr_lag` on the one-pulse signals of the unit test gives `found = True`, peak 1.0,
+   `peak_ratio` 999.0; the mutation "999 → 0" breaks that test); `SyncWindow(window_a_s=(0.0, 1.0))` is returned for "no audio",
+   twice, a window that was never observed; `drift = 0.0` when `dt_ref <= 0` (a dead branch, but unknown must be `None`).
+4. `dur_a`, `dur_b`, the window arithmetic and `xcorr_lag` use `params.sr`, while `envelope` uses the `sr_a` and `sr_b` returned by
+   `read_wav`; nothing checks `sr_a == sr_b == params.sr`, so a wav with another rate (a cache written by an older version, a later
+   change of the extraction) shifts every time without an error.
+5. `ValueError` for a take mismatch and for an unreadable manifest: a specific exception is the rule (AGENTS.md §6).
+6. The envelope is computed on the whole recording: probe E9, 30 min (the limit of DEC-0025): 1.15 GB of peak numpy memory per camera
+   for 115 MB of audio. Only the two windows plus their margin are used.
+7. The "no audio" result is built twice (the early check and the `except NoAudioStream`), 20 duplicated lines.
+
+**Fix plan:** remove `settings` from both functions (callers and tests); log a warning for a failed delete, narrow the two `except`
+clauses (OSError, `scipy` errors, `subprocess.TimeoutExpired` with its own message); replace 999.0 by a documented constant for "no
+second peak" and carry it as `None`/a named cap in `LagEstimate` (decide with the maintainer if `SyncWindow.peak_ratio` may be `None`
+when `found`), build the "no audio" result in one helper with a window taken from the real recording duration, or make the window optional
+in the schema (a `proxy/1` style decision: DEC); `drift = None` instead of 0.0; compare the three sample rates and raise `AudioError`;
+specific exceptions; filter the windows only. Tests: a wav with another rate, one-sided "no audio", a timeout, memory of the envelope of
+a 10 min take under a limit.
+**Fix:** task P2.04 (rework), 2026-11-16 — no `settings`; no swallowed error (the failed delete is logged, the third-party parser's own errors become `AudioError`); no made-up number (`ratio_floor`, the ratio never below 1, the no-audio windows from the container duration, no 0.0 drift); the sample rate of both wavs is checked; `SyncError`, `TakeMismatch`, `SyncInputError`; the envelope is computed on the windows only (141 MB for 10 min, 282 MB for 28 min); the no-audio result is built once. Also: audio with dropped samples is refused, NaN/inf is not found, multichannel `read_wav` scales first, the same recording twice is refused.
+**Verified:** agent, 2026-11-16 — T-SYNC-10 passes (50 tests); the mutations of the refusals, the cache, the stereo mix, the rate check, the gap check, the NaN guard and the parser errors are caught; ruff and mypy clean; the diff was re-read.
+
+**History:**
+
+- 2026-11-16 OPEN → PLANNED — found by the P2.04 review.
+- 2026-11-16 PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — fixed and verified in P2.04 (rework, task file §9).
+
+### BUG-0060 — P2.04 tests passed with 13 broken rules (mutation run)
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3 (test strength; no wrong data in the cases they cover)                                  |
+| Status          | CLOSED                                                                                     |
+| Found in        | `taiji_ai/tests/contract/test_audio_sync.py`                                               |
+| Found by / date | agent (Claude Code), 2026-11-16, mutation run on a copy of `src` (the repository was not modified) |
+| Affects         | A later change could break one of these rules with every test still green; AC1 has no evidence |
+
+**Description:** 34 one-rule breakages of `audio.py` and `audio_sync.py` against `test_audio_sync.py` (baseline green): **20 caught,
+14 survived**. Survivors: (1) no sub-sample interpolation and (2) the interpolation with the wrong sign (the tolerance is 16 samples
+in the contract tests and 1.6 in the unit test); (3) the sign of the A/V offset in the **end** window (the test fakes the offset
+and checks the offset only, not the drift); (4) `start_only` reported as `ok` and (5) `start_only` without its offset (no test has a
+take where only the start claps are found); (6) `min_peak` and (7) `min_peak_ratio` removed one by one (only the crest gate is
+exercised: a flat tone is rejected by it first), and `found = True`; (8) the take-mismatch refusal; (9) the `audio.wav` cache (the test
+compares only the returned path); (10) `-ac 1` (every fixture is mono); (11) the low-pass cut-off; (12) the 15 s search limit (no
+test that an offset beyond `max_lag_s` is refused). The 14th survivor, an ignored ffmpeg failure, is equivalent (the later `os.replace` fails and becomes the same `AudioError`).
+Other defects of the tests: every fixture is 10–16 s, so the long-take branch (windows of 30 s) never runs (BUG-0058);
+T-SYNC-01c edits `recording.json` instead of a file whose audio starts later (the plan says a fixture; the probe E6 shows the real path
+is right: 0.0 ms of error, but nothing tests it); `print("DEBUG 01B:", result)` is left in T-SYNC-01c and in the drift test
+(mislabelled); the last assertion of T-SYNC-03 is duplicated; `rec_dir` in the first test is unused; the plan's F-VID fixtures in
+`conftest.py` and its step 5 (mutation check) were not done.
+
+**Fix plan:** one test per survivor, each on the specific rule: (1)–(2) a pulse delayed by a fractional number of samples, error under
+0.01 ms (the claim of DEC-0031); (3) a non-zero A/V offset with a drift: the drift must not change; (4)–(5) a take with claps only
+at the start (`start_only`, offset kept, drift `None`) and only at the end (`not_found`); (6)–(7) a clap pair that is correlated but
+weak (a peak below 0.25) and one with two equal pairs (a ratio below 1.25): not found; (8) two recordings of different takes:
+`ValueError`/the new specific exception; (9) a stale marker in `audio.wav` is returned without a new ffmpeg run; (10) a stereo
+source gives a mono wav; (11) a burst whose spectrum separates the cut-off values (or drop the claim); (12) an offset of 16 s is not
+found. Replace the faked A/V offset by a real container (`-itsoffset`, as in the probe E6);
+remove the debug prints and the duplicate assertion. Rerun the 34 mutations until every survivor is caught or shown equivalent.
+**Fix:** task P2.04 (rework), 2026-11-16 — four independent agents wrote the tests red first (new files), four others reviewed them; the lead extended them from the reviews (start differences of ±8 s, B stopping 23 and 50 s early, AAC long take, exact no-audio windows, the failed-cleanup and message checks, multichannel read_wav, the structural check that the envelope is computed on windows only, matcher cases) and replaced the faked A/V offset of T-SYNC-01c by a real container; debug prints, the duplicated assertion and the unused variable are gone.
+**Verified:** agent, 2026-11-16 — a mutation run of the reworked code (43 mutants) ended with 39 caught; the 4 survivors got a test each and are caught; targeted run of the new logic: 12 of 14 mutants caught by the existing tests; the 2 survivors (B's end slice not widened at the start / at the end) got T-SYNC-06f (a clap at the edge of the window pushed by +/-400 ppm) and are caught: 14 of 14.
+
+**History:**
+
+- 2026-11-16 OPEN → PLANNED — found by the P2.04 review (mutation run).
+- 2026-11-16 PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — fixed and verified in P2.04 (rework, task file §9).
+
+### BUG-0059 — Drift and `t_ref_s` are taken at the window centres, not at the claps
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3 (a systematic bias of at most 2 ms at the end of a take, under 1/16 frame; the 1 ms claim of the offset is only just met) |
+| Status          | CLOSED                                                                                     |
+| Found in        | `taiji_ai/src/taiji_ai/io/audio_sync.py` (`t_ref_start`, `t_ref_end`, `window_a_s`)        |
+| Found by / date | agent (Claude Code), 2026-11-16, probe E2 of the P2.04 review (synthetic takes with a known drift) |
+| Affects         | The drift and the offset in `sync.json` (P2.06), the mapping of times near the claps       |
+
+**Description:** the offset is measured where the claps are (about 6 s after the start, 6 s before the end), but it is assigned to
+`t_ref_s`, the centre of the 30 s window (15 s), and the drift divides the lag difference by the distance of the two window centres
+instead of the distance of the two clap pairs. Probe E2 (A records [0, T], B starts 0.5 s late and stops 1 s late, claps 6–7 s after
+the later start and 7–6 s before the earlier stop, B's clock scaled by 1 ± 1e-4): T = 120 s: drift +100 ppm reported as 118.5 ppm,
+−100 ppm as −118.4 ppm, offset error −0.8 ms / +0.8 ms at `t_ref_s`; T = 300 s: 106.4 ppm and −106.1 ppm. The bias is about
+(T − 13.5) / (T − 30) − 1 for this geometry: +18 % at 120 s, +6 % at 300 s, +55 % at 60 s. T-SYNC-02 (±20 %) passes only because its 16 s fixture puts the clap pair at the centre of the
+7.2 s windows. Second point: `window_a_s` and `t_ref_s` are computed on A's audio timeline, while the schema and P2.01 say A's video
+timeline; the difference is `audio.start_offset_s` of A (0 in every test; 4.5 s in the `offset_video` fixture), worth 100 ppm × that
+number of seconds of offset error (0.45 ms for 4.5 s).
+
+**Fix plan:** take `t_ref` of each window at the clap pair (the energy-weighted centre of the transient in A's window, or the A-time of the
+correlation peak) and convert it to A's video timeline by adding `av_offset_a`; compute the drift between the two `t_ref`; state in the
+`SyncManifest` docstring and DEC-0026 that "the matched window" is the window around the claps (a wording change, no schema change).
+Tests: takes of 60, 120 and 300 s with ±100 ppm: drift within 10 %, offset error at `t_ref_s` under 0.2 ms; a non-zero `audio.start_offset_s`
+of A (a real container, `-itsoffset`).
+**Fix:** task P2.04 (rework), 2026-11-16 — `t_match_s` (centroid of the part of the product above 5 % of its maximum) gives `t_ref_s` at the claps on A's video timeline; the windows are on A's video timeline; `offset_s` is the start lag at `t_ref_s`; DEC-0033. The adversarial pass found the whole-product centroid dragged to the window middle by noise (2 to 3 ms at 1500 ppm): thresholded.
+**Verified:** agent, 2026-11-16 — T-SYNC-07a..g pass (drift within 10 %, offset ≤ 0.2 ms at `t_ref_s`, the mapping hits the claps of both pairs within 0.5 ms, windows on A's video timeline with an audio offset, noise case); the mutations 't_match = window centre', 't_ref = window centre' and 'windows on the audio timeline' are caught.
+
+**History:**
+
+- 2026-11-16 OPEN → PLANNED — found by the P2.04 review.
+- 2026-11-16 PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — fixed and verified in P2.04 (rework, task file §9).
+
+### BUG-0058 — The end window loses the claps or accepts a wrong lag when B stops before A (takes of 60 s or more)
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S1 (wrong timestamp: a wrong end lag is accepted as `ok`, AGENTS.md §3.1). Mitigations: P2.05 (flash) and P2.06 (usability rule) are not built and must catch it; the maintainer may reclassify |
+| Status          | CLOSED                                                                                     |
+| Found in        | `taiji_ai/src/taiji_ai/io/audio_sync.py` (`estimate_sync`, end window: `t0_end_b`, lines 314–344) |
+| Found by / date | agent (Claude Code), 2026-11-16, probe E1 of the P2.04 review (synthetic takes with exact truth) |
+| Affects         | `status`, `drift` and the end lag of every take of 60 s or more in which camera B stops before camera A; the takes that Taiji 24 needs (minutes) |
+
+**Description:** for a take of 60 s or more the A end window is the last 30 s, the B end window starts `window + 15 s` before the end of B
+(45 s long), and the correlation accepts lags of ±15 s counted from the two window starts. The offset that is found is therefore
+`lag + (t0_end_b − t0_end_a)` with `t0_end_b − t0_end_a = (dur_b − dur_a) − 15 s`: the real offset must lie in
+`[dur_b − dur_a − 30, dur_b − dur_a]`, which holds only when B stops **between 0 and 30 s after A**. When B stops earlier the true
+peak is outside the search range.
+
+**Steps to reproduce (synthetic, `.mov` with PCM audio, 64×48 video, mono 16 kHz, noise σ 0.002, 5 ms 1.2 kHz bursts; a pair of claps
+1 s apart 6 s after the later start and 7 s before the earlier stop, as the capture protocol's margins; A records [0, T], B starts
+0.5 s late):**
+
+| Take | B stops | status | end found | offset error | drift (true 0) |
+| ---- | ------- | ------ | --------- | ------------ | -------------- |
+| 120 s | same time as A | ok | yes | −0.01 ms | 0.1 ppm |
+| 120 s | 3 s after A | ok | yes | −0.01 ms | 0.1 ppm |
+| 120 s | **3 s before A** | **start_only** | no (peak 0.0) | −0.01 ms | `null` |
+| 120 s | **0.4 s before A** | **ok** | yes (peak 0.5, ratio 122) | −0.01 ms | **−11111 ppm** |
+| 120 s | B starts 0.5 s early, stops 1 s before A | **ok** | yes (ratio 121) | 0.0 ms | **−11111 ppm** |
+| 300 s | 3 s before A | **start_only** | no | −0.01 ms | `null` |
+| 300 s | 0.4 s before A | **ok** | yes (ratio 143) | −0.01 ms | **−3704 ppm** |
+
+The wrong drift is exactly the 1 s gap of the clap pair divided by the distance of the window centres (90 s and 270 s): the end window
+matched the second clap of the pair, a wrong lag of 1 s (30 frames at 30 fps) with a high ratio, because the true peak is out of range and the
+neighbour is unique inside it.
+
+**Expected vs actual:** expected `ok`, offset error under 1 ms and drift near 0 whichever phone stops first; actual `start_only` or `ok` with
+the end lag 1 s wrong. Every fixture of the tests is 10–16 s long, so only the short-take branch (`dur < 60 s`, windows of 45 % of the take)
+runs; the branch of the real use (30 s windows) has no test.
+
+**Root cause:** the end search is anchored on the durations (`dur_b − dur_a`) and offset by an arbitrary 15 s instead of on the offset that
+the start window has just measured; its ±15 s range is not centred on where the claps are.
+
+**Fix plan:** (1) predict the claps in B from the start result: the B end window is A's end window shifted by `offset_start`, widened by
+±`max_end_lag_s` (default 2 s: 1000 ppm over 30 min is 1.8 s), whatever the stop times; when the start was not found the end cannot be
+predicted: report `not_found` (no guess); (2) add a plausibility bound on the drift (for example 2000 ppm: phone clocks stay within a few
+hundred ppm); a larger value turns the result into `start_only`, not `ok` (a wrong lag then cannot become a mapping); (3) tests, red
+first: takes of 60, 120 and 300 s; B stopping 20 s, 3 s and 0.4 s before and after A; B starting before and after A; the claps of the end
+pair missing in one file; assert status `ok`, offset error ≤ 1 ms, drift error ≤ 20 ppm, and that the mapped time of the end claps is within
+1 ms; (4) a mutation run on the new window and on the bound; (5) tell P2.05/P2.06 that `ok` is not proof: the flash check stays mandatory.
+**Fix:** task P2.04 (rework), 2026-11-16 — the end window is the last 30 s of the stretch both cameras recorded, searched in B where the start offset predicts it, in a slice wider than A's window by the margin on both sides (cut to what B recorded, no zero fill), lag range centred on the prediction; a window is searched wider than it is accepted (start: `max_lag_s` + 3.5 s guard; end: `end_margin_s` 3.5 s + drift allowance, accepted only within `max_drift`, now 500 ppm: the cross-check of the two windows); exclusion radius 0.2 s; DEC-0033. The first draft of the fix (margin 0.5 s) failed the T-SYNC-08 case of 9091 ppm and was corrected; the adversarial pass then found three more ways to the same S1 (a pair cut by a window or slice edge, a true match just beyond the start range, an end window anchored on A's own end): all fixed, their cases are tests.
+**Verified:** agent, 2026-11-16 — T-SYNC-06/06b/06d/06e/06f/08 pass (80 of the 149 new tests of the first rework were red on the old code); the 13 cases found by the adversarial pass are tests; targeted mutation run of the new logic: 12 of 14 mutants caught by the existing tests; the 2 survivors (B's end slice not widened at the start / at the end) got T-SYNC-06f (a clap at the edge of the window pushed by +/-400 ppm) and are caught: 14 of 14; the whole-take mutation run of the first rework ended at 43 of 43; gate 10/10. Not claimed: a wrong lag is still possible when a clap pair is damaged the same way at both ends (BUG-0063): the flash check must gate use.
+
+**History:**
+
+- 2026-11-16 OPEN → PLANNED — found by the P2.04 review. Not fixed by the reviewer: the code of P2.04 is the other writer's; the maintainer decides who fixes it.
+- 2026-11-16 PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — fixed and verified in P2.04 (rework, task file §9).
+
+### BUG-0057 — CHANGELOG: two MD049 warnings in the X.03 entry
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3 (style of old text)                                                                     |
+| Status          | CLOSED                                                                                     |
+| Found in        | `Docs/tracking/CHANGELOG.md`, entry "2026-11-14 — X.03" (present in HEAD)                  |
+| Found by / date | agent (Claude Code), 2026-11-16, IDE diagnostics after the P2.03 rework edited the file    |
+| Affects         | Nothing but the lint count of the file                                                     |
+
+**Description:** the X.03 entry writes the title of `AGENTS.md` §9 with underscores (MD049 expects asterisks).
+**Fix plan:** replace the two underscores by asterisks (no change of meaning).
+**Fix:** task P2.03 (rework), 2026-11-16 — done.
+**Verified:** agent, 2026-11-16 — the IDE shows no MD049 warning for that line.
+
+**History:**
+
+- 2026-11-16 OPEN → PLANNED → FIXED → VERIFIED → CLOSED — found and fixed in P2.03 (rework).
+
+### BUG-0056 — P2.03 records do not match the tree
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3 (records; the code is not affected)                                                     |
+| Status          | CLOSED                                                                                     |
+| Found in        | `Docs/tasks/P2.03.md` §4–§8, `Docs/tracking/{TASK_STATUS,CHANGELOG,DECISIONS}.md`, `taiji_ai/src/taiji_ai/cli.py:158` |
+| Found by / date | agent (Claude Code), 2026-11-16, independent review of P2.03                               |
+| Affects         | The `DONE` status of P2.03 and the value of its evidence                                   |
+
+**Description:**
+
+1. **The gate is red on the current tree.** `check.ps1` gave 8/10 (ruff-check and ruff-format failed); run directly, `ruff
+   check` reports E501 and `ruff format --check` wants to reformat `cli.py:158` (the `msg = ... if result.created else ...`
+   line is 132 characters). The task file, CHANGELOG and TASK_STATUS say "Gate 10/10 PASS in 25.6 s". The diff read at the
+   start of this review showed that statement already wrapped in parentheses; `cli.py` was modified at 09:13:37, after the
+   task records (09:11–09:12), and `Docs/tasks/P2.04.md` and `TASK_STATUS.md` were written at 09:15, so another writer is
+   active (the BUG-0027 situation). Who changed it is not known. The close-out box "Checks pass" is false for this tree.
+2. **Test counts.** The records say "673 passed (was 663 before; 10 new tests)". The suite collects and passes 674 tests;
+   the task adds 8 (`test_proxy.py`) + 3 (`test_cli_ingest.py`) = 11 (same kind of error as BUG-0048).
+3. **Step 2 is logged as done, but the edit-list fixture is missing.** Plan §2 step 2 says "Fixture with a non-zero start
+   time (`-output_ts_offset`) **and with an edit list**" and §1 says phone files with an edit list "were not covered". Only
+   the existing `offset_video` was used; the omission is not recorded as a deviation. That fixture is what finds BUG-0052.
+4. **Self-review claims that are not true.** "Bugs: None found" (see BUG-0052..0055), "Errors are raised ..., never swallowed"
+   (two `except OSError: pass`, BUG-0054), AC2 ticked although no test covers a failed check (BUG-0053). No red-run output is
+   recorded for "written red first", and no mutation run was made although BUG-0041/0047/0051 show the first tests of this
+   project were weak each time.
+5. **Test IDs.** `T-IO-10b`, `T-IO-10c` and `T-IO-11b` are used in test names and in the task file but are not in
+   `IMPLEMENTATION_PLAN_V1.md` (only T-IO-10, T-IO-11); `T-IO-11b` (metadata) is not even in the task file's test table.
+6. DEC-0029 and the task file write the tolerance with LaTeX (`$\le 1.0$`); the other records use plain text (`≤`).
+
+**Fix plan:** after BUG-0052..0055 are fixed: wrap `cli.py:158` (ruff format), run the full gate and record the real output;
+re-measure the test count and correct task file §5, CHANGELOG and TASK_STATUS; add the edit-list fixture to the
+implementation log as "done late, found BUG-0052" (history is append-only: mark the old statement, do not delete it);
+correct self-review §6/§7; register `T-IO-10b/10c/11b` (and the new ones) in `IMPLEMENTATION_PLAN_V1.md` §test list; replace
+the LaTeX; ask the maintainer to put P2.03 back to `IN_PROGRESS` in `TASK_STATUS.md` until then.
+**Fix:** task P2.03 (rework), 2026-11-16 — the gate is green on the final tree (`cli.py:158` had been wrapped by the other writer at 09:29); counts re-measured (files of the task 22 + 21 + 16, 44 new; suite 717 with the 10 tests of P2.04); the edit-list fixture built and logged as done late; the false statements of §5–§7 struck through and listed in §9.10 of the task file; T-IO-10b, 10c, 11b, 20..27 registered in `IMPLEMENTATION_PLAN_V1.md`; LaTeX replaced; CHANGELOG and TASK_STATUS corrected by strike-through (history kept); P2.03 was put back to `IN_PROGRESS` and is `DONE` again.
+**Verified:** agent, 2026-11-16 — final gate 10/10 PASS (task file §9.9).
+
+**History:**
+
+- 2026-11-16 OPEN → PLANNED — found by the P2.03 review; `TASK_STATUS.md` and the task file were **not** edited by the
+  reviewer because another writer was changing them (recommendation: reopen P2.03).
+- 2026-11-16 PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — fixed and verified in P2.03 (rework, task file §9).
+
+### BUG-0055 — A failed proxy check and a half-finished `ingest --proxy` are reported badly
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3 (wrong or missing report; no data is wrong)                                             |
+| Status          | CLOSED                                                                                     |
+| Found in        | `taiji_ai/src/taiji_ai/io/proxy.py` (`make_proxy`), `io/ingest.py` (`ingest_recording`), `cli.py` (`_ingest`, `_proxy`) |
+| Found by / date | agent (Claude Code), 2026-11-16, probes P2 and P3 of the P2.03 review (synthetic clips, throwaway data folder) |
+| Affects         | Batch runs (P2.07, P9.03) cannot tell a usable proxy from a refused one                    |
+
+**Description:**
+
+1. *Failed check.* With `pts.parquet` shifted by +0.2 s, `taiji proxy <id>` prints `proxy <id> (240p, check failed)` on
+   standard output, **exits 0**, and the library logs "proxy created ... check=False" at **INFO**. `proxy.mp4` and
+   `proxy.json` (`passed: false`, 6.0 frames) are kept, as the plan says, but nothing in the exit code or the log level says
+   the proxy must not be used for frame-accurate work.
+2. *Half-finished ingest.* `make_proxy` runs after the ingest transaction is committed. When it raises (probe: ffmpeg not
+   found), `taiji ingest ... --proxy` prints only `error: ffmpeg is not available on PATH` (exit 1, empty standard output).
+   The recording **was** stored (folder and `recording.json` exist), its ID is not printed, and the user is told "error"
+   about something that succeeded. Running the same command again does recover (`already ingested <id> (proxy: 240p, check
+   passed)`), but nothing says so.
+
+**Fix plan:** (1) log a WARNING with `recording_id`, both frame counts and `max_abs_dt_frames` when the check fails; the CLI
+prints a one-line explanation to standard error and exits 1 (the maintainer confirms the exit code, it is part of the
+contract in `cli.py` and DEC-0027 (7)); (2) `ingest_recording` catches `ProxyError` after the commit and returns
+`IngestResult(..., proxy=None, proxy_error=<message>)`; the CLI prints `ingested <id> ...` on standard output, `warning: proxy
+not made: ...` on standard error, exit 1. Tests: tampered `pts.parquet` (as in probe P2) and a failing proxy step after ingest
+(monkeypatch `subprocess.run`).
+**Fix:** task P2.03 (rework), 2026-11-16 — WARNING log on a failed check; `taiji proxy` and `taiji ingest --proxy` exit 1 with the explanation on standard error and the ID on standard output (the maintainer confirmed exit code 1); `ingest_recording` returns `IngestResult.proxy_error` instead of raising after the commit; the CLI prints the ID and `error: the proxy of <id> was not made: ...`; `re.fullmatch` for the UUID.
+**Verified:** agent, 2026-11-16 — T-IO-27 (four CLI cases and two ingest cases) was red on the old code and is green; the mutations 'cli: failed check exits 0', 'cli: proxy step failure exits 0', 'ingest: ProxyError raised again', 'proxy_error lost' are caught; probes P2 and P3 on the fixed code give the expected output.
+
+**History:**
+
+- 2026-11-16 OPEN → PLANNED — found by the P2.03 review.
+- 2026-11-16 PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — fixed and verified in P2.03 (rework, task file §9).
+
+### BUG-0054 — `io/proxy.py` breaks repository rules
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3 (conventions, dead code and a few made-up numbers in a rare path; the normal path is correct) |
+| Status          | CLOSED                                                                                     |
+| Found in        | `taiji_ai/src/taiji_ai/io/proxy.py`, `io/ingest.py`                                        |
+| Found by / date | agent (Claude Code), 2026-11-16, P2.03 review (reading the code, then probe P4)            |
+| Affects         | Maintainability; AGENTS.md §5.1, §6, §2 Step 4 checklist ("errors never swallowed")        |
+
+**Description:**
+
+1. Line 7 of the module docstring is Vietnamese ("Lệnh FFmpeg (không dùng shell, có timeout)"); code and comments are in
+   English (CLAUDE.md, Communication).
+2. `make_proxy(..., settings=...)` reads `settings = settings or get_settings()` (line 140) and never uses it again: a dead
+   argument that every caller passes.
+3. Two `except OSError: pass`: `_ffmpeg_version` (lines 78–79) returns `"unknown"` silently and `@cache` keeps that value
+   for the life of the process after one transient failure; the cleanup in `finally` (lines 256–257) hides a failed delete.
+4. Invented numbers in `proxy.json`: `_check_timestamps` writes `999.0` for `max_abs_dt_frames` when the median interval is
+   unknown or zero (lines 96, 110, 120), and for an empty scan it writes `points=1`, `max_abs_dt_s=0.0` and
+   `max_abs_dt_frames=0.0` although nothing was measured (AGENTS.md §5.1: no fabricated values; unknown is not 0).
+5. The command exists twice: `PROXY_ARGS_TEMPLATE` (what `proxy.json` records) and the literal `cmd` list (what runs). Nothing
+   ties them; a mutation that changes `args` survives (BUG-0053).
+6. `_check_timestamps` recomputes `(pts - start_pts) * time_base` (line 100), which is `PtsScan.t_sec`
+   (`io/frames.py:58`).
+7. `ingest.py` imports `make_proxy` inside `_existing` and `ingest_recording`; `proxy.py` does not import `ingest`, so a
+   top-level import works.
+8. `os.replace(proxy_tmp, proxy_final)` happens before `proxy.json` is written: a crash or a full disk in between leaves the
+   new `proxy.mp4` with the old `proxy.json` (wrong `proxy_sha256`).
+
+**Fix plan:** translate the docstring; use `settings` (for example the ffmpeg timeout and the cap of 720 lines) or remove the
+argument in `make_proxy`, `ingest.py`, `cli.py` and the tests; log a WARNING and do not cache the failure in
+`_ffmpeg_version` (an unknown version is logged), and log a failed delete; for the degenerate cases raise `ProxyError`
+("proxy has no frames") or add an explicit reason to the check instead of 999.0/0.0 (a schema change of `proxy/1` needs a DEC
+and the maintainer: decide in the task); build `cmd` from `PROXY_ARGS_TEMPLATE` (fixed prefix `-hide_banner -loglevel error
+-y`, placeholders replaced) so there is one source; use `scan.t_sec`; import `make_proxy` at the top of `ingest.py`; delete the
+old `proxy.json` before replacing `proxy.mp4` (a missing manifest means "not usable").
+**Fix:** task P2.03 (rework), 2026-11-16 — docstring in English; `settings` removed from `make_proxy`; `_ffmpeg_version` raises and does not cache a failure; the cleanup logs a warning; `_check_timestamps` raises `ProxyError` for no frames and for a deviation without a frame interval (no `999.0`, no `0.0`); one command (`_build_command` from `PROXY_ARGS_TEMPLATE`); `PtsScan.t_sec` reused; `make_proxy` imported at the top of `ingest.py`; the old `proxy.json` removed before `proxy.mp4` is replaced; a narrow `except` tuple instead of `except Exception`. No schema change of `proxy/1` was needed: the unmeasurable cases raise.
+**Verified:** agent, 2026-11-16 — T-IO-24..26 and the mutations 'args do not match the command', 'invented 999.0', 'stale proxy.json kept', 'ffmpeg version failure -> unknown' are caught; ruff and mypy are clean; the diff was re-read.
+
+**History:**
+
+- 2026-11-16 OPEN → PLANNED — found by the P2.03 review.
+- 2026-11-16 PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — fixed and verified in P2.03 (rework, task file §9).
+
+### BUG-0053 — P2.03 tests passed with 14 broken rules (mutation run)
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3 (test strength; no wrong data was written by these rules in the tests' cases)           |
+| Status          | CLOSED                                                                                     |
+| Found in        | `taiji_ai/tests/contract/test_proxy.py`, `tests/contract/test_cli_ingest.py` (first versions) |
+| Found by / date | agent (Claude Code), 2026-11-16, mutation run on a copy of `src` (the repository was not modified) |
+| Affects         | A later change could break one of these rules with every test still green; AC2 has no evidence |
+
+**Description:** 23 one-rule breakages of `proxy.py`, `ingest.py` and `cli.py`, run against `test_proxy.py` and
+`test_cli_ingest.py` (baseline green): **8 caught, 15 survived**. Caught: `-map_metadata -1`, the 720-line cap,
+`rotation_applied`, an always-true check, `check.points`, the fresh-ingest `proxy` flag, the UUID check, the CLI wording.
+Survivors: (1) no `+faststart` (the UI needs it for Range playback, P8.04); (2) audio kept (no `-an`; the plan says video
+only); (3) no `-pix_fmt yuv420p` (a 4:4:4 or 10-bit source would not play in a browser); (4) no `-g 30` (seek granularity);
+(5) `-crf 23` changed to 40; (6) `source_sha256` replaced by the proxy hash; (7) `proxy_sha256` replaced by the source hash;
+(8) `ffmpeg` version replaced by `"unknown"`; (9) `args` no longer the command that ran; (10) `n_frames_source` replaced by
+`n_frames_proxy` (hides a count mismatch); (11) a non-zero ffmpeg exit code ignored; (12) the temporary file not removed on
+failure; (13) **a failed check hides the proxy (raises) instead of keeping and marking it: AC2 is untested**; (14)
+`ingest_recording(..., proxy=True)` on an already ingested file ignores the flag. The 15th survivor, removing
+`-fps_mode passthrough`, is equivalent with the installed FFmpeg (the plan records that the default already keeps the
+timestamps; the explicit argument is a guard against a future default).
+
+**Fix plan:** one test per survivor, each checking the specific rule: (1) the `moov` atom comes before `mdat` in `proxy.mp4`;
+(2) `ffprobe` finds no audio stream in the proxy of `cfr_video` (it has audio); (3) a `yuv444p` fixture gives a `yuv420p`
+proxy; (4) keyframes at most 30 frames apart (3 s clip); (5) and (9) after BUG-0054 builds `cmd` from the template, assert
+the template holds `-crf 23`, `-g 30`, `-fps_mode passthrough` and that `proxy.json` `args` equal it; (6)–(8)
+`source_sha256` equals the recording's, `proxy_sha256` equals `sha256_file(proxy.mp4)`, `n_frames_source` equals the rows of
+`pts.parquet`, `ffmpeg` equals the first line of `ffmpeg -version`; (10) and (13) tamper `pts.parquet` by +0.2 s (probe P2):
+`make_proxy` returns `passed=false`, both files exist, the counts in the manifest are the real ones; (11) and (12)
+monkeypatch `subprocess.run` to exit 1: `ProxyError`, no `proxy.mp4`, no `proxy.json`, no `proxy.tmp-*`; (14) ingest the same
+file twice with `proxy=True`: second call `created=False` and a proxy manifest. Rerun the 23 mutations (the harness is a
+short script; keep it out of the repository unless the maintainer asks) until every survivor is caught or shown equivalent.
+**Fix:** task P2.03 (rework), 2026-11-16 — one test per survivor: T-IO-23 (faststart, no audio, yuv420p, keyframes), T-IO-24 (hashes, counts, version, `args` = the executed command, the template pins `-crf`, `-g`, `-fps_mode`), T-IO-25 (failure, timeout, missing ffmpeg, unreadable version, stale manifest), T-IO-26 (AC2), T-IO-27 (already ingested file, proxy failure); the second mutation list also showed an untested branch (`ffmpeg -version` unreadable): two cases added.
+**Verified:** agent, 2026-11-16 — mutation run on a copy of `src` against the reworked code: 41 caught, 0 survived (the 23 mutations of the first review rewritten for the new code plus 18 for the new branches); the former equivalent mutant (`-fps_mode passthrough`) is caught by the template test.
+
+**History:**
+
+- 2026-11-16 OPEN → PLANNED — found by the P2.03 review (mutation run).
+- 2026-11-16 PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — fixed and verified in P2.03 (rework, task file §9).
+
+### BUG-0052 — `scan_pts_ticks` counts packets that are never shown (trimmed phone clips)
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S1 (wrong timestamp: AGENTS.md §3.1). Mitigations: no consumer exists yet (P3 not started) and the P2.03 check marks the proxy as failed; the maintainer may reclassify |
+| Status          | CLOSED                                                                                     |
+| Found in        | `taiji_ai/src/taiji_ai/io/frames.py` (`scan_pts_ticks`, written in P2.02), used by `io/ingest.py:168` and `io/proxy.py` |
+| Found by / date | agent (Claude Code), 2026-11-16, probe P1 of the P2.03 review (synthetic clips)            |
+| Affects         | `pts.parquet`, `recording.json` (`n_frames`, duration, VFR verdict), every later stage that maps a decoded frame to its time by row number, and the proxy check |
+
+**Description:** a clip made on a phone by trimming (stream copy that starts between two keyframes) carries an edit list. The
+packets before the edit start stay in the file with negative times and the flag `D` (discard); the decoder never outputs
+them. `scan_pts_ticks` keeps every packet that has a `pts` and a size, so they become frames.
+
+**Steps to reproduce (synthetic):** base clip 4 s, 30 fps, 320×240, `-g 15`; `ffmpeg -ss 0.7 -i base.mp4 -c copy trimmed.mp4`.
+`ffprobe` lists 105 packets, six with the flag `D` and `pts_time` −0.200, −0.167, −0.133, −0.100, −0.067, −0.033;
+PyAV decoding and `ffprobe -count_frames` give **99** frames, the first one at `pts` 0 (stream `start_time` 0).
+
+**Expected vs actual:** expected 99 rows in `pts.parquet`, the first at `t_sec` 0, `n_frames` 99. Actual: 105 rows, six with
+negative `t_sec`, `n_frames` 105. Decoded frame *k* would get the time of row *k*, which is 0.2 s early for every frame. The
+proxy has 99 frames, so the check fails (`max_abs_dt_frames` 6.0, `passed: false`): the safeguard works, but a normal
+phone file ends up with an unusable proxy and wrong source times.
+
+**Root cause:** `scan_pts_ticks` (`frames.py:69`) filters only `p.pts is not None and p.size > 0`; it does not drop packets
+flagged as discard. P2.02 had no fixture with an edit list, and the P2.03 plan promised one (BUG-0056 item 3).
+
+**Fix plan:** (1) fixture `trimmed_video` in `tests/conftest.py` (the command above); (2) tests, red first: for **every**
+video fixture the packet scan has the same count and the same timestamps as the PyAV decode (the strong oracle; it also
+guards future fixtures); `ingest_recording` of `trimmed_video` gives `n_frames` 99 and no negative `t_sec`; the proxy check
+of `trimmed_video` passes (99 / 99); a `.mov` container variant, since iPhone files are `.mov`; (3) fix: skip packets with
+`p.is_discard` in `scan_pts_ticks` (checked on PyAV 19.0.2: 105 → 99, smallest kept `pts` 0 = `start_time`); if the
+oracle test shows a container where the flag is not set, fall back to the decode as the authority for the frame list;
+(4) record the rule "packets flagged discard are not frames" in `TECH_WORKFLOW_V1.md` W1 step 3 and in a DEC; (5) check
+that no recording ingested before the fix from such a file exists (P2.07 has not run on real files; the folder of tests is
+throw-away); (6) consider whether the capture protocol should say "do not trim on the phone" (Docs of P1; maintainer
+decision, not a code change).
+**Fix:** task P2.03 (rework), 2026-11-16 — as planned: fixtures `trimmed_video` and `trimmed_mov`; `scan_pts_ticks` skips packets flagged discard; T-IO-20 (the oracle: the packet scan equals the PyAV decode on 10 fixtures), T-IO-21, T-IO-22; TECH_WORKFLOW W1 step 3 and DEC-0030 record the rule. The real database held no recording (0 rows), so nothing needed to be ingested again. The capture protocol was not changed (the maintainer's call).
+**Verified:** agent, 2026-11-16 — the six trimmed-clip cases were red on the old code and are green; probe P1 on the fixed code: 99 source frames, 99 proxy frames, check passed (was 105 / 99, 6.0 frames); the mutation 'discarded packets counted again' is caught; gate 10/10.
+
+**History:**
+
+- 2026-11-16 OPEN → PLANNED — found by the P2.03 review; probe output kept in the review report. Not fixed by the
+  reviewer: the code of P2.02/P2.03 is the maintainer's to change.
+- 2026-11-16 PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — fixed and verified in P2.03 (rework, task file §9).
 
 ### BUG-0051 — P2.02 tests passed with 22 broken rules (mutation run)
 

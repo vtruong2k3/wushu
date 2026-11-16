@@ -20,6 +20,11 @@ def find_by_take_camera(conn: sqlite3.Connection, take_id: str, camera_id: str) 
     return conn.execute("SELECT * FROM recording WHERE take_id = ? AND camera_id = ?", (take_id, camera_id)).fetchone()
 
 
+def find_by_take(conn: sqlite3.Connection, take_id: str) -> list[sqlite3.Row]:
+    """All recordings belonging to this take, ordered by camera_id."""
+    return conn.execute("SELECT * FROM recording WHERE take_id = ? ORDER BY camera_id", (take_id,)).fetchall()
+
+
 def insert_recording(conn: sqlite3.Connection, row: Mapping[str, object]) -> None:
     """Insert one row; the keys are the column names (``RecordingManifest.to_db_row``). The caller owns the transaction.
 

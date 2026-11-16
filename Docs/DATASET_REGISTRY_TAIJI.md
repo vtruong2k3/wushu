@@ -8,6 +8,7 @@ Quy tắc sử dụng: `AGENTS.md` §9.4. Giá trị "Mục đích được phé
 
 | ID | Dataset | Bài | Nhãn chất lượng | Truy cập | License | Mục đích được phép | Vai trò trong dự án | Trạng thái |
 |---|---|---|---|---|---|---|---|---|
+| D20 | Video hướng dẫn Thái Cực Quyền 24 thức (4 file trong `video/`, maintainer tải về) | 24 thức (hướng dẫn, không phải tập luyện của người tham gia) | Không | Tải công khai trên web; URL gốc không được ghi lại | Không có điều khoản được xác minh. **Maintainer quyết định 2026-11-16: không áp ràng buộc license cho việc dùng nội bộ này** (agent không kiểm tra nguồn hay điều khoản) | `dev-test` nội bộ: kiểm tra kỹ thuật (ingest, probe, proxy, hiệu năng) **và phát triển pose P3.01 đến P3.06**; không chia sẻ, không đưa vào git, không tính độ chính xác sản phẩm. `train`, `benchmark`, dùng ngoài máy này: chưa được quyết, cần cập nhật registry và maintainer duyệt | Kiểm khói ingest/proxy với file dài 1080p (X.26); không phải file điện thoại, không có tiếng vỗ tay hay đèn nên không dùng cho đồng bộ | Có trên máy từ 2026-11-16; chưa tính vào bộ dữ liệu của dự án |
 | D08 | Taiji24-Local (tự quay) | 24 thức (variant HLV xác nhận) | Nhãn HLV theo rubric dự án | Nội bộ | Theo consent từng người | `dev-test`, `benchmark`; `train` chỉ với `consent_train = 1` | Nguồn chính cho mọi phase | Chưa quay (P9) |
 | D14 | S3GCN Tai Chi (Hengonda / BUAA, ICIP 2024) | Thái cực quyền (bài cụ thể chưa rõ) | Điểm liên tục do chuyên gia chấm | Gửi đơn PDF có chữ ký qua email nhóm tác giả (theo README repo SSSGCN) | Chỉ nghiên cứu khoa học, cấm thương mại (theo README) | `not-usable` cho tới khi được cấp; sau đó `benchmark` (nghiên cứu) | Ứng viên cho chấm chất lượng (E03) | Không gửi yêu cầu (2026-11-15, DEC-0018); quy mô và bài chưa rõ |
 | D06 | TaiChi-AQA | 24 thức | Có theo bài báo, chưa kiểm tra file nhãn | Gửi form qua email | Chưa rõ, xem thỏa thuận khi được cấp | `not-usable` cho tới khi được cấp; sau đó theo thỏa thuận | Nhận diện thức, đánh giá chất lượng | Không gửi yêu cầu (2026-11-15, DEC-0018) |
@@ -26,6 +27,22 @@ Quy tắc sử dụng: `AGENTS.md` §9.4. Giá trị "Mục đích được phé
 Chưa có bằng chứng TaiChi-AQA và TaiChi-24 là cùng nguồn. Khi nhận được dữ liệu, kiểm tra người tập, video nguồn và cách chia tập trước khi ghép hoặc đánh giá chéo.
 
 ## Chi tiết và bằng chứng
+
+### D20 — Video hướng dẫn Thái Cực Quyền 24 thức (web)
+
+- Nguồn: bốn file `.mp4` do maintainer tải về, để trong thư mục `video/` ở gốc workspace (không phải `datasets/`, nên không theo đúng bố cục của AGENTS.md §9.4 mục 2; `.gitignore` chặn `*.mp4` nên không vào git). URL gốc, tác giả và điều khoản **không được ghi lại**. Ban đầu (2026-11-16) agent coi là mức hạn chế nhất (AGENTS.md §9.1, chỉ `dev-test` kỹ thuật); cùng ngày maintainer quyết định không áp ràng buộc license cho việc dùng nội bộ, nên mục đích được phép mở rộng sang phát triển pose P3.01 đến P3.06 (DEC-0036). Agent không xác minh nguồn.
+- Agent chỉ đọc siêu dữ liệu bằng ffprobe và probe/quét PTS của dự án (2026-11-16), chưa xem nội dung hình.
+
+| # | File | Dung lượng (byte) | Codec | Thời lượng | SHA-256 |
+|---|---|---|---|---|---|
+| 1 | `Hướng Dẫn Chi Tiết Thái Cực Quyền 24 Thức (Phần 1).mp4` | 215719545 | AV1 1080p 24 fps | 1029,6 s | `f80bd1594d0311e2493e33ee4ed55e51904267f0151a2323933252f7f501c0cf` |
+| 2 | `Hướng Dẫn Chi Tiết Thái Cực Quyền 24 Thức (Phần 2).mp4` | 257287499 | H.264 1080p 24 fps | 977,3 s | `50a6cd2f383ccd8fc3da77b94d300bd80cd5d3f5cf208a13aa12e6004e35bec8` |
+| 3 | `Hướng dẫn chi tiết Thái Cực Quyền 24 Thức (Phần 3).mp4` | 350787594 | H.264 1080p 24 fps | 1328,9 s | `1eb59b6f01c32dcff463f6c37e53d04ca536a3a5be55ffb3055c71fe393f1d7d` |
+| 4 | `Thái Cực Quyền 24 Thức - Tai Chi 24 Forms - Hướng Dẫn Chi Tiết Kèm Hơi Thở - martial arts - Kung Fu.mp4` | 486260064 | AV1 1080p 30 fps | 2576,6 s | `65d2913540fcff7afb3af1052b5be09e4ec686cb181f28d789b8669e3e57e15a` |
+
+Tất cả: 1920x1080, không tag xoay, bắt đầu ở 0, âm thanh AAC 44,1 kHz stereo, không phải VFR theo quy tắc của dự án. Ba file đầu là ba phần nối tiếp; file thứ tư là một video khác. Không phải hai camera của một take.
+
+Huấn luyện, `benchmark`, chia sẻ hoặc dùng ngoài máy này chưa được quyết: cần cập nhật registry và maintainer duyệt. Kết quả pose trên các video này không tính là độ chính xác sản phẩm.
 
 ### D06 — TaiChi-AQA
 

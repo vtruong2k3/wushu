@@ -76,7 +76,8 @@ Mỗi take theo đúng thứ tự này:
 
 1. Người điều phối bấm quay cả hai máy, để chạy ít nhất 5 giây trước khi làm tín hiệu.
 2. Tín hiệu đầu: người hỗ trợ đứng trong vùng tập, vỗ tay hai lần cách nhau khoảng 1 giây; mỗi lần vỗ kèm bật đèn khoảng
-   0,5 giây, giữ đèn ở tầm ngực để cả hai máy thấy. Sau đó rời vùng tập.
+   0,5 giây, giữ đèn ở tầm ngực để cả hai máy thấy **cả hai lần đèn** (hệ thống chỉ chấp nhận cửa sổ mà hai máy thấy cùng số lần
+   đèn, ít nhất hai; thiếu một lần đèn ở một máy thì take không dùng được cho metric). Sau đó rời vùng tập.
 3. Đoạn đứng tham chiếu: người tập đứng thẳng, hai tay buông, quay mặt theo trục chính ở vị trí xuất phát, đứng yên 3–5 giây.
    Đoạn này cho tỷ lệ và góc đứng.
 4. Người tập tập trọn bài (khoảng 4–6 phút).
@@ -150,7 +151,8 @@ Thời gian dự kiến một buổi nhóm: 1,5–2 giờ (W0). Các mốc dư�
 Sau mỗi take, kiểm nhanh trong 1 phút. Quay lại ngay nếu có một trong các lỗi sau (không xóa take lỗi, chỉ ghi chú):
 
 - Một trong hai máy không quay hoặc dừng giữa chừng.
-- Tín hiệu đầu hoặc cuối không thấy đèn hay không nghe tiếng vỗ ở một trong hai file (phát lại vài giây).
+- Tín hiệu đầu hoặc cuối không thấy đèn hay không nghe tiếng vỗ ở một trong hai file (phát lại vài giây). Phải thấy **cả hai lần
+  đèn** và nghe **cả hai tiếng vỗ** của mỗi tín hiệu, trên cả hai file.
 - Người tập ra khỏi khung hoặc bị che.
 - Có người chạm máy, zoom hoặc dịch chân máy.
 

@@ -7,7 +7,8 @@ timestamp). Camera A is the reference (``cam_a`` sorts before ``cam_b``). For a 
 
     t_b = t_a + offset_s + drift * (t_a - t_ref_s)
 
-``t_ref_s`` is the centre of the matched start window on camera A; ``drift`` is dimensionless (the rate of B's timeline
+``t_ref_s`` is the time on camera A of the matched claps in the start window (where the matched evidence is, not the
+centre of the search window; BUG-0059); ``drift`` is dimensionless (the rate of B's timeline
 per second of A's, minus 1; 1e-4 is 100 ppm). ``offset_s > 0`` means B shows the same moment later on its own timeline.
 ``b_to_a`` is the exact inverse: ``t_a = (t_b - offset_s + drift * t_ref_s) / (1 + drift)``.
 
@@ -200,3 +201,22 @@ class SyncManifest(Manifest):
         """Exact inverse of :meth:`a_to_b`."""
         offset, drift, ref = self._mapping()
         return (t - offset + drift * ref) / (1.0 + drift)
+
+    def to_db_row(self) -> dict[str, object] | None:
+        """Values of one ``sync`` row (migration 0001). None when status is not 'ok'.
+
+        The caller writes the row only for a usable take (DEC-0035, BUG-0065).
+        """
+        if self.status != "ok" or self.offset_s is None or self.drift is None:
+            return None
+        return {
+            "take_id": self.take_id,
+            "cam_a": self.cam_a,
+            "cam_b": self.cam_b,
+            "offset_s": float(self.offset_s),
+            "drift": float(self.drift),
+            "residual_ms": float(self.validation.residual_ms) if self.validation.residual_ms is not None else None,
+            "method": self.method,
+            "validated_by": self.validation.method if self.validation.method == "flash" else None,
+            "created_at": self.created_at.isoformat(),
+        }

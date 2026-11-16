@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import logging
 import os
 from pathlib import Path
 from typing import Any
@@ -17,6 +18,8 @@ from typing import Any
 import numpy as np
 import pyarrow as pa
 import pyarrow.parquet as pq
+
+log = logging.getLogger(__name__)
 
 
 def sha256_file(path: str | Path, chunk: int = 1 << 20) -> str:
@@ -31,11 +34,19 @@ def atomic_write_bytes(path: str | Path, data: bytes) -> Path:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(path.name + ".tmp")
-    with tmp.open("wb") as f:
-        f.write(data)
-        f.flush()
-        os.fsync(f.fileno())
-    os.replace(tmp, path)
+    try:
+        with tmp.open("wb") as f:
+            f.write(data)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, path)
+    except BaseException:
+        # A failed write or replace must not leave a stale temporary file (BUG-0069); the old file is untouched.
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            log.warning("could not remove the temporary file after a failed write")
+        raise
     return path
 
 

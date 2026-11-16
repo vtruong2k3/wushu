@@ -11,7 +11,10 @@ from contextlib import closing
 
 import pytest
 
+from helpers.media import tamper_pts
 from taiji_ai.cli import main
+from taiji_ai.io import ingest as ingest_module
+from taiji_ai.io.proxy import ProxyError
 from taiji_ai.store.db import connect
 
 pytestmark = pytest.mark.usefixtures("clean_logging")  # main() installs the console log handler
@@ -144,3 +147,101 @@ def test_t_io_19_a_usage_error_exits_with_2_and_stores_nothing(ingest_settings, 
     assert exc.value.code == 2
     capsys.readouterr()
     assert _recordings(ingest_settings) == []
+
+
+def test_t_io_19_ingest_with_proxy_flag_creates_proxy(ingest_settings, phone_file, capsys):
+    code, out, err = run(["ingest", str(phone_file), *IDS, "--proxy"], ingest_settings, capsys)
+    assert code == 0
+    [row] = _recordings(ingest_settings)
+    rid = row["recording_id"]
+    assert f"ingested {rid}" in out
+    assert "proxy: 240p, check passed" in out
+
+    rec_dir = ingest_settings.data_dir / "recordings" / rid
+    assert (rec_dir / "proxy.mp4").is_file()
+    assert (rec_dir / "proxy.json").is_file()
+
+
+def test_t_io_19_proxy_command_remakes_proxy(ingest_settings, phone_file, capsys):
+    # First ingest without proxy
+    run(["ingest", str(phone_file), *IDS], ingest_settings, capsys)
+    [row] = _recordings(ingest_settings)
+    rid = row["recording_id"]
+    rec_dir = ingest_settings.data_dir / "recordings" / rid
+    assert not (rec_dir / "proxy.mp4").exists()
+
+    # Now run `taiji proxy <rid>`
+    code, out, err = run(["proxy", rid], ingest_settings, capsys)
+    assert code == 0
+    assert out.strip() == f"proxy {rid} (240p, check passed)"
+    assert (rec_dir / "proxy.mp4").is_file()
+    assert (rec_dir / "proxy.json").is_file()
+
+
+def test_t_io_19_proxy_command_errors(ingest_settings, capsys):
+    # Bad UUID format
+    code, out, err = run(["proxy", "not-a-uuid"], ingest_settings, capsys)
+    assert code == 1 and "UUID4" in err
+
+    # Non-existent UUID
+    missing_id = "3f2b8c1e-5d4a-4e7b-9c1a-0b2d3e4f5a6b"
+    code, out, err = run(["proxy", missing_id], ingest_settings, capsys)
+    assert code == 1 and "not found" in err
+
+    # A valid UUID followed by a newline is not a UUID (the "$" of a regular expression accepts a trailing newline)
+    code, out, err = run(["proxy", missing_id + "\n"], ingest_settings, capsys)
+    assert code == 1 and "UUID4" in err
+
+    # Usage error (no recording_id arg)
+    with pytest.raises(SystemExit) as exc:
+        main(["proxy"], settings=ingest_settings)
+    assert exc.value.code == 2
+
+
+def test_t_io_27_proxy_command_exits_1_when_the_timestamp_check_failed(ingest_settings, phone_file, capsys):
+    run(["ingest", str(phone_file), *IDS], ingest_settings, capsys)
+    [row] = _recordings(ingest_settings)
+    rid = row["recording_id"]
+    tamper_pts(ingest_settings.data_dir / "recordings" / rid, shift_s=0.2)  # 6 frames at 30 fps
+
+    code, out, err = run(["proxy", rid], ingest_settings, capsys)
+
+    assert code == 1
+    assert out.strip() == f"proxy {rid} (240p, check failed)"  # the result is still printed: the proxy exists
+    assert rid in err and "marked unusable" in err and "6.0 frames" in err
+    rec_dir = ingest_settings.data_dir / "recordings" / rid
+    assert (rec_dir / "proxy.mp4").is_file() and (rec_dir / "proxy.json").is_file()
+
+
+def test_t_io_27_ingest_with_proxy_exits_1_when_the_proxy_failed_but_names_the_recording(
+    ingest_settings, phone_file, capsys, monkeypatch
+):
+    def boom(_rec_dir):
+        raise ProxyError("ffmpeg failed to encode the proxy video")
+
+    monkeypatch.setattr(ingest_module, "make_proxy", boom)
+
+    code, out, err = run(["ingest", str(phone_file), *IDS, "--proxy"], ingest_settings, capsys)
+
+    [row] = _recordings(ingest_settings)  # the recording was stored
+    rid = row["recording_id"]
+    assert code == 1
+    assert out.strip() == f"ingested {rid} (take S01-P03-T02, camA)"
+    # standard error also carries the log lines of the console handler: look for the error line itself
+    assert f"error: the proxy of {rid} was not made: ffmpeg failed to encode the proxy video" in err.splitlines()
+    assert NAME not in out + err and str(phone_file.parent) not in out + err
+
+
+def test_t_io_27_ingest_with_proxy_exits_1_when_the_timestamp_check_failed(
+    ingest_settings, phone_file, capsys, monkeypatch
+):
+    run(["ingest", str(phone_file), *IDS], ingest_settings, capsys)  # first without a proxy
+    [row] = _recordings(ingest_settings)
+    rid = row["recording_id"]
+    tamper_pts(ingest_settings.data_dir / "recordings" / rid, shift_s=0.2)
+
+    code, out, err = run(["ingest", str(phone_file), *IDS, "--proxy"], ingest_settings, capsys)
+
+    assert code == 1
+    assert out.strip() == f"already ingested {rid} (proxy: 240p, check failed)"
+    assert rid in err and "marked unusable" in err

@@ -1,10 +1,13 @@
-"""Command line of the project: ``taiji <command>`` (P2.08, P2.02; later tasks add ``proxy`` and ``sync``).
+"""Command line of the project: ``taiji <command>`` (P2.08, P2.02, P2.03, P2.06).
 
 ``taiji participant add | set | show`` registers a pseudonym with the consent answers of a signed form (see
 ``Docs/consent_form.md``) and shows or changes them. ``taiji ingest <file> --participant ... --take ... --camera ...``
-copies one phone video into the data folder (``taiji_ai.io.ingest``). The result of a command goes to standard output,
-errors to standard error. Exit codes: 0 ok, 1 refused (the message says why), 2 usage error (argparse). Only IDs are
-printed or logged: never a path and never free text.
+copies one phone video into the data folder (``taiji_ai.io.ingest``); with ``--proxy`` it also makes the browser proxy.
+``taiji proxy <recording_id>`` makes or remakes that proxy (``taiji_ai.io.proxy``).
+``taiji sync <take_id>`` synchronizes the two cameras of a take (``taiji_ai.pipeline.sync_take``).
+The result of a command goes to standard output, errors to standard error. Exit codes: 0 ok (or usable sync),
+1 refused, failed check, or unusable sync, 2 usage error (argparse).
+Only IDs are printed or logged: never a path and never free text.
 
 Every consent answer is a required ``yes`` or ``no``: there is no default for a consent question. ``--actor`` is a role
 code (``cli:O``, ``cli:H1`` ...), never a person's name; it goes to the audit log.
@@ -13,13 +16,17 @@ code (``cli:O``, ``cli:H1`` ...), never a person's name; it goes to the audit lo
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from typing import TextIO
 
 from taiji_ai.config import Settings, get_settings
 from taiji_ai.io.ingest import IngestError, ingest_recording
+from taiji_ai.io.proxy import ProxyError, make_proxy
 from taiji_ai.logs import configure_logging
-from taiji_ai.schemas.recording import CAMERA_ROLES
+from taiji_ai.pipeline.sync_take import SyncTakeError, sync_take
+from taiji_ai.schemas._base import TAKE_RE, UUID4_RE
+from taiji_ai.schemas.recording import CAMERA_ROLES, PROXY_MAX_DT_FRAMES, ProxyManifest
 from taiji_ai.store.db import connect
 from taiji_ai.store.participants import (
     UNSET,
@@ -80,6 +87,13 @@ def build_parser() -> argparse.ArgumentParser:
     ingest.add_argument("--camera-height-m", type=float, help="camera height [m] (needs --role)")
     ingest.add_argument("--camera-distance-m", type=float, help="distance to the centre of the area [m] (needs --role)")
     ingest.add_argument("--fps-setting", type=float, help="frame rate set in the camera app [Hz] (needs --role)")
+    ingest.add_argument("--proxy", action="store_true", help="also generate the H.264 720p browser proxy")
+
+    proxy_cmd = commands.add_parser("proxy", help="generate or remake the H.264 720p browser proxy for a recording")
+    proxy_cmd.add_argument("recording_id", help="recording UUID4")
+
+    sync_cmd = commands.add_parser("sync", help="synchronize two camera recordings of a take")
+    sync_cmd.add_argument("take_id", help="take ID, for example S01-P03-T01")
     return parser
 
 
@@ -146,13 +160,60 @@ def _ingest(args: argparse.Namespace, settings: Settings) -> int:
         "camera_id": args.camera,
         "capture": capture,
     }
-    result = ingest_recording(args.file, meta, settings)
+    result = ingest_recording(args.file, meta, settings, proxy=args.proxy)
     m = result.manifest
-    if result.created:
-        _write(sys.stdout, f"ingested {m.recording_id} (take {m.take_id}, {m.camera_id})")
-    else:
-        _write(sys.stdout, f"already ingested {m.recording_id}")
-    return 0
+    msg = (
+        f"ingested {m.recording_id} (take {m.take_id}, {m.camera_id})"
+        if result.created
+        else f"already ingested {m.recording_id}"
+    )
+    if result.proxy is not None:
+        msg += f" (proxy: {result.proxy.height}p, check {'passed' if result.proxy.check.passed else 'failed'})"
+    _write(sys.stdout, msg)
+    if result.proxy_error is not None:  # the recording is stored; say so, and that the proxy is missing
+        _write(sys.stderr, f"error: the proxy of {m.recording_id} was not made: {result.proxy_error}")
+        return 1
+    return _proxy_exit_code(result.proxy) if result.proxy is not None else 0
+
+
+def _proxy_exit_code(manifest: ProxyManifest) -> int:
+    """0 when the proxy passed its timestamp check; otherwise say on standard error that it is unusable, and 1."""
+    check = manifest.check
+    if check.passed:
+        return 0
+    _write(
+        sys.stderr,
+        f"error: the proxy of {manifest.recording_id} is marked unusable: source frames {manifest.n_frames_source}, "
+        f"proxy frames {manifest.n_frames_proxy}, largest timestamp deviation {check.max_abs_dt_frames:.1f} frames "
+        f"(limit {PROXY_MAX_DT_FRAMES:.1f})",
+    )
+    return 1
+
+
+def _proxy(args: argparse.Namespace, settings: Settings) -> int:
+    rec_id = args.recording_id
+    if not re.fullmatch(UUID4_RE, rec_id):  # fullmatch: "$" alone would accept a trailing newline
+        raise ProxyError("recording_id must be a UUID4")
+    rec_dir = settings.data_dir / "recordings" / rec_id
+    if not rec_dir.is_dir():
+        raise ProxyError(f"recording {rec_id} was not found")
+    manifest = make_proxy(rec_dir)
+    check_str = "passed" if manifest.check.passed else "failed"
+    _write(sys.stdout, f"proxy {manifest.recording_id} ({manifest.height}p, check {check_str})")
+    return _proxy_exit_code(manifest)
+
+
+def _sync(args: argparse.Namespace, settings: Settings) -> int:
+    take_id = args.take_id
+    if not re.fullmatch(TAKE_RE, take_id):
+        raise SyncTakeError(f"take_id {take_id!r} is invalid: must match {TAKE_RE}")
+    manifest = sync_take(take_id, settings=settings)
+    _write(
+        sys.stdout,
+        f"sync {manifest.take_id} ({manifest.cam_a} <-> {manifest.cam_b}): {manifest.status}, "
+        f"usable={manifest.usable_for_metrics} ({manifest.usable_reason})",
+    )
+    return 0 if manifest.usable_for_metrics else 1
 
 
 def main(argv: list[str] | None = None, *, settings: Settings | None = None) -> int:
@@ -166,8 +227,15 @@ def main(argv: list[str] | None = None, *, settings: Settings | None = None) -> 
     settings = settings or get_settings()
     configure_logging(settings)
     try:
-        return _ingest(args, settings) if args.command == "ingest" else _participant(args, settings)
-    except (ParticipantError, IngestError) as exc:
+        if args.command == "ingest":
+            return _ingest(args, settings)
+        elif args.command == "proxy":
+            return _proxy(args, settings)
+        elif args.command == "sync":
+            return _sync(args, settings)
+        else:
+            return _participant(args, settings)
+    except (ParticipantError, IngestError, ProxyError, SyncTakeError) as exc:
         _write(sys.stderr, f"error: {exc}")
         return 1
 

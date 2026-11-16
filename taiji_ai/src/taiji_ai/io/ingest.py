@@ -48,8 +48,9 @@ import pyarrow as pa
 from taiji_ai.config import Settings, get_settings
 from taiji_ai.io.frames import VFR_RULE, PtsScan, VfrVerdict, scan_pts_ticks, vfr_verdict
 from taiji_ai.io.probe import NoVideoStreamError, ProbeError, VideoMeta, probe_video
+from taiji_ai.io.proxy import ProxyError, make_proxy
 from taiji_ai.schemas._base import CONSENT_RE, ManifestError, parse_manifest, read_manifest, write_manifest
-from taiji_ai.schemas.recording import IngestMeta, RecordingManifest
+from taiji_ai.schemas.recording import IngestMeta, ProxyManifest, RecordingManifest
 from taiji_ai.store.artifacts import atomic_write_parquet, sha256_file
 from taiji_ai.store.db import connect
 from taiji_ai.store.participants import ParticipantError, require_participant
@@ -92,6 +93,17 @@ class AlreadyIngested(IngestError):
 class IngestResult:
     manifest: RecordingManifest
     created: bool  # False when the same file was already ingested under the same IDs
+    proxy: ProxyManifest | None = None  # set when the proxy was asked for and made (check it: ``proxy.check.passed``)
+    proxy_error: str | None = None  # set when the proxy was asked for and failed; the recording is stored anyway
+
+
+def _make_proxy(rec_dir: Path, recording_id: str) -> tuple[ProxyManifest | None, str | None]:
+    """The optional proxy step (P2.03). The recording is already stored, so a failure is returned, never raised."""
+    try:
+        return make_proxy(rec_dir), None
+    except ProxyError as exc:
+        log.warning("recording %s is stored but its proxy was not made", recording_id)
+        return None, str(exc)
 
 
 def _parse_meta(meta: IngestMeta | Mapping[str, object]) -> IngestMeta:
@@ -118,7 +130,7 @@ def _check_source(src: Path, settings: Settings) -> None:
         raise SourceTooLarge(f"the source file is larger than the limit of {settings.max_source_bytes} bytes")
 
 
-def _existing(settings: Settings, row: sqlite3.Row, meta: IngestMeta) -> IngestResult:
+def _existing(settings: Settings, row: sqlite3.Row, meta: IngestMeta, *, proxy: bool = False) -> IngestResult:
     rid = row["recording_id"]
     same = (row["participant_id"], row["session_id"], row["take_id"], row["camera_id"]) == (
         meta.participant_id,
@@ -130,12 +142,14 @@ def _existing(settings: Settings, row: sqlite3.Row, meta: IngestMeta) -> IngestR
         raise AlreadyIngested(
             f"this file is already ingested as recording {rid} for another participant, session, take or camera"
         )
+    rec_dir = settings.data_dir / "recordings" / rid
     try:
-        manifest = read_manifest(settings.data_dir / "recordings" / rid / "recording.json", RecordingManifest)
+        manifest = read_manifest(rec_dir / "recording.json", RecordingManifest)
     except (OSError, ManifestError):
         raise IngestError(f"recording {rid} is in the database but its manifest is missing or invalid") from None
     log.info("recording %s already ingested", rid)
-    return IngestResult(manifest, created=False)
+    proxy_manifest, proxy_error = _make_proxy(rec_dir, rid) if proxy else (None, None)
+    return IngestResult(manifest, created=False, proxy=proxy_manifest, proxy_error=proxy_error)
 
 
 def _consent_ref(conn: sqlite3.Connection, participant_id: str) -> str:
@@ -288,9 +302,17 @@ def _remove_tree(path: Path) -> None:
 
 
 def ingest_recording(
-    path: str | Path, meta: IngestMeta | Mapping[str, object], settings: Settings | None = None
+    path: str | Path,
+    meta: IngestMeta | Mapping[str, object],
+    settings: Settings | None = None,
+    *,
+    proxy: bool = False,
 ) -> IngestResult:
     """Ingest one video (see the module docstring for the order of operations).
+
+    With ``proxy=True`` the browser proxy is made after the recording is stored (also for a file that was already
+    ingested). A proxy failure never undoes the recording: it is reported in ``IngestResult.proxy_error``, and a proxy
+    that failed its timestamp check is in ``IngestResult.proxy`` with ``check.passed = False``.
 
     Raises:
         MetaInvalid: ``meta`` does not validate.
@@ -312,7 +334,7 @@ def ingest_recording(
     try:
         row = find_by_sha(conn, sha)
         if row is not None:
-            return _existing(settings, row, ids)
+            return _existing(settings, row, ids, proxy=proxy)
         consent_ref = _consent_ref(conn, ids.participant_id)
         taken = find_by_take_camera(conn, ids.take_id, ids.camera_id)
         if taken is not None:
@@ -380,6 +402,8 @@ def ingest_recording(
     finally:
         conn.close()
 
+    proxy_manifest, proxy_error = _make_proxy(final, recording_id) if proxy else (None, None)
+
     log.info(
         "recording %s ingested (take %s, %s, %d frames, vfr=%s)",
         recording_id,
@@ -388,4 +412,4 @@ def ingest_recording(
         manifest.n_frames,
         manifest.vfr,
     )
-    return IngestResult(manifest, created=True)
+    return IngestResult(manifest, created=True, proxy=proxy_manifest, proxy_error=proxy_error)

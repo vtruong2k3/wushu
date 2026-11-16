@@ -239,3 +239,81 @@ def ffmpeg_first_frame():
         return np.frombuffer(res.stdout, np.uint8).reshape(h, w, 3)
 
     return _decode
+
+
+@pytest.fixture(scope="session")
+def hd_video_1080p(video_dir: Path) -> Path:
+    """1 s, 1920x1080 at 30 fps, to test down-scaling to 720 lines (T-IO-10c)."""
+    out = video_dir / "hd_1080p.mp4"
+    _ffmpeg(
+        "-f", "lavfi", "-i", "testsrc2=size=1920x1080:rate=30:duration=1",
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-an", str(out),
+    )  # fmt: skip
+    return out
+
+
+@pytest.fixture(scope="session")
+def sd_video_480p(video_dir: Path) -> Path:
+    """1 s, 640x480 at 30 fps, to test that small sources are not enlarged (T-IO-10c)."""
+    out = video_dir / "sd_480p.mp4"
+    _ffmpeg(
+        "-f", "lavfi", "-i", "testsrc2=size=640x480:rate=30:duration=1",
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-an", str(out),
+    )  # fmt: skip
+    return out
+
+
+@pytest.fixture(scope="session")
+def tagged_video(video_dir: Path) -> Path:
+    """1 s, 320x240 at 30 fps with container metadata (location and comment tags) to test metadata stripping."""
+    out = video_dir / "tagged.mp4"
+    _ffmpeg(
+        "-f", "lavfi", "-i", "testsrc2=size=320x240:rate=30:duration=1",
+        "-metadata", "location=+21.0285+105.8542/",
+        "-metadata", "comment=secret_device_identifier",
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-an", str(out),
+    )  # fmt: skip
+    return out
+
+
+@pytest.fixture(scope="session")
+def trim_base_video(video_dir: Path) -> Path:
+    """4 s, 30 fps, 320x240, a keyframe every 15 frames, with a 1 kHz audio track: the clip that is trimmed below."""
+    out = video_dir / "trim_base.mp4"
+    _ffmpeg(
+        "-f", "lavfi", "-i", "testsrc2=size=320x240:rate=30:duration=4",
+        "-f", "lavfi", "-i", "sine=frequency=1000:duration=4",
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-g", "15", "-c:a", "aac", "-shortest", str(out),
+    )  # fmt: skip
+    return out
+
+
+@pytest.fixture(scope="session")
+def trimmed_video(video_dir: Path, trim_base_video: Path) -> Path:
+    """A clip trimmed on a phone (BUG-0052): stream copy that starts at 0.7 s, between the keyframes at 0.5 and 1.0 s.
+
+    The file has an edit list: the six packets before the edit start stay in it with negative times and the flag
+    "discard", and the decoder never outputs them (105 packets with a timestamp, 99 frames).
+    """
+    out = video_dir / "trimmed.mp4"
+    _ffmpeg("-ss", "0.7", "-i", str(trim_base_video), "-c", "copy", str(out))
+    return out
+
+
+@pytest.fixture(scope="session")
+def trimmed_mov(video_dir: Path, trim_base_video: Path) -> Path:
+    """The same trimmed clip in a QuickTime container (iPhone files are ``.mov``)."""
+    out = video_dir / "trimmed.mov"
+    _ffmpeg("-ss", "0.7", "-i", str(trim_base_video), "-c", "copy", str(out))
+    return out
+
+
+@pytest.fixture(scope="session")
+def yuv444_video(video_dir: Path) -> Path:
+    """1 s, 320x240 at 30 fps in 4:4:4 chroma sampling, which a browser cannot play (the proxy must be yuv420p)."""
+    out = video_dir / "yuv444.mp4"
+    _ffmpeg(
+        "-f", "lavfi", "-i", "testsrc2=size=320x240:rate=30:duration=1",
+        "-c:v", "libx264", "-pix_fmt", "yuv444p", "-an", str(out),
+    )  # fmt: skip
+    return out

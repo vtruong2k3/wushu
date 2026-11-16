@@ -61,12 +61,17 @@ class PtsScan:
 
 
 def scan_pts_ticks(path: str | Path) -> PtsScan:
-    """Demux the video stream and return its sorted integer timestamps, without decoding."""
+    """Demux the video stream and return the sorted integer timestamps of its frames, without decoding.
+
+    A packet flagged *discard* is not a frame: a clip trimmed on a phone (a stream copy that starts between two
+    keyframes) keeps the packets before the edit start, with negative times, and the decoder never outputs them
+    (BUG-0052). Counting them would shift row *i* of the frame table away from decoded frame *i*.
+    """
     with av.open(str(path)) as container:
         stream = container.streams.video[0]
         tb = Fraction(stream.time_base.numerator, stream.time_base.denominator)
         start = _start_pts(stream)
-        pts = [p.pts for p in container.demux(stream) if p.pts is not None and p.size > 0]
+        pts = [p.pts for p in container.demux(stream) if p.pts is not None and p.size > 0 and not p.is_discard]
     return PtsScan(np.sort(np.asarray(pts, dtype=np.int64)), tb, start)
 
 

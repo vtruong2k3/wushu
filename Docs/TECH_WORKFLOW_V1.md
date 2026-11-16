@@ -145,11 +145,18 @@ flowchart LR
 2. Chạy `ffprobe -show_streams -show_format -of json` để lấy codec, kích thước, rotation metadata, `r_frame_rate`, `avg_frame_rate`, `time_base`, duration và audio stream.
 3. Đọc toàn bộ PTS bằng PyAV để tạo `pts.parquet` (`frame_index`, `pts`, `t_sec = pts × time_base`).
    - Tính `dt` và đánh dấu VFR nếu `std(dt)/median(dt)` vượt ngưỡng (đề xuất 1%).
+   - Chỉ đếm frame mà decoder thật sự xuất ra: packet gắn cờ *discard* không phải frame. Clip cắt trên điện thoại (stream copy
+     bắt đầu giữa hai keyframe) có edit list; các packet trước điểm bắt đầu vẫn nằm trong file với pts âm và bị decoder bỏ.
+     Đếm chúng làm dòng *i* của `pts.parquet` không còn là frame *i* đã decode (BUG-0052, DEC-0030).
 4. Xử lý rotation: lưu `display_rotation`. Hoặc áp xoay một lần khi tạo proxy, hoặc xoay frame trước khi chạy pose. Ghi transform vào manifest.
 5. Tạo proxy H.264 cho playback trên trình duyệt:
-   `ffmpeg -i source -vf scale=-2:720 -c:v libx264 -crf 23 -g 30 -an proxy.mp4`
-   - Map thời gian proxy ↔ nguồn bằng PTS (proxy giữ timestamp nguồn).
-   - Kiểm tra sai lệch ≤ 1 frame trên các điểm mẫu.
+   `ffmpeg -i source -map 0:v:0 -vf "scale=-2:'min(720,ih)'" -c:v libx264 -preset veryfast -crf 23 -g 30 -pix_fmt yuv420p -fps_mode passthrough -an -movflags +faststart -map_metadata -1 proxy.mp4`
+   - Map thời gian proxy ↔ nguồn bằng PTS (proxy giữ timestamp nguồn, không phóng to nguồn nhỏ).
+   - Xóa metadata vị trí/thiết bị (`-map_metadata -1`).
+   - Kiểm tra sai lệch ≤ 1 frame trên các điểm mẫu (tối đa 10 điểm), ghi `proxy.json` (`proxy/1`).
+   - Proxy không đạt kiểm tra vẫn được giữ và đánh dấu `passed = false` (UI không dùng nó cho thao tác chính xác từng frame);
+     lệnh `taiji proxy` và `taiji ingest --proxy` thoát với mã 1 và vẫn in recording ID (DEC-0030). Điều không đo được thì
+     báo lỗi, không ghi số bịa.
 6. Ghi `recording.json` (mục 4.2).
 
 **Kiểm thử cần có:** fixture VFR, fixture có rotate 90°, file hỏng, file 0 byte, video không có audio.
@@ -158,8 +165,28 @@ flowchart LR
 
 1. Tách audio mono 16 kHz cho từng camera: `ffmpeg -i source -vn -ac 1 -ar 16000 audio.wav`
 2. Lấy envelope (trị tuyệt đối → lọc thông thấp). Dùng `scipy.signal.correlate` trong cửa sổ đầu take để có `offset_start`, cửa sổ cuối take để có `offset_end`.
-3. `drift = (offset_end − offset_start) / duration`. Mapping: `t_cam2 = t_cam1 + offset_start + drift × (t_cam1 − t0)`.
+   - Cửa sổ cuối là `window_s` giây cuối của đoạn **cả hai camera cùng ghi** (không phải của riêng A), và ở camera B được tìm
+     đúng chỗ `offset_start` dự đoán, trong một lát B rộng hơn cửa sổ của A một biên ở hai phía (cắt trong vùng B đã ghi, không
+     đệm số 0), biên = `end_margin_s` 3,5 s cộng phần drift cho phép (`max_drift` 500 ppm); như vậy kết
+     quả không phụ thuộc máy nào dừng trước (BUG-0058). Biên 3,5 s phải rộng hơn khoảng cách giữa hai tiếng vỗ (khoảng 1 s,
+     tối đa 2 s) để khớp thật của một drift vô lý vẫn là đỉnh tốt nhất rồi bị giới hạn drift loại, thay vì một tiếng vỗ lẻ
+     khớp nhầm trong dải hợp lý. Không tìm được đầu thì không tìm cuối.
+   - Một cửa sổ được tìm rộng hơn mức được chấp nhận (cửa sổ đầu: `max_lag_s` 15 s + vùng đệm 3,5 s; cửa sổ cuối: biên trên), để
+     khớp thật nằm sát mép vẫn là đỉnh tốt nhất rồi bị loại, thay vì một tiếng vỗ lẻ khớp nhầm ngay trong dải. Đỉnh thứ hai được tìm
+     ngoài 0,2 s quanh đỉnh tốt nhất (nhỏ hơn khoảng cách hai tiếng vỗ của một cặp, ≥ 0,3 s).
+   - Drift vượt `max_drift` (500 ppm) không phải là đồng hồ: cửa sổ cuối bị loại, trạng thái `start_only`. `max_drift` cũng là phép
+     kiểm chứng chéo giữa hai phép đo (lỗi E ở một cửa sổ hiện ra thành drift E/dt): một tiếng vỗ khớp nhầm ở một đầu bị loại, với
+     lỗi 1 s thì đến take 2000 s. Lỗi giống hệt ở cả hai đầu (cặp bị hỏng như nhau) âm thanh không phát hiện được: flash ở cả hai đầu
+     (bước 4) mới quyết định dùng được (BUG-0063).
+   - Track audio bị mất mẫu (PTS nhảy quá 2 ms) bị từ chối khi tách audio, không tự vá (BUG-0058..0062, DEC-0033).
+3. `drift = (offset_end − offset_start) / (t_ref_end − t_ref_start)`, với `t_ref` là thời điểm của tiếng vỗ tay đã khớp trên trục video
+   của camera A, không phải tâm cửa sổ tìm kiếm (BUG-0059). Mapping: `t_cam2 = t_cam1 + offset_start + drift × (t_cam1 − t_ref)`.
 4. Kiểm chứng bằng mốc nhìn thấy (frame flash). `residual` = sai lệch giữa mốc audio và mốc hình, tính theo ms và theo frame.
+   Flash đi theo cặp (cách nhau khoảng 1 s) như tiếng vỗ tay, nên mỗi cửa sổ được ghép **một-một theo thứ tự thời gian**: hai
+   camera phải thấy **cùng số flash, ít nhất hai**; flash thứ i của A so với flash thứ i của B; `residual` của cửa sổ là khoảng
+   cách **lớn nhất**, không phải trung bình. Số flash khác nhau hoặc ít hơn hai thì cửa sổ không kết luận được (không có
+   residual, take không dùng được cho metric). Ghép theo flash gần nhất, bỏ flash không có cặp và lấy trung bình từng để lọt
+   một mapping lệch đúng một khoảng cách cặp (1 s) khi một camera không thấy một flash của cặp (BUG-0064, DEC-0034).
 5. Ghi `sync.json`: `method`, `offset`, `drift`, `residual_ms`, `validated_by`.
 6. Quy tắc dùng:
    - Residual ≤ 1 frame: cho ghép metric theo thời gian.
@@ -336,7 +363,7 @@ t_b = t_a + offset_s + drift × (t_a − t_ref_s)
 t_a = (t_b − offset_s + drift × t_ref_s) / (1 + drift)
 ```
 
-`t_ref_s` là tâm cửa sổ khớp ở đầu take trên camera A; `drift` không có đơn vị (1e-4 = 100 ppm); `offset_s > 0` nghĩa là B
+`t_ref_s` là thời điểm, trên trục video của camera A, của tiếng vỗ tay đã khớp ở đầu take (BUG-0059; trước đó là tâm cửa sổ); `drift` không có đơn vị (1e-4 = 100 ppm); `offset_s > 0` nghĩa là B
 thấy cùng khoảnh khắc đó muộn hơn trên trục của B. Giá trị chưa biết là `null`: `status = ok` chỉ khi khớp tiếng vỗ tay ở cả đầu và
 cuối; `start_only` thì chưa biết `drift`; `not_found` (kèm `not_found_reason` là `no_audio` hoặc `clap_not_found`) thì chưa biết
 cả `offset_s`. Chỉ `ok` mới có phép ánh xạ (`a_to_b`, `b_to_a`; còn lại báo `SyncUnavailable`), để không ngầm coi drift là 0.
