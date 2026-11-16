@@ -40,7 +40,9 @@ def make_pose_raw(*, empty: bool = False, seed: int = 7) -> PoseRaw:
         image_size=(1920, 1080),
         display_rotation=0,
         segment_s=(0.5, 0.9),
-        params=PoseRunParams(),
+        params=PoseRunParams(
+            detect_every_n=3, bbox_margin=0.15, min_score=0.35, min_valid_keypoints=7, segment_margin_s=0.5
+        ),
         model_fingerprint={"fake_det": "0" * 64, "fake_pose": "1" * 64},
         providers={"det": "CUDAExecutionProvider", "pose": "CUDAExecutionProvider"},
         stats=PoseRunStats(n_frames=6, n_detector_calls=4, n_pose_calls=5, n_persons_total=d, elapsed_s=1.234),

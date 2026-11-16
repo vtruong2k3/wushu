@@ -132,4 +132,4 @@ def test_t_pose_08j_a_real_clip_saved_and_loaded_is_the_same(estimator, ingest_s
     loaded = load_pose_raw(path)
 
     assert loaded.equals(raw) and digest == sha256_file(path)
-    assert raw.n_frames > 250 and path.stat().st_size < 2_000_000  # measured on 2026-11-16: see the task file
+    assert raw.n_frames > 250 and path.stat().st_size < 500_000  # measured 2026-11-16: 82 KB
