@@ -26,7 +26,7 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
 - Decisions: DEC-0028
 - Bugs: BUG-0046 (S3, `is_vfr` on a coarse time base) fixed and closed; BUG-0051 (S3, the first tests passed with 22 broken
   rules, one dead check) found and closed
-- Commit: not committed
+- Commit: 2808bc6
 - Plan: Docs/tasks/P2.02.md
 
 ## 2026-11-16 — P2.08 Participant registry and the `taiji participant` command (DONE)
@@ -44,7 +44,7 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
   line of pytest); gate 10/10 PASS in 16.5 s
 - Decisions: DEC-0027
 - Bugs: BUG-0050 (S3, `show` echoed an unchecked `--id`) found in the self-review and closed
-- Commit: not committed
+- Commit: 2808bc6
 - Plan: Docs/tasks/P2.08.md
 
 ## 2026-11-15 — P2.01 Manifest schemas: recording, proxy, sync (DONE)
