@@ -25,6 +25,7 @@ from __future__ import annotations
 import logging
 import math
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
@@ -66,12 +67,10 @@ class PoseModel(Protocol):
 
 @dataclass(frozen=True)
 class PoseRunParams:
-    detect_every_n: int = (
-        5  # the detector runs on the first frame and every N frames (provisional: P3.07 measures N = 1, 5, 10)
-    )
-    bbox_margin: float = (
-        0.12  # widening of a box taken from keypoints, share of its width and height on each side (plan: 10 to 15 %)
-    )
+    # The detector runs on the first frame and every N frames (provisional: P3.07 measures N = 1, 5, 10).
+    detect_every_n: int = 5
+    # Widening of a box taken from keypoints, share of its width and height on each side (plan: 10 to 15 %).
+    bbox_margin: float = 0.12
     min_score: float = 0.3  # a keypoint under this score is not valid
     min_valid_keypoints: int = 6  # a person with fewer valid keypoints is stored but not followed
     segment_margin_s: float = 1.0  # frames read before the start and after the end of the segment (W4) [s]
@@ -113,9 +112,8 @@ class PoseRaw:
     t_sec: np.ndarray  # (F,) float64, seconds from the stream start, real PTS, strictly increasing
     person_offsets: np.ndarray  # (F + 1,) int64
     bboxes: np.ndarray  # (D, 4) float32, xyxy [px]
-    keypoints: (
-        np.ndarray
-    )  # (D, 26, 2) float32, x y [px] of the upright image, as the model returned them (never clamped, never filled)
+    # (D, 26, 2) float32, x y [px] of the upright image, as the model returned them (never clamped, never filled)
+    keypoints: np.ndarray
     scores: np.ndarray  # (D, 26) float32, the model's scores
     from_detector: np.ndarray  # (D,) bool, the box came from the detector (True) or from the previous keypoints (False)
     image_size: tuple[int, int]  # (width, height) [px] of the upright image the coordinates refer to
@@ -152,9 +150,13 @@ class PoseRaw:
         )
 
 
-def _valid_mask(keypoints: np.ndarray, scores: np.ndarray, min_score: float) -> np.ndarray:
-    """(26,) bool: finite coordinates and a finite score of at least ``min_score``."""
-    return np.isfinite(keypoints).all(axis=1) & np.isfinite(scores) & (scores >= min_score)
+def valid_keypoint_mask(keypoints: np.ndarray, scores: np.ndarray, min_score: float) -> np.ndarray:
+    """Which keypoints are valid: finite coordinates and a finite score of at least ``min_score``.
+
+    ``keypoints`` is ``(..., 26, 2)`` and ``scores`` ``(..., 26)``; the result is ``(..., 26)`` bool. This one rule
+    decides who the runner follows and who the target choice may pick (P3.04).
+    """
+    return np.isfinite(keypoints).all(axis=-1) & np.isfinite(scores) & (scores >= min_score)
 
 
 def box_from_keypoints(
@@ -177,7 +179,7 @@ def box_from_keypoints(
         raise ValueError(f"keypoints must have shape ({NUM_JOINTS}, 2), got {kp.shape}")
     if sc.shape != (NUM_JOINTS,):
         raise ValueError(f"scores must have shape ({NUM_JOINTS},), got {sc.shape}")
-    valid = _valid_mask(kp, sc, min_score)
+    valid = valid_keypoint_mask(kp, sc, min_score)
     if int(valid.sum()) < min_valid:
         return None
     points = kp[valid]
@@ -231,6 +233,7 @@ def run_pose(
     model: PoseModel,
     *,
     params: PoseRunParams | None = None,
+    on_frame: Callable[[int, float], None] | None = None,
 ) -> PoseRaw:
     """Raw pose of everybody in the frames of ``[start_s - margin, end_s + margin]`` of a stored recording.
 
@@ -240,6 +243,10 @@ def run_pose(
         end_s: end of the segment [s]; must be after ``start_s``.
         model: an already built pose model (detector and pose estimator).
         params: cadence and box parameters; the defaults are provisional until P3.07.
+        on_frame: optional ``on_frame(position, t_sec)`` called after each frame has been processed (``position``
+            counts the frames of the window from 0, ``t_sec`` is the time of the table); it cannot change the result
+            and an exception in it ends the run like any other error (P3.07 times the frames with it, P7 will report
+            progress with it).
 
     Returns:
         ``PoseRaw`` (see there for shapes, units and coordinates). A frame without a person has zero rows.
@@ -333,9 +340,11 @@ def run_pose(
         followed = [
             (result.keypoints[i], result.scores[i])
             for i in range(n)
-            if int(_valid_mask(result.keypoints[i], result.scores[i], params.min_score).sum())
+            if int(valid_keypoint_mask(result.keypoints[i], result.scores[i], params.min_score).sum())
             >= params.min_valid_keypoints
         ]
+        if on_frame is not None:
+            on_frame(k, float(t_sec[row]))
         k += 1
 
     if k != rows.size:
@@ -417,7 +426,7 @@ def _process_frame(
 
     if not from_detector:
         stale_followed = any(
-            int(_valid_mask(result.keypoints[i], result.scores[i], params.min_score).sum())
+            int(valid_keypoint_mask(result.keypoints[i], result.scores[i], params.min_score).sum())
             >= params.min_valid_keypoints
             for i in range(result.keypoints.shape[0])
         )

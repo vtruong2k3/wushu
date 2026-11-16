@@ -4,13 +4,15 @@ Rules: `AGENTS.md` §3. IDs are sequential (`BUG-NNNN`), never reused. Every bug
 Severity: **S1** critical · **S2** major · **S3** minor.
 Lifecycle: `OPEN → PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED` (or `WONT_FIX` with maintainer approval).
 
-**Next free ID:** `BUG-0070`
+**Next free ID:** `BUG-0072`
 
 ## Summary
 
 | ID       | Title                                                                                                                      | Sev | Status | Found in                                                                   | Fix task | Regression test                                                  | Opened     | Closed     |
 | -------- | -------------------------------------------------------------------------------------------------------------------------- | --- | ------ | -------------------------------------------------------------------------- | -------- | ---------------------------------------------------------------- | ---------- | ---------- |
-| BUG-0069 | `store/artifacts.atomic_write_bytes` leaves `<name>.tmp` behind when the write or `os.replace` fails, and creates missing parent folders silently: a failed save litters the run folder and a typo in a path creates a new tree | S3 | IN_PROGRESS | `taiji_ai/src/taiji_ai/store/artifacts.py`, found by the agent while planning the atomic test of P3.03 | P3.03 | T-ART-01 (to write) | 2026-11-16 | |
+| BUG-0071 | The benchmark orchestrator (P3.07, first version) handed an unknown loss of the tracked share (no clip had a target in both runs) to the rule for N as 0.0, so a missing measurement counted as "no loss" and could let an N pass | S3 | CLOSED | `taiji_ai/src/taiji_ai/bench/orchestrate.py`, `bench/decision.py` (P3.07, first version) | P3.07 | `test_t_bench_06_an_unknown_tracked_share_is_not_acceptable_and_is_not_taken_as_zero` | 2026-11-16 | 2026-11-16 |
+| BUG-0070 | `associate_tracks` (first version, P3.05) divided the keypoint distance by the height of the hull of the *common* keypoints instead of the height of the whole track: when only a few keypoints are common (the head, two rows of the body) the term was inflated (a 20 px move: 0.14 instead of 0.03), so a partly visible person could be refused and split into two tracks | S3 | CLOSED | `taiji_ai/src/taiji_ai/track/associate.py` `_pair_cost`, found by the agent when reading the file back before closing P3.05 | P3.05 | T-TRK-03e (the height test) | 2026-11-16 | 2026-11-16 |
+| BUG-0069 | `store/artifacts.atomic_write_bytes` leaves `<name>.tmp` behind when the write or `os.replace` fails, and creates missing parent folders silently: a failed save litters the run folder and a typo in a path creates a new tree | S3 | CLOSED | `taiji_ai/src/taiji_ai/store/artifacts.py`, found by the agent while planning the atomic test of P3.03 | P3.03 | T-ART-01 (3 tests) | 2026-11-16 | 2026-11-16 |
 | BUG-0068 | P2.05 tests and records do not show what they claim: the tests of `test_flash.py` leave 10 of 14 mutants of `flash.py` alive (9 after the tests of X.23 and X.24; 2 of the 9 are equivalent): the drift and `t_ref_s` of the mapping (every fixture has drift 0), the swap of the folder order, the slower-camera frame (both cameras 30 fps), the search margin, the adaptive threshold (`k_mad`), the refractory time; step 4 of the plan ("run mutation checks") has no evidence; §7 says "None found" (BUG-0064 was in this task); "edge cases: empty input, single flash" are not tested; LaTeX in the task file and DEC-0032; counts of a moving tree (722, 44.4 s) | S3 | CLOSED | P2.05 review, `Docs/tasks/P2.05.md`, `taiji_ai/tests/contract/test_flash.py` | P2.05 rework | T-SYNC-04g..n (13 tests) | 2026-11-16 | 2026-11-16 |
 | BUG-0067 | `io/flash.py` breaks repository rules: dead arguments (`settings` of `validate_sync`, `rotation_deg` of `brightness_series`), a made-up frame interval (`median_dt_s or 1/30`), and no check that the two recording folders are the ones the audio result was made from (`recording_id_a/b`, take): the validation of another pair runs silently | S3 | CLOSED | P2.05 review, `taiji_ai/src/taiji_ai/io/flash.py` | P2.05 rework | T-SYNC-04n (4 tests) | 2026-11-16 | 2026-11-16 |
 | BUG-0066 | The flash detector needs a frame-mean luma step of 15 levels: a lamp that lights 5 % of a 640x360 frame (step 8) or 2 % (step 3) is not found, 10 % (step 16) only just; a flash whose first step is split over two frames is found one frame late (step 40, 0.3 split) or not at all (step 25, 0.5 split), so two cameras can differ by a frame on a perfect mapping, against a limit of one frame; the thresholds rest on synthetic full-frame flashes only | S2 | PLANNED | P2.05 review, `taiji_ai/src/taiji_ai/io/flash.py` (`find_flash_onsets`), DEC-0032 | to open after the maintainer's decision | regression tests named in the fix plan | 2026-11-16 | |
@@ -84,12 +86,51 @@ Lifecycle: `OPEN → PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED` 
 
 ## Details
 
+### BUG-0071 — An unknown tracked-share loss was passed to the rule for N as zero
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3 (found before the task closed; the five real clips all have a target, so no result was affected) |
+| Status          | CLOSED                                                                                     |
+| Found in        | `taiji_ai/src/taiji_ai/bench/orchestrate.py` `run_benchmark` and `bench/decision.py` `NStats` (P3.07, first version) |
+| Found by / date | agent (Claude Code), 2026-11-16, read-back of the orchestrator while the first gate was running |
+
+**Description:** `_effect` returns `None` for the loss of the tracked share when no clip has a target in both runs, and `run_benchmark` replaced it with `0.0` (`0.0 if loss is None else loss`) before the rule: a measurement that does not exist became "no loss" (AGENTS.md 5.1, no made-up numbers).
+**Steps to reproduce:** `NStats(..., tracked_loss_points=None)` was not allowed by the type; the orchestrator turned the `None` into 0.0 and the criterion passed.
+**Expected:** the criterion cannot be decided, so N is not acceptable and the reason says so. **Root cause:** a convenience default in the orchestrator.
+**Fix:** `NStats.tracked_loss_points` is `float | None`; the rule gives the reason "the tracked share of the target could not be compared (no clip has a target in both runs)"; the orchestrator passes the value as it is. Regression test `test_t_bench_06_an_unknown_tracked_share_is_not_acceptable_and_is_not_taken_as_zero`.
+**Verified:** agent, 2026-11-16 — the test fails with a `TypeError` on the old comparison and passes after the fix; gate in the close-out of P3.07.
+
+**History:**
+
+- 2026-11-16 OPEN → FIXED → VERIFIED → CLOSED — found and fixed in P3.07 before the task closed.
+
+### BUG-0070 — The keypoint term of the association was normalised by the wrong height
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3 (found before the task closed; no clip showed it: the real clips have all keypoints valid)      |
+| Status          | CLOSED                                                                                     |
+| Found in        | `taiji_ai/src/taiji_ai/track/associate.py` `_pair_cost` (P3.05, first version)             |
+| Found by / date | agent (Claude Code), 2026-11-16, read-back of the whole file after the gate and the mutation run |
+
+**Description:** the plan and the module docstring say the keypoint distance is divided by the height of the track's hull. The code took `hull_t`, which is replaced by the hull of the keypoints valid in both frames when at least four are common, so with few common
+keypoints (two rows of the body, 140 px against 700 px) the height was too small and the cost too large.
+**Steps to reproduce:** a track of 300 x 700 px and a person that shows only the top two rows of the body, moved by 20 px: cost 0.134 (expected 0.077).
+**Expected:** 0.077 (the common hull has the IoU of the full box, the distance is 20 / 700). **Root cause:** `height = hull_t[3] - hull_t[1]` after `hull_t` had been reassigned.
+**Fix:** `height = track.hull[3] - track.hull[1]` (the whole body of the track); regression test `test_t_trk_03e_the_keypoint_distance_is_divided_by_the_height_of_the_whole_track_not_of_the_common_keypoints`, and the mutant "height of the common hull" is caught.
+**Verified:** agent, 2026-11-16 — the new test failed before the fix (cost 0.134) and passes; mutation 25 of 25; gate 10/10 PASS (178.3 s, 1198 tests).
+
+**History:**
+
+- 2026-11-16 OPEN → FIXED → VERIFIED → CLOSED — found and fixed in P3.05 before the task closed.
+
 ### BUG-0069 — `atomic_write_bytes` leaves a `.tmp` file after a failure
 
 | Field           | Value                                                                                      |
 | --------------- | ------------------------------------------------------------------------------------------ |
 | Severity        | S3                                                                                         |
-| Status          | IN_PROGRESS (task P3.03)                                                                   |
+| Status          | CLOSED                                                                                      |
 | Found in        | `taiji_ai/src/taiji_ai/store/artifacts.py` `atomic_write_bytes` (used by every artifact writer) |
 | Found by / date | agent (Claude Code), 2026-11-16, reading the helper while planning the atomic-write test of P3.03 |
 | Affects         | any failed write: disk full, a failing `os.replace` (file in use on Windows)               |
@@ -101,12 +142,13 @@ a stale `.tmp`, and the run folder is littered. The function also creates missin
 **Expected:** the exception is raised, the old file is intact, no `.tmp` remains. **Actual:** the `.tmp` remains.
 
 **Fix plan:** wrap the write and the replace in `try/except BaseException`: remove the `.tmp` (ignore a failure to remove, log it) and re-raise; keep the parent-folder creation. Regression test `T-ART-01` (replace fails, write fails, old content kept, no `.tmp`).
-**Fix:** —
-**Verified:** —
+**Fix:** task P3.03, 2026-11-16 — `atomic_write_bytes` removes its `.tmp` (and logs, without a file name, if the removal fails) and re-raises on any failure of the write or of `os.replace`; the parent-folder creation stays.
+**Verified:** agent, 2026-11-16 — T-ART-01: the two failure cases failed on the old helper and pass; the success case (parent folders created, file replaced, no `.tmp`) passes; the mutants 'tmp not removed' and 'failure not re-raised' are caught; gate 10/10 PASS (170.3 s, 1109 tests).
 
 **History:**
 
 - 2026-11-16 OPEN → PLANNED → IN_PROGRESS — found while planning P3.03; fixed in that task (small).
+- 2026-11-16 IN_PROGRESS → FIXED → VERIFIED → CLOSED — fixed and verified in P3.03.
 
 ### BUG-0068 — P2.05 tests and records do not show what they claim
 

@@ -220,16 +220,48 @@ Phương án dự phòng (P8.05b): HLV đánh dấu trong Kinovea hoặc ELAN r�
   - Lưu `pose_raw.npz`. Mảng có độ dài biến đổi thì lưu dạng ragged hoặc padded kèm `n_persons`.
 - **Backend:** `onnxruntime` với `CUDAExecutionProvider`, fallback CPU. Ghi provider thực dùng vào run manifest.
 - **Hiệu năng:** đo `processing_seconds / video_seconds` và peak VRAM ở P01. Batch không bắt buộc ở MVP.
+  Đã đo ở P3.07 (`Docs/reports/p3_pose_benchmark.md`; clip D20, không phải clip điện thoại của P1.09; RTX 3060 12 GB dùng chung với màn hình; 5 clip 30 s, 3 lượt đo): RTF 1,23 (N = 1), 0,335 (N = 5), 0,259 (N = 10) trên video 24 và 30 fps; ở 30 fps là 1,47 / 0,40 / 0,31.
+  Detector chiếm 73 % thời gian ở N = 1 (khoảng 36 ms mỗi lần gọi), pose khoảng 8 ms mỗi frame một người, decode 5 đến 21 %. VRAM đỉnh 1,8 đến 2,0 GB tổng (0,6 đến 0,8 GB trên mức các chương trình khác đang giữ), còn trống khoảng 10 GB.
+  Một đoạn 30 s qua cả tầng pose (đến khi lưu `track.parquet`): 37 đến 46 s (N = 1), 10 đến 13 s (N = 5). Luật chọn N viết trước khi đo khuyến nghị **N = 1** (N = 5 lệch khỏi N = 1 trên keypoint người tập: trung vị 2,0 px, p95 9,7 px, p99 21,7 px); mã vẫn để N = 5 đến khi maintainer quyết, và P3.08 so hai cadence trên các frame nghi lỗi trước khi chốt.
+
+**Định dạng `pose_raw.npz` (schema `pose_raw/1`, P3.03, `pose/raw_io.py`, `schemas/pose.py`).** Chín mảng tên và kiểu cố định: `frame_index` (F,) int32 (dòng của frame trong `pts.parquet`, tăng ngặt);
+`t_sec` (F,) float64 (PTS thật, tăng ngặt); `person_offsets` (F + 1,) int64 (người của frame `i` là dòng `[i]:[i + 1]`; bắt đầu từ 0, không giảm, kết thúc ở D); `bboxes` (D, 4) float32 xyxy [px];
+`keypoints` (D, 26, 2) float32 (pixel ảnh đã xoay đúng chiều, y xuống, đúng như mô hình trả về); `scores` (D, 26) float32; `from_detector` (D,) bool; `schema_version` (chuỗi 0-d, `"pose_raw/1"`);
+`meta_json` (chuỗi 0-d: `PoseRawMeta` gồm `skeleton`, `recording_id`, `image_size`, `display_rotation`, `segment_s`, `params`, `model_fingerprint`, `providers` và các số đếm xác định). Frame không có người có 0 dòng.
+Keypoint và score không bị kiểm khoảng giá trị, cắt hay điền; NaN giữ nguyên. Thời gian chạy thật (wall clock) không nằm trong file mà nằm trong `run_manifest.json` (`runtime`). Đọc nghiêm ngặt: thiếu hay thừa mảng, sai kiểu hay shape,
+số đếm lệch, khác phiên bản hay skeleton đều là `PoseRawError` nêu tên trường; mỗi phiên bản có một bộ đọc (`_READERS`), file cũ không bao giờ bị nâng cấp ngầm. Byte của `.npz` không xác định (timestamp trong zip):
+so sánh theo nội dung (`PoseRaw.equals`), còn run manifest ghi SHA-256 của file đã ghi (`save_pose_raw` trả về).
 
 Không lật gương ảnh. Người quay lưng vẫn giữ nhãn trái/phải do model trả về và được kiểm tra ở W6.
 
 ### W5 — Khóa người tập
 
 1. Ở frame đầu segment (hoặc frame do người dùng chọn), hiển thị bbox các người phát hiện được. Người dùng chọn người tập. Mặc định chọn bbox lớn nhất gần tâm.
+   Quy tắc cụ thể (P3.04, `track/target.py`, giá trị tạm): chỉ xét người đủ điều kiện (đủ `min_valid_keypoints` keypoint hợp lệ, bbox có diện tích); điểm = `diện tích bbox / diện tích ảnh × độ gần tâm` với
+   `độ gần tâm = 1 − min(1, d / nửa đường chéo ảnh)`, `d` là khoảng cách từ tâm bbox đến tâm ảnh; điểm bằng nhau lấy dòng thấp hơn. Frame đầu segment không có ai đủ điều kiện thì tìm tiếp về phía sau tối đa 2 s
+   (không bao giờ về trước điểm bắt đầu), không có thì báo lỗi, không đoán. Hai người có điểm gần nhau (điểm thứ hai / điểm tốt nhất ≥ 0,6) thì kết quả mang cờ `ambiguous` để UI hỏi lại. Khi người dùng chỉ định bbox:
+   chọn người có IoU lớn nhất (≥ 0,3, kể cả người yếu, có cờ `weak`); bbox không khớp ai, hoặc bao hai người (IoU tốt nhất chưa gấp 1,5 lần IoU thứ hai) thì báo lỗi, không chọn người gần nhất. Lựa chọn (`bbox`, `at_t_sec`)
+   nằm trong yêu cầu chạy và khóa cache của P7; `pose_raw.npz` không phụ thuộc người được chọn.
 2. Ghép frame-to-frame bằng Hungarian trên chi phí kết hợp `1 − IoU(bbox)` và khoảng cách keypoint trung bình (chuẩn hóa theo chiều cao bbox).
    - Tham khảo `sort_people_sports2d` (Pose2Sim, BSD-3; giữ thông báo bản quyền nếu chép).
+   - Cài đặt (P3.05, `track/associate.py`, giá trị tạm đã đo): chi phí = `(w_iou × (1 − IoU) + w_kp × min(1, khoảng cách keypoint trung bình / chiều cao hull)) / (w_iou + w_kp)` thuộc [0, 1], `w_iou = w_kp = 1`; hull là bao hộp của các keypoint hợp lệ
+     (khi hai bên có ≥ 4 keypoint chung thì hull tính trên các keypoint chung), không dùng bbox detector đã lưu vì nó đổi theo nhịp detector; ít hơn 4 keypoint chung thì chỉ dùng số hạng IoU. Gán Hungarian toàn cục từng frame, cặp có chi phí > `max_cost = 0,3`
+     không bao giờ được ghép. Track không được ghép sống thêm `max_gap_s = 0,1` s theo `t_sec` thật rồi đóng. Mọi người đủ điều kiện (đủ `min_valid_keypoints`) đều có track; người yếu có `track_id = −1`. `match_margin` đo độ tranh chấp của phép ghép: gần 0 chỗ hai người
+     trùng nhau (không có đặc trưng hình dạng bề ngoài, hai thân hình giống hệt ở cùng chỗ không phân biệt được: giới hạn của phương pháp), ≥ 0,6 ở chỗ khác trên clip thật. Dự đoán chuyển động đã được đo và không được dùng (không giảm tráo ID, làm chi phí thật lớn hơn).
 3. Mất dấu quá `max_lost` (đề xuất 0,5 s): đánh dấu `target_lost`, không tự nhảy sang người khác. Khi thấy lại, chỉ nối nếu chi phí dưới ngưỡng; nếu không thì báo người dùng chọn lại.
-4. Ghi `track.parquet` (`t_sec`, `frame_index`, keypoint, score, `match_cost`, `status`).
+   Cài đặt (P3.06, `track/state.py`, giá trị tạm đã đo): mỗi frame của `pose_raw` có đúng một dòng với trạng thái `tracked` (có keypoint của người tập), `lost` (vắng ≤ `max_lost_s = 0,5` s theo `t_sec` thật, dự kiến quay lại),
+   `target_lost` (vắng lâu hơn) hoặc `before_target` (trước frame đầu của track người tập). Keypoint và score của dòng không phải `tracked` là NaN: không điền, không nội suy (P4 nội suy gap ≤ 150 ms theo thời gian).
+   Track của P3.05 đóng sau 0,1 s nên người quay lại sau một lúc vắng là một track **mới**; chỉ track **bắt đầu sau frame cuối của người tập, trong lúc người tập vắng** mới là ứng viên (người luôn có mặt, như người đi ngang qua người tập, không bao giờ là ứng viên).
+   Chi phí của P3.05 (`person_cost`) giữa pose đầu của ứng viên và **pose cuối** của người tập: ≤ `reattach_cost = 0,5` thì nối (`reattached`); hai ứng viên cùng dưới ngưỡng và chi phí gần nhau (tốt nhất / thứ hai ≥ 0,6, hoặc cả hai bằng 0) thì `ambiguous`;
+   trên ngưỡng hoặc vắng quá `max_reattach_s = 5` s thì `refused`. Không nối thì không đoán: giữ NaN và đặt `needs_reselect` kèm `reselect_reason` (`reattach_ambiguous`, `reattach_refused`, `target_lost_at_end`, `default_choice_ambiguous`, lý do đầu tiên trong
+   danh sách này mà thỏa) để UI (P8) hỏi người dùng chọn lại. Người được chọn là người yếu (`track_id = −1`) thì báo lỗi `TargetStateError`.
+   Số đo (Docs/tasks/P3.06.md mục 4): quay lại cùng chỗ trên SYN-12 (lệch ≤ 100 px) chi phí ≤ 0,44; trên clip thật D20 (bỏ các dòng của người dẫn 0,3 đến 7 s) ≤ 0,5 ở 83 đến 100 % vị trí; người lạ trong clip ≥ 0,65 (clip 660 s: 0,737 và 0,738, so với
+   0,035 của chính người dẫn khi quay lại). Chưa có clip thật mà người tập thật sự rời khung (P1.09): ngưỡng là tạm, đo lại ở các take thật đầu tiên. Giới hạn: người lạ đứng đúng chỗ người tập vừa đứng có chi phí như người quay lại (không có đặc trưng bề ngoài,
+   cùng giới hạn như P3.05); chỉ bắt được khi hai người cùng xuất hiện một lúc (`ambiguous`).
+4. Ghi `track.parquet` (P3.06, `track/track_io.py`, schema `track/1`): mỗi frame của `pose_raw` một dòng: `frame_index`, `t_sec`, `in_segment` (frame nằm trong segment, không phải phần đệm 1 s), `status` (chuỗi), `track_id`, `person_row` (−1 khi không `tracked`),
+   `keypoints` (list cố định 52 float32 x0, y0, x1, y1, …, px ảnh đã xoay thẳng, y xuống), `scores` (26 float32), `match_cost`, `match_margin`, `reattach_cost` (chi phí đã cho phép nối, chỉ ở frame nối). Metadata JSON `taiji_track_meta` trong schema Parquet:
+   phiên bản, `recording_id`, lựa chọn người tập, tham số (cả của P3.05), số đếm từng trạng thái, `needs_reselect` và `reselect_reason`, các sự kiện (`lost`, `target_lost`, `recovered`, `reattached`, `refused`, `ambiguous` kèm frame, thời gian, chi phí). Không có đường dẫn hay tên file.
+   Ghi nguyên tử, thư mục phải có sẵn; `save_track` trả SHA-256 cho manifest của run (P7); đọc nghiêm ngặt (cột, kiểu, null, tên trạng thái, số đếm và sự kiện phải khớp các dòng; phiên bản qua bảng reader).
 
 ### W6 — Quality mask, nội suy, lọc
 
@@ -244,6 +276,10 @@ Lưu **ba lớp riêng**: `raw` (từ W5), `mask` và `filtered`.
 | Outlier | Hampel, cửa sổ 7, 3σ (MAD) | Cờ `outlier`, đặt NaN trước khi lọc |
 | Lọc | Butterworth bậc 4, 6 Hz, `filtfilt`, chạy riêng từng đoạn liên tục hợp lệ | Ablation 4/6/8 Hz cho metric nhịp |
 | Tráo trái/phải | Phát hiện bước nhảy đồng thời của cặp L/R | Cờ `lr_swap_suspect`. MVP không tự sửa, chỉ cảnh báo |
+
+**Cài đặt mask (P4.01, `quality/mask.py`; giá trị là của bảng trên, chưa kiểm bằng clip của ta):** `apply_mask(keypoints, scores, tracked, params)` trả lớp mask **mới** (không sửa lớp raw): mỗi ô khớp là giá trị đầu vào hoặc NaN, và mỗi NaN có một lý do (`reason`, uint8): `low_conf` (score hữu hạn dưới τ_kp; score **bằng** τ_kp được giữ, so sánh theo độ chính xác của score), `non_finite` (toạ độ hay score không hữu hạn), `not_tracked` (frame không phải frame của người tập: `lost`, `target_lost` hay `before_target`, cái nào thì ở `status`), `frame_invalid` (khớp còn dùng được nhưng frame thiếu khớp thiết yếu). Một khớp lấy lý do **đầu tiên** theo thứ tự `not_tracked`, `non_finite`, `low_conf`, `frame_invalid`, nên khớp đã bị loại ở frame không hợp lệ giữ lý do riêng của nó. "Dùng được" là đúng `valid_keypoint_mask` của tầng pose (tracker và P3.08 dùng cùng luật). Frame **tracked** có **ít hơn một nửa** khớp thiết yếu dùng được (5 trên 10 vẫn hợp lệ, 4 trên 10 thì không) là `frame_invalid`: cả 26 khớp là NaN. `mask_track(track)` giữ nguyên các frame đệm 1 s (`in_segment`) cho P4.03 và P4.05. Tham số (`MaskParams`) nằm trong kết quả để manifest và `quality.json` ghi lại. Chưa có định dạng file `pose_masked.npz`: một quyết định chung cho ba lớp sau P4.07 (DEC-0040).
+
+**Số đo trên clip thật (M-QLT-01; 4 video D20, track của người tập theo luật của P3.08, τ_kp = 0,3):** trong 157 366 frame của các đoạn, 86 303 là `tracked` (54,8 %); phần còn lại là `before_target` (20 đến 37 % tuỳ video) và `target_lost` (17 đến 19 %) vì video web có cắt cảnh và người tập rời khung: đó là việc của tracker, không phải của mask. Trong các frame `tracked` mask chỉ loại 0,00 đến 0,18 % ô khớp (nhiều nhất là ngón chân và cổ tay) và **không frame nào là `frame_invalid`** (ít nhất 5 trên 10 khớp thiết yếu dùng được, chỉ 4 frame ở đúng 5). Trên video web này score của người tập gần như luôn từ 0,3 trở lên, nên mask theo score ở 0,3 gần như không loại gì; việc score có cảnh báo được các lỗi thật hay không là câu hỏi của P3.08, không phải của task này.
 
 **Tính timestamp không đều:** lọc Butterworth cần lấy mẫu đều. Nếu là video VFR, resample tuyến tính về lưới đều (ví dụ 30 Hz) để lọc, rồi giữ cả lưới gốc. Ghi `resampled = true` vào manifest.
 
@@ -457,7 +493,12 @@ taiji_ai/
 │   │   ├── registry.py      # đọc models/registry.json, kiểm SHA
 │   │   ├── rtm.py           # wrapper rtmlib BodyWithFeet, model local
 │   │   └── skeleton.py      # HALPE_26: tên, chỉ số, cặp L/R, cây chi
-│   ├── track/target.py      # khóa người tập, Hungarian, trạng thái mất dấu
+│   ├── track/target.py      # chọn người tập ở frame đầu (P3.04)
+│   ├── track/associate.py   # gán id track bằng Hungarian giữa các frame (P3.05)
+│   ├── track/geometry.py    # hull keypoint, IoU, bbox dùng được (dùng chung)
+│   ├── track/state.py       # người mục tiêu theo thời gian: tracked/lost/target_lost, nối lại có ngưỡng (P3.06)
+│   ├── track/track_io.py    # ghi/đọc `track.parquet` (track/1), nguyên tử và nghiêm ngặt (P3.06)
+│   │                        # schemas/track.py: `TrackMeta` (metadata của `track.parquet`)
 │   ├── quality/
 │   │   ├── mask.py          # NaN theo score, frame_invalid, lý do
 │   │   ├── gaps.py          # nội suy gap ngắn có cờ

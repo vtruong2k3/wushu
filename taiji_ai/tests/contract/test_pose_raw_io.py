@@ -343,7 +343,7 @@ def test_t_pose_08i_a_run_saved_and_loaded_is_the_same_run(cfr_video: Path, inge
 
 
 def test_t_pose_08c_offsets_that_are_one_short_but_end_at_the_row_count_are_refused(saved: Path):
-    """Only the length of ``person_offsets`` is wrong here: the arrays hold exactly as many rows as its last value says."""
+    """Only the length of ``person_offsets`` is wrong: the arrays hold exactly as many rows as its last value says."""
     arrays = _arrays(saved)
     off = arrays["person_offsets"]
     short = off[: off.size - 1]

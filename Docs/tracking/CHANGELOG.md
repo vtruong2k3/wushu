@@ -4,6 +4,82 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
 
 ---
 
+## 2026-11-16 — P4.01 The mask layer: low-confidence keypoints and invalid frames (DONE)
+
+- Changed: `taiji_ai/src/taiji_ai/quality/__init__.py` (`QualityError`), `taiji_ai/src/taiji_ai/quality/mask.py` (new), `taiji_ai/tests/unit/test_quality_mask.py` (new), `taiji_ai/tests/contract/test_quality_mask_track.py` (new), `Docs/TECH_WORKFLOW_V1.md` (W6 note with the numbers of M-QLT-01), `Docs/IMPLEMENTATION_PLAN_V1.md` (P4.01 row, T-QLT-01 and T-QLT-02 sub-IDs, M-QLT-01), `taiji_ai/README.md`, `Docs/tasks/P4.01.md`, `Docs/tracking/*`
+- Behaviour: `apply_mask` gives a new layer in which every cell is the input value or NaN and every NaN has a reason: `low_conf` (score under `tau_kp` = 0.3; equal is kept, compared in the precision of the scores), `non_finite`, `not_tracked` (lost, target lost, before target), `frame_invalid` (a tracked frame with fewer than half of the ten essential joints usable: 5 of 10 is valid, 4 is not; all 26 joints NaN, joints already excluded keep their own reason); `mask_track` does the same on a `TargetTrack` and keeps the timeline and the 1 s margins. Nothing is filled or clipped; inputs are not changed; no file format yet (X.29)
+- Measured (M-QLT-01, four D20 videos, `tau_kp` = 0.3): the mask excludes 0.00 % to 0.18 % of the joint cells of tracked frames and no frame is invalid; 54.8 % of the frames are tracked (the rest is the tracker at cuts). The P3.08 report adds that none of the 35 pose failures of ordinary frames would have been removed: the score does not warn; the default stays 0.3 and the question is the maintainer's
+- Tests: T-QLT-01a..e and T-QLT-02a..b (106 tests, red first); mutation 33 of 34 killed (1 equivalent); gate 10/10 PASS (212.0 s, 1772 tests)
+- Decisions: DEC-0040 (reasons and their order, the 5-of-10 boundary, the precision of the comparison, parameters kept as W6 values, file format deferred to X.29)
+- Bugs: none
+- Commit: not committed
+- Plan: Docs/tasks/P4.01.md
+
+## 2026-11-16 — P3.07 Pose benchmark: speed, GPU memory and the detector cadence N (DONE)
+
+- Changed: `taiji_ai/src/taiji_ai/bench/` (new: `timing.py`, `gpu.py`, `compare.py`, `decision.py`, `clips.py`, `worker.py`, `orchestrate.py`, `report.py`), `taiji_ai/tools/bench_pose.py` (new), `taiji_ai/src/taiji_ai/pose/runner.py` (`run_pose(on_frame=...)`, optional),
+  `tests/unit/test_bench_{timing,decision,compare,gpu,clips,orchestrate}.py`, `tests/contract/{test_bench_tool,test_pose_runner}.py`, `tests/golden/test_bench_worker.py`, `Docs/reports/p3_pose_benchmark.md` (new), `Docs/TECH_WORKFLOW_V1.md` (W4 numbers),
+  `Docs/IMPLEMENTATION_PLAN_V1.md` (estimate, B-PERF-01, T-BENCH-01..09), `Docs/DATASET_REGISTRY_TAIJI.md` (D20 allowed use), `taiji_ai/README.md`, `taiji_ai/THIRD_PARTY_NOTICES.md` (NVML), `Docs/tasks/P3.07.md`, `Docs/tracking/*`
+- Behaviour: `tools/bench_pose.py` finds the D20 videos by size and SHA-256, runs one worker process per N, and writes `bench.json` and the tables of the report. On the RTX 3060 with five 30 s clips: RTF 1.23 / 0.335 / 0.259 (N = 1 / 5 / 10), 1.47 / 0.40 / 0.31 at 30 fps; peak VRAM 1.8 to 2.0 GB of 12; a 30 s segment 37 to 46 s (N = 1) and 10 to 13 s (N = 5).
+  The rule for N, written before the measurement, recommends **N = 1** (N = 5 differs from N = 1 on the target keypoints by a median of 2.0 px, p95 9.7 px); the default in the code stays 5 until the maintainer decides
+- Tests: T-BENCH-01..09 (124 tests; GPU: the real NVML and the real models on a short clip); mutation 63 of 63 killed; gate 10/10 PASS (200.8 s, 1537 tests)
+- Decisions: DEC-0038 (D20 as the stand-in for P1.09 and the reading of `benchmark`; NVML through ctypes; the rule for N; the optional callback)
+- Bugs: BUG-0071 (S3) found by the read-back and fixed in this task
+- Commit: not committed
+- Plan: Docs/tasks/P3.07.md
+
+## 2026-11-16 — P3.06 The target over time: lost, re-attached, `target_lost`; and `track.parquet` (DONE)
+
+- Changed: `taiji_ai/src/taiji_ai/track/state.py` (new), `taiji_ai/src/taiji_ai/track/track_io.py` (new), `taiji_ai/src/taiji_ai/schemas/track.py` (new), `taiji_ai/src/taiji_ai/track/associate.py` (`person_cost` public), `tests/unit/{test_target_state,test_track_meta}.py` (new), `tests/unit/test_associate.py`,
+  `tests/contract/test_track_io.py` (new), `tests/helpers/track_build.py` (new), `tests/golden/test_pose_d20.py` (T-TRK-05g), `Docs/TECH_WORKFLOW_V1.md` (W5 steps 3 and 4, module layout), `Docs/IMPLEMENTATION_PLAN_V1.md` (estimate, T-TRK-04..06), `taiji_ai/README.md`, `Docs/tasks/P3.06.md`, `Docs/tracking/{TASK_STATUS,CHANGELOG,DECISIONS}.md`
+- Behaviour: `resolve_target(raw, tracks, selection)` gives every frame of the pose file one status: `tracked`, `lost` (missing up to 0.5 s of real time), `target_lost`, `before_target`; keypoints are NaN unless tracked. A track that starts after the loss while the target is missing is compared with the last pose of the target by the cost of P3.05:
+  one candidate at or under 0.5 is taken, two close ones are `ambiguous`, a worse one or a return after 5 s is `refused`; a person who was in the picture all along is never taken. Nobody taken means NaN and `needs_reselect` with a reason. `save_track` / `load_track`: `track.parquet` (`track/1`), strict and atomic, SHA-256 returned
+- Tests: T-TRK-04a..d, 05a..h, 06a..d (93 + 66 + 48 + 6 `person_cost`), T-TRK-05g on two real clips (GPU); mutation 82 of 83 killed (1 equivalent); gate 10/10 PASS (187.8 s, 1413 tests)
+- Decisions: DEC-0037 (the rules and the two provisional limits with their evidence)
+- Bugs: none
+- Commit: not committed
+- Plan: Docs/tasks/P3.06.md
+
+## 2026-11-16 — P3.05 Hungarian association of persons: track ids and match margin (DONE)
+
+- Changed: `taiji_ai/src/taiji_ai/track/associate.py` (new), `taiji_ai/src/taiji_ai/track/geometry.py` (new, shared), `taiji_ai/src/taiji_ai/track/target.py` (uses the shared geometry), `tests/unit/{test_associate,test_track_geometry}.py` (new), `tests/helpers/pose_raw_build.py`,
+  `tests/golden/test_pose_d20.py` (T-TRK-02g), `Docs/TECH_WORKFLOW_V1.md` (W5 step 2, module layout), `Docs/IMPLEMENTATION_PLAN_V1.md`, `taiji_ai/README.md`, `Docs/tasks/P3.05.md`, `Docs/tracking/{TASK_STATUS,BUGS,CHANGELOG}.md`
+- Behaviour: `associate_tracks(raw)` gives every eligible person a track id by Hungarian assignment frame to frame: cost = mean of `1 - IoU` of the keypoint hulls and the keypoint distance over the hull height (capped at 1), a pair above 0.3 is never matched, a track not matched lives 0.1 s (real `t_sec`),
+  weak persons have no track. `match_cost`, `match_margin` (about 0 where two people coincide), `gap_frames` and `gap_s` come with it. Measured first: a motion prediction did not help and was left out
+- Tests: T-TRK-02a..d, 03a..m (39) and geometry (7); SYN-12: 0 swaps (10 seeds and 6 variations); real clips (GPU): the presenter keeps one track over 289 frames; mutation 25 of 25; gate 10/10 PASS (178.3 s, 1198 tests)
+- Decisions: the values of step 2 are in the task file (no DEC: provisional parameters of one module)
+- Bugs: BUG-0070 (S3) found by the read-back and fixed in this task
+- Commit: not committed
+- Plan: Docs/tasks/P3.05.md
+
+## 2026-11-16 — P3.04 Choose the target person on the first frame (DONE)
+
+- Changed: `taiji_ai/src/taiji_ai/track/target.py` (new), `taiji_ai/src/taiji_ai/pose/runner.py` (`valid_keypoint_mask` public and shape-generic), `tests/unit/test_target_select.py` (new), `tests/helpers/pose_raw_build.py`, `tests/golden/test_pose_d20.py` (T-TRK-01g),
+  `Docs/TECH_WORKFLOW_V1.md` (W5 step 1 rule), `Docs/IMPLEMENTATION_PLAN_V1.md`, `taiji_ai/README.md`, `Docs/tasks/P3.04.md`, `Docs/tracking/{TASK_STATUS,CHANGELOG}.md`
+- Behaviour: `select_target(raw, bbox=None, at_t_sec=None)` names the performer on the first frame of the segment: by default the eligible person with the best `area share x centrality`; a close call (second / best >= 0.6) is flagged `ambiguous`; weak persons are never chosen
+  by default; nobody at the start: it searches forward up to 2 s (never before the start) or raises; a user box picks the person with the largest IoU (>= 0.3, weak allowed and flagged) and refuses a box that matches nobody or covers two people. It returns the frame, the person row,
+  the box, the score, `ambiguous`, `weak` and `offset_from_start_s`
+- Tests: T-TRK-01a..m (40 unit tests; mutation 22 of 22) and T-TRK-01g on a real frame with two people (GPU); gate 10/10 PASS (163.3 s, 1150 tests)
+- Decisions: none new (the maintainer's answers to Q1 to Q7 are in the task file)
+- Bugs: none
+- Commit: not committed
+- Plan: Docs/tasks/P3.04.md
+
+## 2026-11-16 — P3.03 pose_raw.npz: strict, atomic save and load (schema pose_raw/1) (DONE)
+
+- Changed: `taiji_ai/src/taiji_ai/pose/raw_io.py` (new), `taiji_ai/src/taiji_ai/schemas/pose.py` (new), `taiji_ai/src/taiji_ai/store/artifacts.py` (`atomic_write_bytes` cleans its `.tmp`: BUG-0069),
+  `taiji_ai/src/taiji_ai/pose/runner.py` (`PoseRunStats.elapsed_s` optional, `PoseRaw.equals` NaN-safe), `tests/helpers/pose_raw_build.py`, `tests/unit/{test_pose_raw_meta,test_artifacts_atomic}.py`,
+  `tests/contract/test_pose_raw_io.py` (new), `tests/golden/test_pose_d20.py` (T-POSE-08j), `Docs/TECH_WORKFLOW_V1.md` (format of `pose_raw.npz`), `Docs/IMPLEMENTATION_PLAN_V1.md`, `taiji_ai/README.md`,
+  `Docs/tasks/P3.03.md`, `Docs/tracking/{TASK_STATUS,BUGS,CHANGELOG}.md`
+- Behaviour: `save_pose_raw(path, raw)` writes nine arrays (the seven of `PoseRaw`, `schema_version`, `meta_json`) atomically and returns the SHA-256 of the file; `load_pose_raw(path)` gives back an equal `PoseRaw` bit for bit (NaN, keypoints outside the image
+  and weak persons included) and refuses anything damaged, inconsistent, of another version or skeleton with a `PoseRawError` that names the field. The file keeps the deterministic counts only (the wall clock belongs to the run manifest, so
+  `elapsed_s` is `None` after a load). `atomic_write_bytes` no longer leaves a `.tmp` after a failed write or replace
+- Tests: T-POSE-08a..i, T-SCH-03, T-ART-01 (85, red first), T-POSE-08j (GPU); mutation 28 of 28; D20 clip: file 82 KB (ratio 0.81), save 17 ms, load 3 ms; gate 10/10 PASS (170.3 s, 1109 tests)
+- Decisions: the maintainer's changes to Q1, Q2, Q4 of the plan (task file section 1)
+- Bugs: BUG-0069 (S3) found and closed in this task
+- Commit: not committed
+- Plan: Docs/tasks/P3.03.md
+
 ## 2026-11-16 — P3.02 run_pose: raw pose of everyone in a segment, by real PTS (DONE)
 
 - Changed: `taiji_ai/src/taiji_ai/pose/runner.py` (new), `taiji_ai/tests/helpers/fake_pose.py` (new), `tests/unit/test_pose_box.py` (new), `tests/contract/test_pose_runner.py` (new),

@@ -201,9 +201,9 @@ Con số này cao hơn 30–44 ngày công của v3 vì có thêm phần dựng 
 | P3.03 | Lưu `pose_raw.npz`: mọi người phát hiện được (bbox, kp, score, t_sec, frame_index) | A | 0,5 | P3.02 | artifact + schema | T-POSE-08 |
 | P3.04 | Chọn người mục tiêu ở frame đầu: mặc định bbox lớn nhất gần tâm, cho phép chỉ định bbox | A | 0,5 | P3.03 | `track/target.py` | T-TRK-01 |
 | P3.05 | Ghép frame-to-frame bằng Hungarian (`1−IoU` + khoảng cách keypoint chuẩn hóa) | A | 1 | P3.04 | `track/target.py` | T-TRK-02..03 |
-| P3.06 | Trạng thái mất dấu: quá `max_lost` thì `target_lost`, không nhảy sang người khác; nối lại có ngưỡng | A | 0,5 | P3.05 | `track.parquet` có `status` | T-TRK-04..05 |
-| P3.07 | Benchmark trên 5 clip thật (P1.09): RTF, peak VRAM, N = 1/5/10, ảnh hưởng của N tới keypoint | A | 0,5 | P3.06 | `reports/p3_pose_benchmark.md` | Số đo thật |
-| P3.08 | Rà lỗi pose trên clip thật: tay che thân, xoay thân, đứng một chân, quay lưng; ghi failure cases | A+H | 0,5 | P3.07 | `reports/p3_failure_cases.md` | Danh sách có ảnh |
+| P3.06 | Trạng thái mất dấu: quá `max_lost` thì `target_lost`, không nhảy sang người khác; nối lại có ngưỡng | A | ~~0,5~~ 1 *(2026-11-16: thêm file `track.parquet` và hợp đồng dữ liệu `track/1`)* | P3.05 | `track.parquet` có `status` | T-TRK-04..06 |
+| P3.07 | Benchmark trên 5 clip thật (P1.09): RTF, peak VRAM, N = 1/5/10, ảnh hưởng của N tới keypoint *(2026-11-16: P1.09 chưa có nên dùng 5 đoạn 30 s của D20, DEC-0038; chạy lại trên clip điện thoại ở X.27)* | A | ~~0,5~~ 1 *(2026-11-16: thêm công cụ `tools/bench_pose.py`, test và báo cáo)* | P3.06 | `reports/p3_pose_benchmark.md` | Số đo thật |
+| P3.08 | Rà lỗi pose trên clip thật: tay che thân, xoay thân, đứng một chân, quay lưng; ghi failure cases *(2026-11-16: dùng 4 video D20, DEC-0039; hai lần chạy N = 1 và N = 5, 11 luật chọn frame + mẫu mù, A điền trước và H xác nhận; ảnh chỉ ở máy, báo cáo chỉ có số và ID; lặp lại trên clip P1.09 ở X.28)* | A+H | ~~0,5~~ 1 + 0,75 giờ H *(2026-11-16: thêm công cụ chọn frame, test và hai lần chạy)* | P3.07 | `reports/p3_failure_cases.md` | Danh sách có ảnh *(ảnh ở `data/reports/p3_08/`, không vào git)* |
 | P3.09 | So sánh nhanh detector YOLOX vs YOLO11 (chỉ đo, không đổi stack): recall, độ ổn định bbox, tốc độ | A | 0,5 | P3.07 | phụ lục của P3.07 | Quyết định ghi lại |
 
 **Gate G01** (cùng với P1):
@@ -220,7 +220,7 @@ Con số này cao hơn 30–44 ngày công của v3 vì có thêm phần dựng 
 
 | Mã | Task | Ai | Ngày | Phụ thuộc | Đầu ra | Kiểm tra |
 |---|---|---|---:|---|---|---|
-| P4.01 | `apply_mask`: score < τ thì NaN, lý do `low_conf`; frame thiếu khớp thiết yếu thì `frame_invalid` | A | 0,5 | P3.06 | `quality/mask.py` | T-QLT-01..02 |
+| P4.01 | `apply_mask`: score < τ thì NaN, lý do `low_conf`; frame thiếu khớp thiết yếu thì `frame_invalid` *(2026-11-16: hàm trên mảng cộng `mask_track` cho `TargetTrack`; bốn lý do loại `low_conf`, `non_finite`, `not_tracked`, `frame_invalid`; τ_kp và danh sách khớp thiết yếu là giá trị W6, dạng tham số, P3.08 chỉ đánh giá; chưa ghi file `pose_masked.npz`: định dạng file của ba lớp quyết cùng lúc sau P4.07)* | A | 0,5 | P3.06 | `quality/mask.py` | T-QLT-01..02 |
 | P4.02 | Nội suy gap ngắn (≤ 150 ms theo thời gian thật, không theo số frame), cờ `interpolated`; gap dài giữ NaN | A | 0,5 | P4.01 | `quality/gaps.py` | T-QLT-03..05 |
 | P4.03 | Hampel (cửa sổ 7, 3·MAD), cờ `outlier` | A | 0,5 | P4.01 | `quality/filters.py` | T-QLT-06 |
 | P4.04 | Resample lưới đều cho video VFR (để lọc), giữ ánh xạ về timestamp gốc | A | 0,5 | P4.02 | `quality/resample.py` | T-QLT-07 |
@@ -458,6 +458,8 @@ Cột **Loại**: U = unit, C = contract, G = golden, I = integration, M = manua
 |---|---|---|---|
 | T-CORE-01 | U/C | T-CORE-01a..p: Log không chứa tên thật hoặc đường dẫn có tên (kể cả UNC có dấu cách/chữ có dấu, `c$`, dấu nháy, dạng `repr`); ~~redaction 2 pass~~ redaction một lượt quét (2026-11-15, BUG-0014/0015); có `run_id`; `run.log` theo context, có dòng kết thúc cả khi bị hủy; traceback/warning được lọc; API uvicorn định dạng thống nhất; test không để lại trạng thái logging (BUG-0016) | P0.06 (cập nhật 2026-11-15) |
 | T-SCH-01 | U | `RecordingManifest`/`SyncManifest` từ chối trường thiếu, sai kiểu; có `schema_version` | P2.01 |
+| T-SCH-03 | U | `PoseRawMeta` (`pose_raw/1`): header tốt được nhận; thiếu trường, trường lạ, NaN, sai kiểu, đoạn ngược đều bị từ chối | P3.03 |
+| T-ART-01 | U | `atomic_write_bytes`: ghi hoặc `os.replace` lỗi thì file cũ còn nguyên và không để lại `.tmp` (BUG-0069) | P3.03 |
 | T-SCH-02 | U | `MetricSeries` bắt buộc units, valid_intervals, coverage | P5.01 |
 | T-SYN-01..04 | U | Bộ sinh F-SYN: shape, contract, body conventions, đáp án đúng độc lập (SYN-01..12), seed cố định, cô lập RNG toàn cục, kiểm tra lỗi đầu vào | P0.07 |
 | T-TOOL-01 | C | `tools/check.ps1` là ASCII-only và parse sạch trong PowerShell 5.1; có test đối chứng: script sai cú pháp bị phát hiện | P0.05 (thêm 2026-11-14) |
@@ -536,19 +538,38 @@ Cột **Loại**: U = unit, C = contract, G = golden, I = integration, M = manua
 | T-POSE-05 | C/GPU | Detector mỗi N frame: frame giữa dùng bbox từ keypoint; khi không thấy người thì chạy detector ngay *(2026-11-16: 05a..e, 05g contract/unit với mô hình giả, 05f GPU; người ít keypoint được giữ trong lớp thô nhưng không được theo ở frame sau)* | P3.02 |
 | T-POSE-06 | C | `run_pose` chỉ đọc frame trong `[start−1s, end+1s]`, timestamp tăng dần *(2026-11-16: 06a..h: cửa sổ, VFR, xoay, biên, bảng PTS lệch, lỗi mô hình, tính xác định, keypoint ngoài ảnh không bị cắt)* | P3.02 |
 | T-POSE-07 | G/GPU | Video người thật cố định (1 clip ngắn trong fixture riêng, có quyền dùng): số người, keypoint ổn định so với lần chạy trước (± ngưỡng) | P3.02 |
-| T-POSE-08 | C | `pose_raw.npz` đúng schema; lưu và đọc lại giống hệt | P3.03 |
-| T-TRK-01 | U | Chọn mặc định: bbox lớn nhất gần tâm; chỉ định bbox thì theo người đó | P3.04 |
-| T-TRK-02 | U | SYN-12: 2 người đi gần nhau, không tráo ID | P3.05 |
-| T-TRK-03 | U | Hungarian với số người thay đổi giữa các frame | P3.05 |
-| T-TRK-04 | U | Người mục tiêu ra khỏi khung lâu hơn `max_lost`: `target_lost`, không nhảy sang người khác | P3.06 |
-| T-TRK-05 | U | Quay lại trong ngưỡng chi phí: nối lại; ngoài ngưỡng: yêu cầu chọn lại | P3.06 |
+| T-POSE-08 | C | `pose_raw.npz` đúng schema; lưu và đọc lại giống hệt *(2026-11-16: 08a..i: vòng lưu–đọc đúng từng bit kể cả NaN, SHA-256, 40 kiểu file hỏng hoặc sai, ghi nguyên tử, không đường dẫn trong file, đường thật `run_pose`; 08j GPU trên clip D20)* | P3.03 |
+| T-TRK-01 | U | Chọn mặc định: bbox lớn nhất gần tâm; chỉ định bbox thì theo người đó *(2026-11-16: 01a..m: điểm diện tích × độ gần tâm có phép tính tay, cờ `ambiguous` từ 0,6, người yếu không được chọn mặc định, tìm về phía sau tối đa 2 s, bbox người dùng theo IoU, từ chối bbox bao hai người hoặc không khớp, SYN-12 nhiều seed; 01g trên frame thật có hai người)* | P3.04 |
+| T-TRK-02 | U | SYN-12: 2 người đi gần nhau, không tráo ID *(2026-11-16: 02a..d: SYN-12 10 seed và 6 biến thể 0 lần tráo, thứ tự đảo, hai thân hình giống hệt trùng nhau được `match_margin` đánh dấu; 02g clip thật: người dẫn một track suốt clip)* | P3.05 |
+| T-TRK-03 | U | Hungarian với số người thay đổi giữa các frame *(2026-11-16: 03a..m: người vào ra, khoảng trống theo giây thật, ngưỡng chặn, người yếu, keypoint thiếu, gán toàn cục không tham lam, hull không phụ thuộc bbox đã lưu, đầu ra và tham số)* | P3.05 |
+| T-TRK-04 | U | Người mục tiêu ra khỏi khung lâu hơn `max_lost`: `target_lost`, không nhảy sang người khác *(2026-11-16: 04a..d: khoảng `target_lost` của SYN-12 10 seed khớp `expected_target_lost` trong 1 frame, ranh giới `max_lost_s` gồm cả điểm biên, thời gian thật khi frame không đều, không frame nào của người tập trao cho người khác, người lạ ở xa bị từ chối, hai người mới gần chi phí là `ambiguous`, vắng ngắn chỉ `lost`, đầu ra và tham số)* | P3.06 |
+| T-TRK-05 | U | Quay lại trong ngưỡng chi phí: nối lại; ngoài ngưỡng: yêu cầu chọn lại *(2026-11-16: 05a..h: SYN-12 lệch 0 đến 100 px nối, 150 đến 300 px từ chối và `needs_reselect`; chi phí so với pose cuối và kích thước của nó; hạn `max_reattach_s` gồm điểm biên; chỉ track mới sau khi mất là ứng viên; nhiều lần mất; frame trước khi người tập vào và trước frame chọn; người yếu và lựa chọn của file khác bị từ chối; 05g clip thật D20 bỏ dòng của người dẫn 0,3 s, 1 s và vĩnh viễn)* | P3.06 |
+| T-TRK-06 | C | `track.parquet`: ghi rồi đọc giống từng bit (NaN cả), cột và kiểu đúng như tài liệu, đọc nghiêm ngặt từ chối 31 kiểu file hỏng hoặc không nhất quán và nêu tên trường, ghi từ chối 7 kiểu `TargetTrack` không nhất quán trước khi ghi gì, ghi nguyên tử, không có đường dẫn trong file; `TrackMeta` (06d) | P3.06 |
+| T-BENCH-01 | U | Thời gian: span video, RTF, ms mỗi frame và RTF ở fps khác, percentile, cửa sổ 1 s theo thời gian video (không theo số frame; cửa sổ cuối dở bị bỏ và đếm, cửa sổ trống được đếm) | P3.07 |
+| T-BENCH-02 | U | `TimedModel` và `FrameClock`: chuyển tiếp lời gọi, cộng thời gian và số lần, lỗi không bị nuốt và không bị đếm | P3.07 |
+| T-BENCH-03 | U | So hai lần chạy cùng frame: ghép người, khoảng cách px và theo chiều cao thân, người thiếu/thừa, người không so được, độ trễ vào khung, nhóm khớp, gộp nhiều clip; track người tập (phần bổ sung sau lần chạy thử) | P3.07 |
+| T-BENCH-04 | U/GPU | Bộ lấy mẫu VRAM với NVML giả (nền, đỉnh, trôi, lỗi trong luồng được nêu ở `stop()`), không có NVML thì `measured: false` kèm lý do; 04c với NVML thật | P3.07 |
+| T-BENCH-05 | C | `run_pose(on_frame)`: gọi một lần mỗi frame, đúng thứ tự, đúng `t_sec` của bảng, sau khi frame xong; kết quả không đổi; lỗi trong callback không bị nuốt | P3.07 |
+| T-BENCH-06 | U | Luật chọn N viết trước khi đo: giới hạn gồm cả điểm biên, phanh 15 %, dừng ở N đầu tiên không đạt, lý do nêu đúng tiêu chí | P3.07 |
+| T-BENCH-07 | GPU | Worker với model thật trên clip 1 s không người: chạy, JSON đủ trường, VRAM, không người không phải lỗi; kế hoạch hỏng thì thoát mã 2 | P3.07 |
+| T-BENCH-08 | U/C | Tìm video theo kích thước và SHA-256 (không theo tên), chỉ nêu nhãn; tệp kế hoạch; công cụ từ chối thư mục thiếu, video thiếu, tùy chọn sai (mã 2) | P3.07 |
+| T-BENCH-09 | U | Số liệu suy ra từ một worker (trung vị, tổng, pha, percentile gộp), từ chối trước khi chạy, bảng báo cáo (`n/a`, không bao giờ 0), dọn thư mục tạm kể cả tệp chỉ đọc, ingest lỗi là `BenchError` | P3.07 |
+| T-AUDIT-01 | U | Các số đo từng frame của người tập: chiều cao thân, số khớp thiết yếu thiếu, tốc độ theo thời gian thật (không theo số frame), độ dài xương so với trung vị clip, lề tráo trái/phải (đúng ở các frame đổi nhãn của SYN-08), bốn bộ tìm cảnh, chênh lệch hai cadence; NaN khi không quyết được, không bao giờ 0 | P3.08 |
+| T-AUDIT-02 | U | Chọn frame: n frame xấu nhất mỗi luật cách nhau ≥ khoảng giãn (gồm cả điểm biên), hạn mức theo thời gian của từng video, frame hai luật cùng chọn xuất hiện một lần với cả hai nhãn, hạt giống quyết định khi bằng điểm, mẫu mù chỉ lấy frame có người tập và chưa chọn | P3.08 |
+| T-AUDIT-03 | U | Tệp review: cột, từ vựng, loại lỗi, khớp, mức nặng, nhãn cuối bằng giá trị của người xem nếu có, đồng thuận giữa hai bên, điểm của từng khớp bị gọi tên lấy từ dữ liệu | P3.08 |
+| T-AUDIT-04 | U | Số liệu và bảng: độ chính xác từng luật, tỉ lệ ở mẫu mù với khoảng Wilson 95 %, phần lỗi mà score không cảnh báo, S3 chỉ liệt kê, bảng rỗng in `n/a` | P3.08 |
+| T-AUDIT-05 | U | Ảnh: ô vuông, dải ba frame, tấm tổng hợp; khớp NaN không vẽ; chú thích chỉ có ID, nhãn video, thời gian và luật | P3.08 |
+| T-AUDIT-06 | C | Từ hai lần chạy ra tấm ảnh, `candidates.json`, `signals.json` và tệp review rỗng, rồi từ tệp review đã điền ra bảng; không ghi đè tệp review; hai lần chạy khác video bị từ chối | P3.08 |
+| T-AUDIT-07 | C | Lần chạy pose theo chunk: kế hoạch chunk, tiếp tục khi dừng, nối các chunk không trùng frame, manifest không có đường dẫn | P3.08 |
+| T-AUDIT-08 | U | Người tập của một chunk là người bền và lớn nhất, kể cả khi chunk mở đầu bằng thẻ tiêu đề | P3.08 |
+| M-AUDIT-01 | Thủ công | Xem các tấm ảnh: A điền trước, H xác nhận hoặc sửa; viết báo cáo từ các bảng | P3.08 |
 
 ### 15.5 Quality
 
 | Mã | Loại | Mô tả | Task |
 |---|---|---|---|
-| T-QLT-01 | U | score < τ thì NaN, có lý do `low_conf`; score ≥ τ giữ nguyên | P4.01 |
-| T-QLT-02 | U | Frame thiếu > 50% khớp thiết yếu thì `frame_invalid` | P4.01 |
+| T-QLT-01 | U | score < τ thì NaN, có lý do `low_conf`; score ≥ τ giữ nguyên *(a: ngưỡng, score bằng τ được giữ ở mọi τ và mọi dtype; b: lý do `non_finite` và `not_tracked`, thứ tự lý do, đầu vào không bị đổi, mảng ra mới và chỉ đọc, bất biến trên đầu vào ngẫu nhiên; c: tham số, shape và kiểu sai bị từ chối nêu tên; d: `mask_track` trên `TargetTrack` qua `resolve`; e: hằng số của audit trùng hằng số của mask)* | P4.01 |
+| T-QLT-02 | U | Frame thiếu > 50% khớp thiết yếu thì `frame_invalid` *(a: 5/10 khớp vẫn hợp lệ, 4/10 không; cả 26 khớp thành NaN, khớp đã bị loại giữ lý do riêng; sai số float của tỷ lệ không làm lệch ranh giới; b: cùng ranh giới qua cả chuỗi `resolve` → `mask_track`, và SYN-06 với gap biết trước đến từng frame)* | P4.01 |
 | T-QLT-03 | U | Gap ≤ 150 ms (thời gian thật) được nội suy và có cờ | P4.02 |
 | T-QLT-04 | U | Gap > 150 ms giữ NaN; **không** có giá trị nào bằng giá trị cuối trước gap | P4.02 |
 | T-QLT-05 | U | Video VFR: ngưỡng gap tính theo giây, không theo số frame | P4.02 |
@@ -559,6 +580,7 @@ Cột **Loại**: U = unit, C = contract, G = golden, I = integration, M = manua
 | T-QLT-10 | U | SYN-08: cờ tráo L/R đúng frame; chuyển động thường không bị gắn cờ | P4.06 |
 | T-QLT-11 | U | Coverage khớp với số đếm tay trên fixture | P4.07 |
 | T-QLT-12 | C | UMONS Kinect: chuỗi 4.000+ frame chạy hết pipeline quality không lỗi, coverage hợp lý | P4.08 |
+| M-QLT-01 | Thủ công | Mask trên track của người tập ở 4 video D20 (các file pose của đợt chạy P3.08): số frame `tracked`, `frame_invalid`, khớp bị loại theo lý do và theo khớp, ở τ_kp = 0,3; chỉ ghi số đếm, không đổi ngưỡng | P4.01 |
 
 ### 15.6 Metric
 
@@ -675,7 +697,7 @@ Cột **Loại**: U = unit, C = contract, G = golden, I = integration, M = manua
 | B-MET-03 | Bench | (PSU) metric 2D so với Vicon chiếu 2D | P10.07 |
 | B-COV-01 | Bench | 3 tỷ lệ coverage theo metric × camera | P10.04 |
 | B-CMP-01 | Bench | Spearman DTW vs xếp hạng HLV, leave-one-person-out | P10.05 |
-| B-PERF-01 | Bench | RTF (p50/p95), peak VRAM, thời gian end-to-end một đoạn 30 s | P3.07, P11.03 |
+| B-PERF-01 | Bench | RTF (p50/p95), peak VRAM, thời gian end-to-end một đoạn 30 s *(2026-11-16, P3.07, D20, RTX 3060: RTF p50/p95 trên cửa sổ 1 s là 1,16/1,45 (N = 1), 0,31/0,45 (N = 5), 0,25/0,42 (N = 10); VRAM đỉnh 1,8 đến 2,0 GB tổng; một đoạn 30 s 37 đến 46 s (N = 1), 10 đến 13 s (N = 5); `Docs/reports/p3_pose_benchmark.md`; đo lại trên clip P1.09 ở X.27 và trên máy đích ở P11.03)* | P3.07, P11.03 |
 
 ### 15.12 UAT / pilot
 

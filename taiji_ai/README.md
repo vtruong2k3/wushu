@@ -71,6 +71,22 @@ src/taiji_ai/
   pose/registry.py     verified model registry
   pose/rtm.py          YOLOX + RTMPose wrapper (detect / estimate separately)
   pose/runner.py       `run_pose`: raw pose of everyone in a segment by real PTS, detector every N frames (P3.02)
+  pose/raw_io.py       `save_pose_raw` / `load_pose_raw`: `pose_raw.npz`, schema `pose_raw/1`, strict and atomic (P3.03)
+  schemas/pose.py      header model of `pose_raw.npz` (`PoseRawMeta`)
+  bench/timing.py      RTF, per-frame latency, 1 s windows, the timing wrapper of the pose model (P3.07)
+  bench/gpu.py         NVML through ctypes and the VRAM sampler (P3.07)
+  bench/compare.py     compare two pose runs (persons, distances, entry delay) and their target tracks (P3.07)
+  bench/decision.py    the rule, written before the measurement, that recommends the detector cadence N (P3.07)
+  bench/{clips,worker,orchestrate,report}.py  the D20 clips, the worker of one N, the run, the report tables (P3.07)
+  audit/scan.py        the pose pass over the D20 videos in chunks of 300 s, resumable (P3.08)
+  audit/{signals,select,labels,summary}.py  per-frame measures of the target's pose, the choice of the frames to look at, the review file, the numbers and tables (P3.08)
+  audit/{render,analyse}.py  skeleton overlays and contact sheets, the analysis of two passes into candidates (P3.08)
+  track/target.py      `select_target`: the performer on the first frame (largest box near the centre, or a user box) (P3.04)
+  track/associate.py   `associate_tracks`: Hungarian association of persons frame to frame, track ids, `match_margin` (P3.05)
+  track/geometry.py    keypoint hull, IoU and usable boxes shared by the others
+  track/state.py       `resolve_target`: the performer over time: tracked / lost / target_lost / before_target, re-attachment by cost, `needs_reselect` (P3.06)
+  track/track_io.py    `save_track` / `load_track`: `track.parquet`, schema `track/1`, strict and atomic (P3.06)
+  schemas/track.py     header model of `track.parquet` (`TrackMeta`, `TrackEvent`)
   pipeline/sync_take.py `sync_take`: orchestrate audio sync, flash validation, write `sync.json`, manage DB (P2.06)
   store/artifacts.py   atomic writes, checksums
   store/db.py          SQLite + numbered migrations (migrations/*.sql)
@@ -82,11 +98,12 @@ src/taiji_ai/
   store/recordings.py  queries and insert of the `recording` table (P2.02)
   store/sync.py        queries and upsert/delete of the `sync` table (P2.06)
   cli.py               command line: `taiji participant add, set, show`, `taiji ingest`, `taiji proxy`, and `taiji sync`
-  track/ quality/ metrics/ compare/ report/   (to be implemented)
+  quality/mask.py      the mask layer: low_conf, non_finite, not_tracked, frame_invalid, with a reason for every NaN (P4.01)
+  metrics/ compare/ report/   (to be implemented)
   api/                 FastAPI app (`python -m taiji_ai.api`, 127.0.0.1 only): /api/health, SPA serving
 config/                ontology_v0.yaml: the 24-form actions, sides, views, flags (draft until the coach signs)
 web/                   React + Vite + TypeScript UI: src/{api,components,pages}, tests/ (Vitest)
-tools/                 check.ps1, repo_hygiene.py, fetch_models.py, env_check.py, render_ontology_review.py
+tools/                 check.ps1, repo_hygiene.py, fetch_models.py, env_check.py, render_ontology_review.py, bench_pose.py, pose_audit.py
 tests/                 unit/, contract/ (synthetic FFmpeg fixtures; GPU smoke test), api/ (FastAPI TestClient)
 tests/helpers/         synth.py synthetic HALPE_26 skeleton generator (F-SYN, SYN-01..12)
 ```
@@ -100,7 +117,7 @@ tests/helpers/         synth.py synthetic HALPE_26 skeleton generator (F-SYN, SY
 | proxy (io/proxy.py, `taiji proxy`) | done, tested (T-IO-10..11, 22..27; height-capped, metadata stripped, web-ready, timestamps checked, failures reported) |
 | audio sync & flash validation (io/audio.py, io/audio_sync.py, io/flash.py) | done, tested (T-SYNC-01..04, 01b..d, 04b..n, 06..10; 16 kHz mono WAV cache, ZNCC cross-correlation, sub-ms peak, drift, flash onset detection on real PTS, residual in ms and frames of slower camera) |
 | sync usability & pipeline (io/sync_rule.py, pipeline/sync_take.py, store/sync.py, `taiji sync`) | done, tested (T-SYNC-05, 05b..d; usability decision rule residual ≤ 1 frame, atomic sync.json, SQLite sync row, CLI) |
-| pose (registry, rtm, order check, runner) | done, tested on GPU; `halpe26/1` verified on real frames (P3.01); `run_pose` (P3.02) |
+| pose (registry, rtm, order check, runner, raw I/O) | done, tested on GPU; `halpe26/1` verified on real frames (P3.01); `run_pose` (P3.02); `pose_raw.npz` save/load (P3.03) |
 | store (artifacts, db) | done, tested |
 | logging (unified logging, run.log, path redaction) | done, tested (T-CORE-01a..p, BUG-0011) |
 | api (app factory, /api/health, errors, SPA serving) | done, tested (T-API-01..04) |
@@ -110,7 +127,10 @@ tests/helpers/         synth.py synthetic HALPE_26 skeleton generator (F-SYN, SY
 | ontology (schemas/ontology.py, config/ontology_v0.yaml, tools/render_ontology_review.py) | code done, tested (T-DATA-01a..l); the 24-action content is `draft_unconfirmed` until the coach signs; `Docs/discovery/ontology_review_sheet.md` is generated from the YAML (stale-guard test) |
 | manifests (schemas/_base, recording, sync) | done, tested (T-SCH-01a..i); `recording.json` and `proxy.json` are written by ingest and P2.03, `sync.json` by P2.06 |
 | participants + CLI (store/participants.py, cli.py) | done, tested (T-DATA-05a..j); the consent form maps to it (`Docs/consent_form.md` B1) |
-| track, quality, metrics, compare, pipeline, report | not started |
+| bench (`tools/bench_pose.py`, `bench/*`) | done, tested (T-BENCH-01..09); measured on D20 (not P1.09): RTF 1.23 / 0.335 / 0.259 for N = 1 / 5 / 10, peak VRAM 1.8 to 2.0 GB, report `Docs/reports/p3_pose_benchmark.md`; the written rule recommends N = 1, the default stays 5 until the maintainer decides |
+| track (target choice, association, target over time, `track.parquet`) | done, tested (T-TRK-01a..m, T-TRK-02, T-TRK-03, T-TRK-04, T-TRK-05, T-TRK-06); the thresholds (`reattach_cost`, `max_reattach_s`) are provisional: no real clip with a real absence yet |
+| quality (mask: `quality/mask.py`) | mask done, tested (T-QLT-01, T-QLT-02; reasons `low_conf`, `non_finite`, `not_tracked`, `frame_invalid`); `tau_kp` 0.3 and the ten essential joints are the W6 values, evaluated by P3.08, not tuned; no file format yet (X.29); gaps, filters, swap flag and coverage not started |
+| metrics, compare, pipeline, report | not started |
 
 ## Command line
 

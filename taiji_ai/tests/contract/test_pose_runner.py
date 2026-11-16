@@ -429,3 +429,52 @@ def test_t_pose_06e_one_wrong_t_sec_in_the_middle_of_the_table_is_refused(cfr_vi
 
     with pytest.raises(PoseRunError, match=r"frame 30 .*pts\.parquet"):
         run_pose(rec, 0.0, 2.0, ScriptedPose(lambda pos: [PERSON], by_pixel=False))
+
+
+# --- T-BENCH-05: the optional per-frame callback (P3.07) ------------------------------------------------------------
+
+
+def test_t_bench_05_on_frame_is_called_once_per_frame_in_order_with_the_time_of_the_table(rec: Path, positions):
+    calls: list[tuple[int, float]] = []
+
+    out = run_pose(
+        rec,
+        0.0,
+        _end_of_frame(22),
+        ScriptedPose(lambda pos: [PERSON]),
+        params=NO_MARGIN,
+        on_frame=lambda k, t: calls.append((k, t)),
+    )
+
+    assert [k for k, _ in calls] == list(range(out.n_frames)) and out.n_frames == 23
+    assert np.array_equal(np.array([t for _, t in calls]), out.t_sec)  # the very numbers of the result
+
+
+def test_t_bench_05_the_callback_comes_after_the_frame_was_processed(rec: Path, positions):
+    model = ScriptedPose(lambda pos: [PERSON])
+    seen: list[int] = []
+
+    def check(k: int, t: float) -> None:
+        seen.append(model.estimate_calls[-1][0])  # the position of the last frame the model worked on
+
+    run_pose(rec, 0.0, _end_of_frame(12), model, params=NO_MARGIN, on_frame=check)
+
+    assert seen == list(range(13))
+
+
+def test_t_bench_05_the_result_is_identical_with_and_without_the_callback(rec: Path, positions):
+    plain = run_pose(rec, 0.0, _end_of_frame(22), ScriptedPose(lambda pos: [PERSON]), params=NO_MARGIN)
+    watched = run_pose(
+        rec, 0.0, _end_of_frame(22), ScriptedPose(lambda pos: [PERSON]), params=NO_MARGIN, on_frame=lambda k, t: None
+    )
+    assert plain.equals(watched)
+    assert plain.stats.n_detector_calls == watched.stats.n_detector_calls
+
+
+def test_t_bench_05_an_exception_in_the_callback_propagates_and_gives_no_result(rec: Path, positions):
+    def boom(k: int, t: float) -> None:
+        if k == 5:
+            raise ValueError("stop at frame 5")
+
+    with pytest.raises(ValueError, match="stop at frame 5"):
+        run_pose(rec, 0.0, _end_of_frame(22), ScriptedPose(lambda pos: [PERSON]), params=NO_MARGIN, on_frame=boom)

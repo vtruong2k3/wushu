@@ -4,7 +4,7 @@ Inventory of third-party components used by this code base, with their license t
 Update this file in the same change that adds, removes or upgrades a component.
 This is a project inventory, not legal advice; a license review is required before any commercial release.
 
-**Last updated:** 2026-11-15 (task X.18: reference-only pages on the 24-form; P1.04: PyYAML; earlier P8.02; first version X.03). License strings taken from installed package metadata (`.venv`).
+**Last updated:** 2026-11-16 (P3.07: NVML; earlier 2026-11-15 task X.18: reference-only pages on the 24-form; P1.04: PyYAML; earlier P8.02; first version X.03). License strings taken from installed package metadata (`.venv`).
 
 ## 1. Direct runtime dependencies (`pyproject.toml`)
 
@@ -83,6 +83,7 @@ vulnerabilities.
 | Program | Version | License | Note |
 |---|---|---|---|
 | FFmpeg / ffprobe | 9.0.1 (Gyan "essentials" Windows build) | GPL build (FFmpeg itself LGPL/GPL depending on configuration) | Invoked via CLI only. Do not bundle a GPL build with the product without review |
+| NVML (`nvml.dll` of the NVIDIA driver) | driver 596.49 | NVIDIA proprietary, installed with the driver | Loaded at run time through `ctypes` by `taiji_ai.bench.gpu` to read the device memory (P3.07); not a dependency, not bundled, not redistributed; without it the benchmark reports VRAM as not measured |
 
 ## 4. Model weights (`models/registry.json`)
 
