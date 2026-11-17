@@ -142,6 +142,15 @@ def _float_array(value: Any, name: str, shape_tail: tuple[int, ...]) -> np.ndarr
     return a
 
 
+def frame_invalid_mask(
+    is_tracked: np.ndarray, n_valid: np.ndarray, n_essential: int, min_essential_fraction: float
+) -> np.ndarray:
+    """The frame rule: ``(T,)`` bool, True for a tracked frame with fewer than ``min_essential_fraction`` of the
+    ``n_essential`` essential joints usable (``n_valid``), with the tolerance that keeps a boundary such as 5 of 10 off
+    float rounding. The one place of the rule: ``apply_mask`` and the reader of ``pose_masked.npz`` both call it."""
+    return is_tracked & (n_valid < min_essential_fraction * n_essential - _EPS)
+
+
 def apply_mask(
     keypoints: np.ndarray,
     scores: np.ndarray,
@@ -175,7 +184,7 @@ def apply_mask(
 
     essential = list(params.essential)
     n_valid = np.where(is_tracked, usable_joint[:, essential].sum(axis=1), 0)
-    frame_invalid = is_tracked & (n_valid < params.min_essential_fraction * len(essential) - _EPS)
+    frame_invalid = frame_invalid_mask(is_tracked, n_valid, len(essential), params.min_essential_fraction)
     reason[(reason == OK) & frame_invalid[:, None]] = FRAME_INVALID
     reason[~is_tracked] = NOT_TRACKED
 

@@ -1,14 +1,18 @@
 """P4.04: the uniform grid for variable-frame-rate video: resample the gap layer to a regular clock (T-QLT-07).
 
 Layers and timelines are built by hand: no video, no model. A timeline is *uniform* when every row time is within
-``uniform_tol_s`` of a straight line; then the stage is the identity. Otherwise the grid starts at the first row time
-and steps by the median interval; a grid time between two rows takes the linear mix of two usable cells (flagged), a
-cell next to an unusable cell is NaN, and a stretch of time with no frame beyond ``max_step_s`` is NaN with
-``no_frame``. Most tests use ``linear_layer``: every joint moves on a straight line in time, so linear interpolation is
-exact and any deviation is a fault of the stage, not of the interpolation.
+``uniform_tol_s`` of a straight line; then the stage is the identity. Otherwise the grid is the lattice that the row
+times follow (X.31: a frame-count-corrected step and a fitted phase; an explicit ``grid_hz`` is anchored at the first
+row); a grid time within ``uniform_tol_s`` of a row is that row; any other grid time between two rows takes the linear
+mix of two usable cells (flagged), a cell next to an unusable cell is NaN, and a stretch of time with no frame beyond
+``max_step_s`` is NaN with ``no_frame``. Most tests use ``linear_layer``: every joint moves on a straight line in
+time, so linear interpolation is exact and any deviation is a fault of the stage, not of the interpolation; a copy
+that is not exactly on its grid time is the one exception, off by at most the speed times ``snap_s``.
 """
 
 from __future__ import annotations
+
+import math
 
 import numpy as np
 import pytest
@@ -58,16 +62,17 @@ def dropped(n: int = 100, rows=(50,)) -> np.ndarray:
 
 
 def assert_grid(g, max_step_s: float = MAX_STEP_S) -> None:
-    """The rules 2 and 3 of the plan, from the map alone."""
-    t, tg = g.t_source, g.t_grid
-    assert tg[0] == t[0] and tg[-1] <= t[-1] + 1e-9 < tg[-1] + g.step_s + 1e-9  # starts at the first row, never beyond
+    """The rules 2 to 4 of the plan (DEC-0047 as amended by DEC-0052), from the map alone."""
+    t, tg, snap = g.t_source, g.t_grid, g.snap_s
+    assert tg[0] >= t[0] - snap and tg[-1] <= t[-1] + snap  # inside the window of the clip
+    assert tg[0] - g.step_s < t[0] - snap and tg[-1] + g.step_s > t[-1] + snap  # and all of it: none is left out
     assert np.allclose(np.diff(tg), g.step_s, rtol=0.0, atol=1e-9)  # regular
-    assert len(tg) == int(np.floor((t[-1] - t[0] + 1e-9) / g.step_s)) + 1
     assert ((g.weight >= 0.0) & (g.weight < 1.0)).all()
     exact = g.weight == 0.0
-    assert np.allclose(tg[exact], t[g.left[exact]], rtol=0.0, atol=1e-9)
+    assert (np.abs(tg[exact] - t[g.left[exact]]) <= snap).all()  # a copy is a row within the tolerance
     left = g.left[~exact]
     assert (t[left] < tg[~exact]).all() and (tg[~exact] < t[left + 1]).all()
+    assert (tg[~exact] - t[left] > snap).all() and (t[left + 1] - tg[~exact] > snap).all()  # a mix is farther than that
     assert np.allclose(g.weight[~exact], (tg[~exact] - t[left]) / (t[left + 1] - t[left]))
     right = np.minimum(g.left + 1, len(t) - 1)
     assert np.array_equal(g.stall, ~exact & ((t[right] - t[g.left]) > max_step_s + 1e-9))
@@ -199,7 +204,7 @@ def test_t_qlt_07b_the_step_down_of_syn_07_keeps_every_row_on_the_grid_and_mixes
     g = plan_grid(t)
     assert not g.identity
     assert_grid(g)
-    assert g.step_s == pytest.approx(STEP, rel=1e-12)  # the median interval: 59 of 79 are 33 ms
+    assert g.step_s == pytest.approx(STEP, rel=1e-9)  # the frames: 59 intervals of one frame and 20 of three
     kp, reason, interp = linear_layer(t)
     r = resample_layer(kp, reason, interp, t)
     assert len(r.mixed) == 120 and int(r.mixed.sum()) == 40  # two grid times inside each of the 20 intervals of 100 ms
@@ -212,12 +217,12 @@ def test_t_qlt_07b_a_jittered_clock_gives_a_regular_grid(seed: int):
     g = plan_grid(t)
     assert not g.identity
     assert_grid(g)
-    assert g.step_s == np.median(np.diff(t))
+    assert g.step_s == pytest.approx(np.polyfit(np.arange(len(t)), t, 1)[0], rel=1e-9)  # one frame each
 
 
 def test_t_qlt_07b_the_last_grid_time_may_sit_on_the_last_row_despite_float_rounding():
-    t = np.array([0.0, 0.1, 0.25, 0.3])  # median interval 0.1, and 0.3 / 0.1 is 2.9999999999999996
-    g = plan_grid(t)
+    t = np.array([0.0, 0.1, 0.25, 0.3])  # a step of 0.1 s asked for, and 0.3 / 0.1 is 2.9999999999999996
+    g = plan_grid(t, ResampleParams(grid_hz=10.0))
     assert not g.identity and g.step_s == pytest.approx(0.1) and len(g.t_grid) == 4
     assert g.t_grid[-1] == pytest.approx(0.3, abs=1e-12) and g.weight[-1] == 0.0 and g.left[-1] == 3
 
@@ -242,8 +247,10 @@ def test_t_qlt_07c_a_straight_movement_comes_out_straight(seed: int):
     kp, reason, interp = linear_layer(t)
     r = resample_layer(kp, reason, interp, t)
     want, _, _ = linear_layer(r.gridmap.t_grid)
-    assert np.allclose(r.keypoints, want, rtol=0.0, atol=1e-9)  # x and y apart, each exact
-    assert r.usable.all() and r.observed.all() and not r.interpolated.any()
+    assert np.allclose(r.keypoints[r.mixed], want[r.mixed], rtol=0.0, atol=1e-9)  # x and y apart, each exact
+    price = 40.0 * r.gridmap.snap_s  # a copy is the row up to the tolerance away: 40 px/s is the fastest axis
+    assert np.allclose(r.keypoints, want, rtol=0.0, atol=price + 1e-9)
+    assert (~r.mixed).any() and r.usable.all() and r.observed.all() and not r.interpolated.any()
     assert r.mixed.sum() > 0.5 * len(r.mixed)  # on a jittered clock most grid times are not rows
 
 
@@ -252,7 +259,8 @@ def test_t_qlt_07c_a_float32_layer_is_straight_too_and_a_constant_stays_constant
     kp, reason, interp = linear_layer(t, np.float32)
     r = resample_layer(kp, reason, interp, t)
     want, _, _ = linear_layer(r.gridmap.t_grid)
-    assert r.keypoints.dtype == np.float32 and np.allclose(r.keypoints, want, rtol=0.0, atol=1e-3)
+    assert r.keypoints.dtype == np.float32
+    assert np.allclose(r.keypoints, want, rtol=0.0, atol=40.0 * r.gridmap.snap_s + 1e-3)
     flat = np.full((len(t), NUM_JOINTS, 2), 321.5)
     r = resample_layer(flat, reason, interp, t)
     assert (r.keypoints == 321.5).all()  # the weights sum to one: no drift
@@ -286,7 +294,7 @@ def test_t_qlt_07d_a_jittered_clock_comes_back_within_the_bound_of_both_interpol
     r = resample_layer(kp, np.zeros(kp.shape[:2], np.uint8), np.zeros(kp.shape[:2], bool), t)
     g = r.gridmap
     back = g.to_source(r.keypoints)
-    inside = ~g.beyond  # the rows after the last grid time have no right neighbour
+    inside = ~(g.before | g.beyond)  # the rows outside the grid have a neighbour on one side only
     assert np.isfinite(back[inside]).all()
     err = np.linalg.norm(back[inside].astype(np.float64) - kp[inside].astype(np.float64), axis=-1)
     d, s = float(np.diff(t).max()), g.step_s
@@ -470,7 +478,7 @@ def test_t_qlt_07h_a_hole_costs_only_the_rows_within_one_step_of_it_on_a_jittere
     back = r.to_source(r.keypoints)
     source_usable = np.isfinite(kp[..., 0])
     assert np.array_equal(r.source_usable, source_usable)
-    lost = source_usable & np.isnan(back[..., 0]) & ~g.beyond[:, None]
+    lost = source_usable & np.isnan(back[..., 0]) & ~(g.before | g.beyond)[:, None]
     assert not lost[:, np.arange(NUM_JOINTS) != 7].any()  # the other joints lose nothing
     rows = np.flatnonzero(lost[:, 7])
     assert 0 < len(rows) <= 6
@@ -478,7 +486,8 @@ def test_t_qlt_07h_a_hole_costs_only_the_rows_within_one_step_of_it_on_a_jittere
     assert (np.abs(t[rows] - t[20]) < reach).all()
     assert np.isnan(back[20, 7]).all()  # the hole itself stays a hole
     finite = np.isfinite(back[..., 0])
-    assert np.allclose(back[finite], kp[finite], rtol=0.0, atol=1e-9)  # linear motion: what comes back is right
+    price = 40.0 * g.snap_s  # a snapped grid cell is a row up to the tolerance away: 40 px/s is the fastest axis
+    assert np.allclose(back[finite], kp[finite], rtol=0.0, atol=price + 1e-9)  # linear motion: right up to that price
 
 
 def test_t_qlt_07h_a_source_hole_stays_a_hole_even_when_the_grid_is_coarser_than_the_rows():
@@ -509,15 +518,16 @@ def test_t_qlt_07h_the_way_back_is_computed_in_double_precision_and_the_formula_
     b = values[np.minimum(left + 1, len(values) - 1)].astype(np.float64)
     w = g.back_weight[:, None, None]
     want = np.where(w > 0.0, a + w * (b - a), a).astype(np.float32)
-    want[g.beyond] = np.nan
+    outside = g.before | g.beyond
+    want[outside] = np.nan
     assert np.array_equal(back, want, equal_nan=True)
-    assert np.isfinite(back[~g.beyond]).all() and np.isnan(back[g.beyond]).all()
+    assert np.isfinite(back[~outside]).all() and np.isnan(back[outside]).all()
 
 
 def test_t_qlt_07h_the_rows_after_the_last_grid_time_have_no_right_neighbour():
-    t = np.array([0.0, 0.1, 0.2, 0.35])  # median interval 0.1: the grid ends at 0.3, before the last row
+    t = np.array([0.0, 0.1, 0.2, 0.35])  # a step of 0.1 s asked for: the grid ends at 0.3, before the last row
     kp, reason, interp = linear_layer(t)
-    r = resample_layer(kp, reason, interp, t)
+    r = resample_layer(kp, reason, interp, t, ResampleParams(grid_hz=10.0))
     g = r.gridmap
     assert len(g.t_grid) == 4 and g.beyond.tolist() == [False, False, False, True]
     back = g.to_source(r.keypoints)
@@ -743,9 +753,258 @@ def test_t_qlt_07j_the_parameters_that_were_used_travel_with_the_result_and_zero
     assert ResampleParams(grid_hz=np.float32(24.0)).grid_hz == 24.0
 
 
+# --- X.31: the lattice of a sensor clock and the snap tolerance -------------------------------------------------------
+def ms_clock(n: int = 900, drop=(), start: int = 0) -> np.ndarray:
+    """A 30 fps sensor clock in whole milliseconds (every row up to 0.5 ms off the lattice) with some frames dropped."""
+    frames = np.delete(np.arange(start, start + n), [d - start for d in drop])
+    return np.round(frames * (1000.0 / 30.0)) / 1000.0
+
+
+def on_the_grid(g) -> np.ndarray:
+    """Rows that are a grid time (a copy on the way back): ``back_weight`` 0 and not outside the grid."""
+    return (g.back_weight == 0.0) & ~g.before & ~g.beyond
+
+
+def test_t_qlt_07n_a_row_within_the_tolerance_of_a_grid_time_is_a_copy_and_one_outside_is_a_mix():
+    t = np.array([0.0, 0.0508, 0.1, 0.1512, 0.2, 0.25, 0.3])  # grid 20 Hz: 0.05 is 0.8 ms from a row, 0.15 is 1.2 ms
+    params = ResampleParams(grid_hz=20.0)
+    kp, reason, interp = linear_layer(t)
+    r = resample_layer(kp, reason, interp, t, params)
+    g = r.gridmap
+    assert g.t_grid.tolist() == pytest.approx([0.0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3])
+    assert r.mixed.tolist() == [False, False, False, True, False, False, False]
+    assert g.left[1] == 1 and g.weight[1] == 0.0  # the copy is the row itself, 0.8 ms away: bit for bit
+    assert np.array_equal(r.keypoints[1], kp[1]) and np.array_equal(r.reason[1], reason[1])
+    assert g.left[3] == 2 and g.weight[3] == pytest.approx((0.15 - 0.1) / (0.1512 - 0.1))  # 1.2 ms away: a mix
+    assert g.snap_s == pytest.approx(0.001, abs=1e-8)
+    # the way back: a row 0.8 ms from a grid time takes that grid value, one 1.2 ms away mixes its two grid times
+    assert on_the_grid(g).tolist() == [True, True, True, False, True, True, True]
+    assert g.back_left[3] == 3 and g.back_weight[3] == pytest.approx(0.0012 / 0.05)
+    values = np.arange(len(g.t_grid), dtype=np.float64)[:, None] * np.ones((1, 4))
+    back = g.to_source(values)
+    assert back[1, 0] == 1.0 and back[3, 0] == pytest.approx(3.0 + 0.0012 / 0.05)
+
+
+def test_t_qlt_07n_a_tolerance_of_zero_copies_only_at_exact_times_and_the_tolerance_is_a_parameter():
+    t = np.array([0.0, 0.0508, 0.1, 0.1512, 0.2, 0.25, 0.3])
+    kp, reason, interp = linear_layer(t)
+    exact = resample_layer(kp, reason, interp, t, ResampleParams(grid_hz=20.0, uniform_tol_s=0.0))
+    assert exact.mixed.tolist() == [False, True, False, True, False, False, False]
+    assert exact.gridmap.snap_s == pytest.approx(0.0, abs=2e-9)
+    wide = resample_layer(kp, reason, interp, t, ResampleParams(grid_hz=20.0, uniform_tol_s=0.002))
+    assert not wide.mixed.any() and wide.gridmap.snap_s == pytest.approx(0.002, abs=1e-8)
+
+
+def test_t_qlt_07n_the_tolerance_never_exceeds_a_quarter_of_the_step():
+    t = np.arange(40) * 0.0021  # a 2.1 ms clock asked for 500 Hz: the step is 2 ms, 1 ms would swallow it
+    g = plan_grid(t, ResampleParams(grid_hz=500.0))
+    assert g.snap_s == pytest.approx(0.0005, abs=1e-8)
+    t = np.arange(40) / 30.0
+    assert plan_grid(t, ResampleParams(grid_hz=30.0)).snap_s == pytest.approx(0.001, abs=1e-8)  # the default stands
+
+
+def test_t_qlt_07n_the_nearest_row_is_the_copy_and_the_earlier_one_on_a_tie():
+    h = 2.0**-10  # exact in binary: 0.000977 s, inside the default tolerance of 1 ms
+    t = np.array([0.0, 0.0625, 0.125 - h, 0.125 + h, 0.1875, 0.25])  # grid 16 Hz: 0.125 has two rows, as near
+    kp, reason, interp = linear_layer(t)
+    r = resample_layer(kp, reason, interp, t, ResampleParams(grid_hz=16.0))
+    g = r.gridmap
+    assert g.left[2] == 2 and g.weight[2] == 0.0  # the tie goes to the earlier row
+    assert np.array_equal(r.keypoints[2], kp[2])
+    t2 = np.array([0.0, 0.0625, 0.125 - 1.5 * h / 2, 0.125 + h / 2, 0.1875, 0.25])  # now the later row is nearer
+    r2 = resample_layer(*linear_layer(t2), t2, ResampleParams(grid_hz=16.0))
+    assert r2.gridmap.left[2] == 3 and r2.gridmap.weight[2] == 0.0
+
+
+def test_t_qlt_07n_a_snapped_cell_keeps_value_reason_and_flag_of_its_row():
+    t = np.array([0.0, 0.0508, 0.1, 0.15, 0.2])
+    kp, reason, interp = linear_layer(t)
+    hole(kp, reason, 3, 1)
+    bridge(reason, interp, 5, 1, OUTLIER)
+    r = resample_layer(kp, reason, interp, t, ResampleParams(grid_hz=20.0))
+    assert not r.mixed[1]
+    assert np.array_equal(r.keypoints[1], kp[1], equal_nan=True)
+    assert np.array_equal(r.reason[1], reason[1]) and np.array_equal(r.interpolated[1], interp[1])
+    check_gap_layer(r.keypoints, r.reason, r.interpolated, r.gridmap.t_grid)
+
+
+def test_t_qlt_07o_a_ms_clock_with_dropped_frames_gives_the_step_of_the_frames_and_copies_every_row():
+    drops = [37, 90, 91, 200, 333, 334, 335, 500, 777]
+    t = ms_clock(900, drops)
+    g = plan_grid(t)
+    assert not g.identity
+    assert abs(g.step_s - 1.0 / 30.0) < 1e-6  # the frames, not the intervals
+    assert abs(float(np.median(np.diff(t))) - 1.0 / 30.0) > 2e-4  # the median interval is 33 ms
+    assert abs((t[-1] - t[0]) / (len(t) - 1) - 1.0 / 30.0) > 2e-4  # and the plain mean is dragged by the dropped frames
+    kp, reason, interp = linear_layer(t)
+    r = resample_layer(kp, reason, interp, t)
+    assert len(g.t_grid) == 900 and int(r.mixed.sum()) == len(drops)  # the only mixed rows are the dropped frames
+    assert on_the_grid(g).all() and np.array_equal(r.keypoints[~r.mixed], kp[g.left[~r.mixed]])
+    assert (np.abs(g.t_grid[~r.mixed] - t[g.left[~r.mixed]]) <= 0.001).all()  # a copy is at most the tolerance off
+
+
+def test_t_qlt_07o_the_fit_does_not_depend_on_where_the_clock_starts():
+    t = ms_clock(600, [100, 101, 300])
+    base = plan_grid(t)
+    far = plan_grid(t + 7200.0)  # two hours into the recording
+    assert far.step_s == pytest.approx(base.step_s, abs=1e-9) and len(far.t_grid) == len(base.t_grid)
+    assert np.array_equal(on_the_grid(far), on_the_grid(base))
+    assert np.array_equal(far.left, base.left) and np.array_equal(far.weight == 0.0, base.weight == 0.0)
+
+
+def pause_clock(before: int, after: int) -> np.ndarray:
+    """``before`` rows of a 30 fps clock, a pause of 0.4 s and 12.3 ms more than whole frames, then ``after`` rows."""
+    first = np.arange(before) / 30.0
+    return np.concatenate([first, first[-1] + 0.4123 + np.arange(1, after + 1) / 30.0])
+
+
+def test_t_qlt_07o_a_pause_that_moves_the_phase_does_not_move_the_step_and_the_longest_run_sets_the_phase():
+    t = pause_clock(300, 500)
+    g = plan_grid(t)
+    assert abs(g.step_s - 1.0 / 30.0) < 1e-9  # the pause is not in the fit
+    on = on_the_grid(g)
+    assert on[300:].all() and not on[:300].any()  # the 500 rows of the longer run are copies, the 300 before 12 ms off
+    r = resample_layer(*linear_layer(t), t)
+    assert g.stall.sum() >= 10 and (r.reason[g.stall] == NO_FRAME).all()  # the pause itself is not bridged
+    on2 = on_the_grid(plan_grid(pause_clock(500, 200)))  # now the run before the pause is the longer one
+    assert on2[:500].all() and not on2[500:].any()
+
+
+def test_t_qlt_07o_a_burst_of_rows_finer_than_the_step_is_outside_the_fit():
+    before = np.arange(80) / 30.0
+    burst = before[-1] + np.arange(1, 21) / 150.0  # 20 rows in 0.133 s = four frames of the clock
+    after = burst[-1] + np.arange(1, 81) / 30.0
+    t = np.concatenate([before, burst, after])
+    g = plan_grid(t)
+    assert abs(g.step_s - 1.0 / 30.0) < 1e-9
+    on = on_the_grid(g)
+    assert on[:80].all() and on[100:].all()  # the rows of the regular parts are copies, whatever the burst did
+    assert not on[80:99].all()  # the burst rows that are not on the lattice are not copies
+
+
+def test_t_qlt_07o_no_regular_interval_falls_back_to_the_median_and_the_first_row():
+    t = np.array([0.0, 0.2, 0.4, 0.7, 0.9, 1.1])  # every interval is over the limit of 0.15 s
+    g = plan_grid(t)
+    assert g.step_s == pytest.approx(0.2) and g.t_grid[0] == t[0] and not g.identity
+    assert g.stall.tolist() == [False, False, False, True, True, True]
+
+
+def test_t_qlt_07o_a_jittered_clock_gets_the_mean_step_and_stays_regular():
+    t = jittered(2)
+    g = plan_grid(t)
+    index = np.arange(len(t), dtype=np.float64)
+    slope = np.polyfit(index, t, 1)[0]
+    assert g.step_s == pytest.approx(slope, rel=1e-9)  # every interval is regular: one frame each
+    assert np.allclose(np.diff(g.t_grid), g.step_s, rtol=0.0, atol=1e-9)
+    assert g.t_grid[0] >= t[0] - g.snap_s and g.t_grid[-1] <= t[-1] + g.snap_s
+
+
+def test_t_qlt_07o_an_explicit_grid_rate_keeps_the_first_row_as_the_anchor_and_the_step():
+    t = ms_clock(300, [50]) + 0.003  # the first row is 3 ms off a whole-millisecond lattice: the anchor is the row
+    g = plan_grid(t, ResampleParams(grid_hz=30.0))
+    assert g.t_grid[0] == t[0] and g.step_s == 1.0 / 30.0
+    assert np.allclose(np.diff(g.t_grid), 1.0 / 30.0, rtol=0.0, atol=1e-12)
+
+
+def test_t_qlt_07p_a_first_row_off_the_lattice_is_before_the_grid_and_has_no_value_on_the_way_back():
+    t = np.concatenate([[0.003], np.arange(1, 300) / 30.0])  # row 0 is 3 ms late for its place on the lattice
+    kp, reason, interp = linear_layer(t)
+    r = resample_layer(kp, reason, interp, t)
+    g = r.gridmap
+    assert not g.identity and abs(g.step_s - 1.0 / 30.0) < 2e-6
+    assert g.before.tolist() == [True] + [False] * 299 and not g.beyond.any()
+    assert g.t_grid[0] == pytest.approx(1.0 / 30.0, abs=1e-4) and g.left[0] == 1  # the grid starts at the first copy
+    assert not r.mixed.any() and len(g.t_grid) == 299
+    back = r.to_source(r.keypoints)
+    assert np.isnan(back[0]).all() and np.array_equal(back[1:], kp[1:])  # a value is never made up before the grid
+
+
+def test_t_qlt_07p_a_first_row_within_the_tolerance_of_the_lattice_starts_the_grid_before_it():
+    t = np.concatenate([[0.0004], np.delete(np.arange(1, 300) / 30.0, 40)])  # 0.4 ms late, and a dropped frame
+    g = plan_grid(t)
+    assert not g.identity and not g.before.any()
+    assert g.t_grid[0] < t[0] and t[0] - g.t_grid[0] <= g.snap_s  # the first grid time is the row, 0.4 ms early
+    assert g.left[0] == 0 and g.weight[0] == 0.0
+
+
+@pytest.mark.parametrize(("late", "beyond"), [(0.0006, False), (-0.0006, False), (0.003, True), (-0.003, True)])
+def test_t_qlt_07p_the_last_row_is_on_the_grid_within_the_tolerance_and_beyond_it_outside(late: float, beyond: bool):
+    t = np.delete(np.arange(300) / 30.0, 40)
+    t[-1] += late  # the last row is 0.6 or 3 ms late or early for its place on the lattice
+    g = plan_grid(t)
+    assert bool(g.beyond[-1]) is beyond
+    assert not g.beyond[:-1].any() and not g.before.any()
+    assert g.t_grid[-1] <= t[-1] + g.snap_s  # the grid never goes past the last row by more than the tolerance
+    assert len(g.t_grid) == (299 if beyond and late < 0 else 300)  # a lattice time 3 ms past the last row is not in it
+
+
+def test_t_qlt_07p_a_lattice_time_at_the_edge_of_the_window_is_a_copy_never_a_mix_with_a_weight_below_zero(monkeypatch):
+    # the first lattice time is put exactly where the window starts, t_0 - snap, in the clocks of a long recording where
+    # float rounding makes its distance from the row a hair over the tolerance: it must still be the copy of row 0
+    from taiji_ai.quality import resample as module
+
+    snap = 0.001 + 1e-9  # ``min(tolerance, step / 4) + 1e-9``
+    base = np.delete(np.arange(200) / 30.0, 40)
+    holder = {}
+    monkeypatch.setattr(module, "_fit_lattice", lambda t, max_step_s: (1.0 / 30.0, holder["phase"]))
+    for t0 in [300.0 + 0.5 * k for k in range(40)] + [10000.0 + 0.7 * k for k in range(40)]:  # binades where it does
+        holder["phase"] = t0 - snap
+        g = plan_grid(t0 + base)
+        assert (g.weight >= 0.0).all() and (g.weight < 1.0).all(), t0
+        assert g.left[0] == 0 and g.weight[0] == 0.0 and g.t_grid[0] <= t0, t0
+
+
+def test_t_qlt_07p_the_rows_outside_the_grid_are_nan_on_the_way_back_for_any_values():
+    t = np.concatenate([[0.003], np.arange(1, 100) / 30.0, [99 / 30.0 + 0.0125]])  # both ends are off the lattice
+    g = plan_grid(t)
+    assert g.before[0] and g.beyond[-1]
+    values = np.random.default_rng(1).normal(size=(len(g.t_grid), 5))
+    back = g.to_source(values)
+    assert np.isnan(back[g.before | g.beyond]).all() and np.isfinite(back[~(g.before | g.beyond)]).all()
+
+
 # --- the differential test: the rules written the slow way ------------------------------------------------------------
+def oracle_fit(t: np.ndarray, p: ResampleParams):
+    """The lattice fit of DEC-0052 with loops: ``(step, phase)`` or None."""
+    n = len(t)
+    d = [float(t[i + 1] - t[i]) for i in range(n - 1)]
+    nominal = float(np.median(d))
+    regular = [0.5 * nominal <= x <= p.max_step_s + 1e-9 for x in d]
+    if not any(regular):
+        return None
+    runs, current = [], [0]
+    for i, ok in enumerate(regular):
+        if ok:
+            current.append(i + 1)
+        else:
+            runs.append(current)
+            current = [i + 1]
+    runs.append(current)
+    step, stats = nominal, []
+    for _ in range(2):
+        num = den = 0.0
+        stats = []
+        for run in runs:
+            k = [0.0]
+            for a in range(len(run) - 1):
+                k.append(k[-1] + max(1.0, float(round(d[run[a]] / step))))
+            tm = sum(float(t[i]) for i in run) / len(run)
+            km = sum(k) / len(k)
+            for kk, i in zip(k, run, strict=True):
+                num += (kk - km) * (float(t[i]) - tm)
+                den += (kk - km) ** 2
+            stats.append((len(run), tm, km))
+        if den <= 0.0:
+            return None
+        step = num / den
+        if not (math.isfinite(step) and step > 0.0):
+            return None
+    rows, tm, km = max(stats, key=lambda x: x[0])  # the first of the longest
+    return step, tm - step * km
+
+
 def oracle_plan(t: np.ndarray, p: ResampleParams) -> dict:
-    """Rules 1 to 4 and the inverse map of rule 8, with loops."""
+    """Rules 1 to 4 and the inverse map of rule 8 (DEC-0047 as amended by DEC-0052), with loops."""
     n = len(t)
     if n <= 1:
         uniform, slope = True, float("nan")
@@ -756,31 +1015,63 @@ def oracle_plan(t: np.ndarray, p: ResampleParams) -> dict:
     if n <= 1 or (uniform and p.grid_hz is None):
         return {
             "identity": True, "tg": t.copy(), "step": slope, "left": np.arange(n), "w": np.zeros(n),
-            "stall": np.zeros(n, bool), "bl": np.arange(n), "bw": np.zeros(n), "beyond": np.zeros(n, bool),
+            "stall": np.zeros(n, bool), "bl": np.arange(n), "bw": np.zeros(n), "before": np.zeros(n, bool),
+            "beyond": np.zeros(n, bool), "snap": 0.0,
         }  # fmt: skip
-    step = 1.0 / p.grid_hz if p.grid_hz is not None else float(np.median(np.diff(t)))
-    count = int(np.floor((t[-1] - t[0] + 1e-9) / step)) + 1
-    tg = t[0] + np.arange(count) * step
+    if p.grid_hz is not None:
+        step, phase = 1.0 / p.grid_hz, float(t[0])
+    else:
+        fit = oracle_fit(t, p)
+        step, phase = fit if fit is not None else (float(np.median(np.diff(t))), float(t[0]))
+    snap = min(p.uniform_tol_s, 0.25 * step) + 1e-9
+    j0, j1 = math.ceil((t[0] - snap - phase) / step), math.floor((t[-1] + snap - phase) / step)
+    if j1 < j0:
+        phase = float(t[0])
+        j0, j1 = math.ceil((t[0] - snap - phase) / step), math.floor((t[-1] + snap - phase) / step)
+    tg = np.array([phase + j * step for j in range(j0, j1 + 1)])
+    count = len(tg)
     left, w, stall = [], [], []
     for g in tg:
-        li = max(i for i in range(n) if t[i] <= g + 1e-9)
-        if li == n - 1 or abs(g - t[li]) <= 1e-9:
-            wi = 0.0
+        dist = [abs(g - float(x)) for x in t]
+        near = min(range(n), key=lambda r: (dist[r], r))  # the nearest row, the earlier on a tie
+        if dist[near] <= snap or g <= t[0] or g >= t[-1]:
+            left.append(near)
+            w.append(0.0)
+            stall.append(False)
         else:
-            wi = (g - t[li]) / (t[li + 1] - t[li])
-        left.append(li)
-        w.append(wi)
-        stall.append(wi > 0.0 and (t[li + 1] - t[li]) > p.max_step_s + 1e-9)
-    bl, bw, beyond = [], [], []
+            li = max(i for i in range(n) if t[i] <= g)
+            left.append(li)
+            w.append((g - t[li]) / (t[li + 1] - t[li]))
+            stall.append(bool(t[li + 1] - t[li] > p.max_step_s + 1e-9))
+    bl, bw, before, beyond = [], [], [], []
     for ti in t:
-        b = max(k for k in range(count) if tg[k] <= ti + 1e-9)
-        wi = 0.0 if abs(ti - tg[b]) <= 1e-9 else (ti - tg[b]) / step
-        bl.append(b)
-        bw.append(wi)
-        beyond.append(b == count - 1 and wi > 0.0)
+        dist = [abs(ti - float(g)) for g in tg]
+        near = min(range(count), key=lambda r: (dist[r], r))
+        earlier = [k for k in range(count) if tg[k] <= ti]
+        if dist[near] <= snap:
+            bl.append(near)
+            bw.append(0.0)
+            before.append(False)
+            beyond.append(False)
+        elif not earlier:
+            bl.append(0)
+            bw.append(0.0)
+            before.append(True)
+            beyond.append(False)
+        elif max(earlier) == count - 1:
+            bl.append(count - 1)
+            bw.append(0.0)
+            before.append(False)
+            beyond.append(True)
+        else:
+            b = max(earlier)
+            bl.append(b)
+            bw.append((ti - tg[b]) / step)
+            before.append(False)
+            beyond.append(False)
     return {
         "identity": False, "tg": tg, "step": step, "left": np.array(left), "w": np.array(w), "stall": np.array(stall),
-        "bl": np.array(bl), "bw": np.array(bw), "beyond": np.array(beyond),
+        "bl": np.array(bl), "bw": np.array(bw), "before": np.array(before), "beyond": np.array(beyond), "snap": snap,
     }  # fmt: skip
 
 
@@ -802,7 +1093,7 @@ def oracle_cells(kp, reason, interp, plan):
                 continue
             a_ok, b_ok = bool(np.isfinite(kp[li, j, 0])), bool(np.isfinite(kp[li + 1, j, 0]))
             ra, rb = int(reason[li, j]), int(reason[li + 1, j])
-            nearer = ra if w <= 0.5 else rb
+            nearer = ra if w <= 0.5 + 1e-9 else rb  # the tie is the middle of a dropped frame: float noise
             if a_ok and b_ok:
                 out_kp[k, j] = (1.0 - w) * np.float64(kp[li, j]) + w * np.float64(kp[li + 1, j])
                 out_interp[k, j] = bool(interp[li, j] or interp[li + 1, j])
@@ -828,7 +1119,7 @@ def oracle_back(values, plan):
     out = np.full((n,) + values.shape[1:], np.nan)
     for i in range(n):
         b, w = int(plan["bl"][i]), float(plan["bw"][i])
-        if plan["beyond"][i]:
+        if plan["beyond"][i] or plan["before"][i]:
             continue
         if w == 0.0:
             out[i] = values[b]
@@ -843,7 +1134,8 @@ def random_case(seed: int):
     rng = np.random.default_rng(seed)
     n = int(rng.integers(0, 50))
     step = 1.0 / float(rng.choice([24.0, 30.0, 60.0]))
-    kind = str(rng.choice(["cfr", "drop", "jitter", "stepdown", "stall", "coarse"])) if n >= 3 else "cfr"
+    kinds = ["cfr", "drop", "jitter", "stepdown", "stall", "coarse", "msdrop", "burst", "slow"]
+    kind = str(rng.choice(kinds)) if n >= 3 else "cfr"
     if kind == "cfr":
         t = np.arange(n) * step
     elif kind == "drop":
@@ -855,8 +1147,18 @@ def random_case(seed: int):
     elif kind == "stall":
         t = np.arange(n) * step
         t[int(rng.integers(1, n)) :] += float(rng.uniform(0.05, 0.6))
-    else:
+    elif kind == "coarse":
         t = np.round(np.arange(n) * step * 1000.0) / 1000.0
+    elif kind == "msdrop":  # a sensor clock in whole milliseconds with dropped frames and a first row that is off
+        t = np.round(np.sort(rng.choice(n + 10, n, replace=False)) * step * 1000.0) / 1000.0
+        t[0] += float(rng.uniform(-0.004, 0.004))
+    elif kind == "slow":  # a clock slower than the pause limit: every interval is a stall, nothing is regular
+        t = np.cumsum(0.2 * (1.0 + rng.uniform(-0.1, 0.1, n)))
+    else:  # a burst of five rows at a fifth of the step inside a regular clock
+        at = int(rng.integers(1, n - 1))
+        gaps = np.full(n - 1, step)
+        gaps[at : at + 5] = step / 5.0
+        t = np.concatenate([[0.0], np.cumsum(gaps)])
     t = t + float(rng.uniform(0.0, 3.0))
     kp = np.cumsum(rng.normal(0.0, 4.0, (n, NUM_JOINTS, 2)), axis=0) + 500.0
     reason = np.zeros((n, NUM_JOINTS), np.uint8)
@@ -870,12 +1172,12 @@ def random_case(seed: int):
     params = ResampleParams(
         grid_hz=rng.choice([None, None, 20.0, 30.0, 50.0]),
         max_step_s=float(rng.choice([0.05, 0.15, 0.3])),
-        uniform_tol_s=float(rng.choice([0.0, 0.001, 0.01])),
+        uniform_tol_s=float(rng.choice([0.0, 0.001, 0.001, 0.01])),
     )
     return kp.astype(np.float32 if seed % 2 else np.float64), reason, interp, t, params
 
 
-@pytest.mark.parametrize("seed", range(200))
+@pytest.mark.parametrize("seed", range(300))
 def test_t_qlt_07_diff_the_module_equals_the_slow_rules(seed: int):
     kp, reason, interp, t, params = random_case(seed)
     r = resample_layer(kp, reason, interp, t, params)
@@ -884,10 +1186,11 @@ def test_t_qlt_07_diff_the_module_equals_the_slow_rules(seed: int):
     assert g.identity == plan["identity"] and g.resampled == (not plan["identity"])
     assert len(g.t_grid) == len(plan["tg"]) and np.allclose(g.t_grid, plan["tg"], rtol=0.0, atol=1e-12)
     assert np.allclose(g.step_s, plan["step"], rtol=1e-9, atol=0.0, equal_nan=True)
+    assert np.allclose(g.snap_s, plan["snap"], rtol=1e-9, atol=1e-12)
     assert np.array_equal(g.left, plan["left"]) and np.allclose(g.weight, plan["w"], rtol=0.0, atol=1e-12)
     assert np.array_equal(g.stall, plan["stall"])
     assert np.array_equal(g.back_left, plan["bl"]) and np.allclose(g.back_weight, plan["bw"], rtol=0.0, atol=1e-9)
-    assert np.array_equal(g.beyond, plan["beyond"])
+    assert np.array_equal(g.before, plan["before"]) and np.array_equal(g.beyond, plan["beyond"])
     want_kp, want_reason, want_interp, want_mixed = oracle_cells(kp, reason, interp, plan)
     assert np.array_equal(r.reason, want_reason) and np.array_equal(r.interpolated, want_interp)
     assert np.array_equal(r.mixed, want_mixed)
@@ -904,3 +1207,22 @@ def test_t_qlt_07_diff_the_module_equals_the_slow_rules(seed: int):
         assert np.array_equal(r.source_usable, usable)
         assert np.allclose(r.to_source(values), want, rtol=1e-6, atol=1e-4, equal_nan=True)
         assert np.array_equal(np.isnan(r.to_source(values)), np.isnan(want))
+
+
+def test_t_qlt_07_diff_the_random_cases_reach_every_branch_of_the_rules():
+    """The 300 cases are not all identities or empty: every kind of clock and every outcome of the map is in them."""
+    seen = {"identity": 0, "fit": 0, "fallback": 0, "snap": 0, "mix": 0, "stall": 0, "before": 0, "beyond": 0}
+    for seed in range(300):
+        _, _, _, t, params = random_case(seed)
+        plan = oracle_plan(t, params)
+        if plan["identity"]:
+            seen["identity"] += 1
+            continue
+        if params.grid_hz is None:
+            seen["fit" if oracle_fit(t, params) is not None else "fallback"] += 1
+        seen["snap"] += int(((plan["w"] == 0.0) & (np.abs(plan["tg"] - t[plan["left"]]) > 1e-9)).any())
+        seen["mix"] += int((plan["w"] > 0.0).any())
+        seen["stall"] += int(plan["stall"].any())
+        seen["before"] += int(plan["before"].any())
+        seen["beyond"] += int(plan["beyond"].any())
+    assert all(v >= 5 for v in seen.values()), seen
