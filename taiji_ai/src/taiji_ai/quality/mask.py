@@ -54,8 +54,11 @@ NON_FINITE: Final = 2
 NOT_TRACKED: Final = 3
 FRAME_INVALID: Final = 4
 OUTLIER: Final = 5  # added by the Hampel stage (``quality/filters.py``, P4.03); ``apply_mask`` never emits it
+# added by the resampling stage (``quality/resample.py``, P4.04): a grid time in a pause of the timestamps; the mask
+# never emits it either
+NO_FRAME: Final = 6
 # the index is the code
-REASON_NAMES: Final = ("ok", "low_conf", "non_finite", "not_tracked", "frame_invalid", "outlier")
+REASON_NAMES: Final = ("ok", "low_conf", "non_finite", "not_tracked", "frame_invalid", "outlier", "no_frame")
 
 _EPS: Final = 1e-9  # a share such as 0.29 of 100 joints is not an exact float: the boundary must not depend on it
 
@@ -102,7 +105,7 @@ class MaskResult:
     keypoints: np.ndarray  # (T, 26, 2) the input dtype; the input value, or NaN where ``reason`` is not ``ok``
     scores: np.ndarray  # (T, 26) the input dtype; the model's scores as they were given (NaN stays NaN)
     reason: np.ndarray  # (T, 26) uint8; 0 ok, 1 low_conf, 2 non_finite, 3 not_tracked, 4 frame_invalid (REASON_NAMES)
-    # (code 5, outlier, is added later by the Hampel stage and is never in a mask layer)
+    # (codes 5, outlier, and 6, no_frame, are added later by the Hampel and resampling stages: never in a mask layer)
     tracked: np.ndarray  # (T,) bool; the frame is a frame of the target
     n_essential_valid: np.ndarray  # (T,) usable essential joints of a tracked frame (before the frame rule); else 0
     frame_invalid: np.ndarray  # (T,) bool; a tracked frame with too few usable essential joints

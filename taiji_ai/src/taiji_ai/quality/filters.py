@@ -1,4 +1,4 @@
-"""Filters of the quality layer (W6): the Hampel outlier flag now (P4.03); the Butterworth filter comes with P4.05.
+"""Filters of the quality layer (W6): the Hampel outlier flag (P4.03) and the Butterworth low-pass (P4.05).
 
 **Hampel.** A pose keypoint sometimes jumps for a frame or two and comes back (the ``flicker`` of P3.08). For every
 observed cell of a joint, ``hampel_outliers`` compares each coordinate with the median of its neighbours; a cell that
@@ -40,6 +40,27 @@ joints that are found goes from 39.8 % to 34.8 %. So the defaults are the window
 measures the torso for it (P4.07 decides how the stages are wired). With ``scale_floor_px = 0`` the rule is exactly
 the one written in W6.
 
+**Butterworth.** Pose keypoints jitter by a pixel or two from frame to frame. ``lowpass_layer`` smooths the grid layer
+(``quality/resample.py``, a regular clock) with a low-pass Butterworth filter of order 4 and design frequency 6 Hz (W6),
+applied forward and backward (``scipy.signal.sosfiltfilt``: zero phase, the same method as ``filtfilt`` in its
+numerically stable second-order-sections form; the padding is scipy's default, an odd extension by ``padlen``). Forward
+and backward the magnitude is squared: the gain at the design frequency is **0.5** (-6 dB) and the -3 dB point of the
+result is a little under it (5.4 to 5.6 Hz at 24 to 60 fps); the phase cancels, so a movement is not delayed.
+
+1. A **run** is a maximal sequence of rows in which a joint has a value (finite: observed or bridged); x and y are one
+   cell. Each run is filtered **on its own**, so no NaN is an input of the filter, nothing is filtered across a hole, a
+   loss of the target or a pause, and a step in one run never reaches the next. A filtered run is exactly what
+   ``sosfiltfilt`` returns for that run alone.
+2. A run is filtered if it has **more than ``padlen``** rows (15 at order 4: 16 rows or more). A shorter run is **not
+   filtered**: its cells keep their input values, ``filtered`` is False and the run table says ``too_short``. Nothing is
+   made up for it and nothing is set to NaN.
+3. If the design frequency is not below Nyquist (``cutoff_hz >= fs / 2``, a clip of 12 fps or less at 6 Hz) the filter
+   cannot be designed: no run is filtered, every run says ``above_nyquist``. The cutoff is never clamped.
+4. ``reason`` and ``interpolated`` are copied cell by cell: a bridged cell that is filtered is still a bridged value, a
+   cell without a value keeps its reason. The sampling rate is ``1 / step_s`` of the regular grid (real PTS).
+
+The values (order 4, 6 Hz) are those of W6 and are judged by the ablation of P5.08, not here (DEC-0048).
+
 Units and coordinates: positions are pixels of the upright image, x to the right, y down; times are seconds from the
 stream start (real PTS). Inputs are not changed; the result arrays are new and read-only.
 """
@@ -50,12 +71,14 @@ from dataclasses import dataclass
 from typing import Final
 
 import numpy as np
+import scipy.signal
 from numpy.lib.stride_tricks import sliding_window_view
 
 from taiji_ai.pose.skeleton import IDX, NUM_JOINTS
 from taiji_ai.quality import QualityError
-from taiji_ai.quality._checks import check_layer, frozen, is_int, is_real
+from taiji_ai.quality._checks import check_gap_layer, check_layer, frozen, is_int, is_real
 from taiji_ai.quality.mask import OK, OUTLIER, MaskedTrack
+from taiji_ai.quality.resample import GridLayer
 
 MAD_TO_SIGMA: Final = 1.4826  # the MAD of Gaussian noise times this is its standard deviation
 DEFAULT_SCALE_FLOOR_PX: Final = 2.0  # [px] chosen with the numbers of M-QLT-03 (DEC-0046)
@@ -206,3 +229,152 @@ def torso_length_px(keypoints: np.ndarray, reason: np.ndarray) -> float:
     )
     usable = length[length > 0.0]  # NaN is not above 0; a frame with the shoulders on the hips is left out too
     return float(np.median(usable)) if usable.size else float("nan")
+
+
+# --- the Butterworth low-pass (P4.05) ---------------------------------------------------------------------------------
+RUN_FILTERED: Final = 0
+RUN_TOO_SHORT: Final = 1
+RUN_ABOVE_NYQUIST: Final = 2
+RUN_OUTCOME_NAMES: Final = ("filtered", "too_short", "above_nyquist")  # the index is the code
+MAX_ORDER: Final = 10
+
+
+@dataclass(frozen=True)
+class ButterworthParams:
+    """The parameters of the Butterworth stage; ``cutoff_hz`` and ``order`` are the values of W6. Wrong values raise
+    ``QualityError``."""
+
+    # [Hz] finite and above 0: the design frequency of the single pass (the gain of the result is 0.5)
+    cutoff_hz: float = 6.0
+    order: int = 4  # a whole number from 1 to 10
+    # rows of padding at the ends of a run; None is scipy's default for the design (15 at order 4)
+    padlen: int | None = None
+
+    def __post_init__(self) -> None:
+        cutoff = self.cutoff_hz
+        if not (is_real(cutoff) and np.isfinite(cutoff) and cutoff > 0.0):
+            raise QualityError(f"cutoff_hz must be a finite number of hertz above 0, got {cutoff!r}")
+        order = self.order
+        if not (is_int(order) and 1 <= order <= MAX_ORDER):
+            raise QualityError(f"order must be a whole number from 1 to {MAX_ORDER}, got {order!r}")
+        padlen = self.padlen
+        if padlen is not None and not (is_int(padlen) and padlen >= 0):
+            raise QualityError(f"padlen must be None or a whole number of rows, 0 or more, got {padlen!r}")
+        object.__setattr__(self, "cutoff_hz", float(cutoff))
+        object.__setattr__(self, "order", int(order))
+        object.__setattr__(self, "padlen", None if padlen is None else int(padlen))
+
+
+@dataclass(frozen=True, eq=False)
+class RunTable:
+    """One row per run of a joint, ordered by joint and then by first row; every array is new and read-only."""
+
+    joint: np.ndarray  # (R,) int16; joint index (halpe26/1)
+    start: np.ndarray  # (R,) int32; first row of the run
+    end: np.ndarray  # (R,) int32; last row of the run, inclusive
+    n: np.ndarray  # (R,) int32; rows in the run
+    outcome: np.ndarray  # (R,) uint8; index into ``RUN_OUTCOME_NAMES``
+
+    def __len__(self) -> int:
+        return int(self.joint.shape[0])
+
+
+@dataclass(frozen=True, eq=False)
+class FilterResult:
+    """The filtered layer of ``G`` rows; every array is new and read-only (``G`` may be 0)."""
+
+    # (G, 26, 2) the input dtype; filtered values in the filtered runs, the input's elsewhere, NaN as it was
+    keypoints: np.ndarray
+    filtered: np.ndarray  # (G, 26) bool; the value comes from the filter
+    reason: np.ndarray  # (G, 26) uint8; the input's, unchanged
+    interpolated: np.ndarray  # (G, 26) bool; the input's, unchanged
+    runs: RunTable
+    params: ButterworthParams
+    sampling_hz: float  # [Hz] 1 / step_s; NaN for fewer than two rows
+
+
+def _runs_of_values(usable: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """The runs of a ``(G, 26)`` bool mask as ``(joint, start, stop)`` (stop exclusive), ordered by joint then start."""
+    padded = np.zeros((NUM_JOINTS, usable.shape[0] + 2), dtype=np.int8)
+    padded[:, 1:-1] = usable.T
+    change = np.diff(padded, axis=1)  # (26, G + 1): +1 where a run starts, -1 just after one ends
+    joint, start = np.nonzero(change == 1)
+    _, stop = np.nonzero(change == -1)
+    return joint, start, stop
+
+
+def _default_padlen(sos: np.ndarray) -> int:
+    """The default padding of ``sosfiltfilt`` for a design (scipy's own formula): 15 at order 4, 6 at order 1."""
+    taps = 2 * sos.shape[0] + 1 - min(int((sos[:, 2] == 0).sum()), int((sos[:, 5] == 0).sum()))
+    return 3 * taps
+
+
+def lowpass_layer(
+    keypoints: np.ndarray,
+    reason: np.ndarray,
+    interpolated: np.ndarray,
+    step_s: float,
+    params: ButterworthParams | None = None,
+) -> FilterResult:
+    """Filter a grid layer run by run; see the module docstring for the rules.
+
+    ``keypoints`` ``(G, 26, 2)`` float (pixels), ``reason`` ``(G, 26)`` uint8 and ``interpolated`` ``(G, 26)`` bool: the
+    arrays of a gap or grid layer; ``step_s`` the regular interval of the rows in seconds (``GridMap.step_s``), finite
+    and above 0 (NaN only for fewer than two rows). The inputs are not changed. Raises ``QualityError`` for anything
+    else.
+    """
+    params = ButterworthParams() if params is None else params
+    given = np.asarray(keypoints)
+    rows = given.shape[0] if given.ndim else 0
+    kp, rs, flag, _ = check_gap_layer(keypoints, reason, interpolated, np.arange(rows, dtype=np.float64))
+    if not is_real(step_s):
+        raise QualityError(f"step_s must be a number of seconds, got {step_s!r}")
+    if np.isnan(step_s):
+        if rows >= 2:
+            raise QualityError(f"step_s is NaN but the layer has {rows} rows: a regular clock has an interval")
+        fs = float("nan")
+    elif not (np.isfinite(step_s) and step_s > 0.0):
+        raise QualityError(f"step_s must be a finite number of seconds above 0, got {step_s!r}")
+    else:
+        fs = 1.0 / float(step_s)
+    usable = ~np.isnan(kp[..., 0])
+    joint, start, stop = _runs_of_values(usable)
+    length = stop - start
+    sos = None
+    if np.isnan(fs):
+        outcome = np.full(len(joint), RUN_TOO_SHORT, dtype=np.uint8)  # at most one row: nothing to filter
+    elif params.cutoff_hz >= fs / 2.0:
+        outcome = np.full(len(joint), RUN_ABOVE_NYQUIST, dtype=np.uint8)
+    else:
+        sos = scipy.signal.butter(params.order, params.cutoff_hz, btype="low", fs=fs, output="sos")
+        padlen = _default_padlen(sos) if params.padlen is None else params.padlen
+        outcome = np.where(length > padlen, RUN_FILTERED, RUN_TOO_SHORT).astype(np.uint8)
+    out = np.array(kp, copy=True)
+    filtered = np.zeros(usable.shape, dtype=bool)
+    if sos is not None:
+        for i in np.flatnonzero(outcome == RUN_FILTERED):
+            j, a, b = int(joint[i]), int(start[i]), int(stop[i])
+            run = scipy.signal.sosfiltfilt(sos, kp[a:b, j].astype(np.float64), axis=0, padlen=params.padlen)
+            out[a:b, j] = run.astype(kp.dtype)
+            filtered[a:b, j] = True
+    table = RunTable(
+        joint=frozen(joint.astype(np.int16)),
+        start=frozen(start.astype(np.int32)),
+        end=frozen((stop - 1).astype(np.int32)),
+        n=frozen(length.astype(np.int32)),
+        outcome=frozen(outcome),
+    )
+    return FilterResult(
+        keypoints=frozen(out),
+        filtered=frozen(filtered),
+        reason=frozen(np.array(rs, copy=True)),
+        interpolated=frozen(np.array(flag, copy=True)),
+        runs=table,
+        params=params,
+        sampling_hz=fs,
+    )
+
+
+def lowpass_grid(layer: GridLayer, params: ButterworthParams | None = None) -> FilterResult:
+    """The filtered layer of a ``GridLayer`` (P4.04): its keypoints, reasons and flags, on the clock of its map."""
+    return lowpass_layer(layer.keypoints, layer.reason, layer.interpolated, layer.gridmap.step_s, params)

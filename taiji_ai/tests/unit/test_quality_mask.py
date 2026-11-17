@@ -16,6 +16,7 @@ from taiji_ai.quality import QualityError
 from taiji_ai.quality.mask import (
     FRAME_INVALID,
     LOW_CONF,
+    NO_FRAME,
     NON_FINITE,
     NOT_TRACKED,
     OK,
@@ -50,12 +51,12 @@ def test_t_qlt_01_the_defaults_are_the_values_of_w6():
     p = MaskParams()
     assert (p.tau_kp, p.essential, p.min_essential_fraction) == (0.3, ESSENTIAL, 0.5)
     assert len(ESSENTIAL) == 10 and TAU_KP == 0.3
-    assert REASON_NAMES == ("ok", "low_conf", "non_finite", "not_tracked", "frame_invalid", "outlier")
-    codes = (OK, LOW_CONF, NON_FINITE, NOT_TRACKED, FRAME_INVALID, OUTLIER)
-    assert [REASON_NAMES[c] for c in codes] == list(REASON_NAMES) and OUTLIER == 5
+    assert REASON_NAMES == ("ok", "low_conf", "non_finite", "not_tracked", "frame_invalid", "outlier", "no_frame")
+    codes = (OK, LOW_CONF, NON_FINITE, NOT_TRACKED, FRAME_INVALID, OUTLIER, NO_FRAME)
+    assert [REASON_NAMES[c] for c in codes] == list(REASON_NAMES) and OUTLIER == 5 and NO_FRAME == 6
 
 
-def test_t_qlt_01_the_mask_never_emits_the_outlier_code_that_the_hampel_stage_adds():
+def test_t_qlt_01_the_mask_never_emits_the_codes_that_the_hampel_and_resampling_stages_add():
     rng = np.random.default_rng(4)
     for _ in range(20):
         kp = rng.uniform(0, 1000, (30, NUM_JOINTS, 2)).astype(np.float32)
@@ -63,7 +64,7 @@ def test_t_qlt_01_the_mask_never_emits_the_outlier_code_that_the_hampel_stage_ad
         kp[rng.random(kp.shape) < 0.05] = np.nan
         sc[rng.random(sc.shape) < 0.05] = np.inf
         out = apply_mask(kp, sc, rng.random(30) < 0.7)
-        assert out.reason.max() <= FRAME_INVALID and not (out.reason == OUTLIER).any()
+        assert out.reason.max() <= FRAME_INVALID and not np.isin(out.reason, (OUTLIER, NO_FRAME)).any()
 
 
 def test_t_qlt_01e_the_audit_evaluates_the_values_the_product_ships():

@@ -301,6 +301,16 @@ def vfr_times(
     return t
 
 
+def truth_at(seq: SynthSequence, t: np.ndarray) -> np.ndarray:
+    """The noise-free positions (float64, ``(len(t), 26, 2)``) of a SYN-05 or SYN-07 sequence's motion at any times.
+
+    The motion is analytic in time (``_motion``), so the truth exists between the rows too: the check of a resampling
+    needs it at grid times that are not rows. ``t`` must lie inside ``[0, duration]`` of the sequence.
+    """
+    times = np.asarray(t, dtype=np.float64)
+    return _motion(times, seq.params, pauses=seq.params["pauses"])[0]
+
+
 # --- modifiers --------------------------------------------------------------------------------------------------
 def add_noise(kp: np.ndarray, sigma_px: float, rng: np.random.Generator) -> np.ndarray:
     """Add i.i.d. Gaussian noise (px) to every finite coordinate; NaN stays NaN. Returns a float64 copy."""

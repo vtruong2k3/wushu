@@ -4,6 +4,36 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
 
 ---
 
+## 2026-11-17 — P4.06 The left/right swap flag: a pair whose two labels jump onto each other's place is marked, nothing is corrected (DONE)
+
+- Changed: `taiji_ai/src/taiji_ai/quality/lr_swap.py` (new), `taiji_ai/src/taiji_ai/quality/__init__.py` (docstring), `taiji_ai/tests/unit/test_quality_lr_swap.py` and `taiji_ai/tests/contract/test_quality_lr_swap_chain.py` (new), `Docs/TECH_WORKFLOW_V1.md` (W6 table row and note with the numbers of M-QLT-06), `Docs/IMPLEMENTATION_PLAN_V1.md` (P4.06 row, T-QLT-10 sub-IDs, M-QLT-06), `Docs/DATASET_REGISTRY_TAIJI.md` (D20 use), `taiji_ai/README.md`, `Docs/tasks/P4.06.md`, `Docs/tracking/*`. **Not changed:** the mask, Hampel, the gap layer, the uniform grid, the filter, `audit/signals.swap_margin`, the reason codes (none added)
+- Behaviour: `detect_lr_swaps(keypoints, reason, t_sec, params, torso_px=None)` and `detect_lr_swaps_track(masked)` read the **mask layer** (before Hampel) and return a `SwapResult`: `events (T, 11)`, `suspect (T, 26)`, `blocked` and `frame_suspect` (properties), an event table (pair, row, time, jump in torso lengths, `enter`/`exit`/`unpaired`), the scale and the parameters; **no value, reason or label is changed and the result holds no value of the input**. An event is a **crossed jump** of one pair of `LR_PAIRS` between two observed rows at most 0.25 s apart: both labels moved at least 0.2 torso and each landed within 0.5 of its own move of the other label's previous place (a limb that moves fast alone, two limbs that cross smoothly, a label that jumps alone are not events; a swap of joints closer than 0.2 torso is neither seen nor flagged). Events of one pair are paired greedily in time order within 0.5 s: the rows from the enter (inclusive) to the exit (exclusive) are `suspect` for the pair's two joints; an unpaired event marks only its own row. `blocked` is `suspect` plus the jump rows and is the input of `interpolate_gaps(blocked=...)`
+- Result (DEC-0049; M-QLT-06, four D20 videos, N = 1, 22 chunks, 158,326 rows): **270 events (17.1 per 10,000 rows), all in `d20-v4`**, 205 in the leg chain; 68 enter, 68 exit, 134 unpaired; 0.086 % of the rows `suspect`, 0.124 % `blocked`. Of the 11 labelled swap frames (8 ordinary) an event of the labelled pair is within +-2 rows of 9 (6 ordinary) and the labelled cell is in `blocked` in 7; 2 of 172 confirmed-right frames are flagged; **a biased sample, not a recall** (the frames were chosen by a preview of this rule); the two frames without an event have no jump of the pair in their chunk. SYN-08: the suspect rows are exactly the swap mask at 0, 1 and 2 px of noise, every pair flagged but the eyes (0.12 torso apart); swaps up to 0.5 s are exact, longer ones are seen at their two jumps only. `blocked` would refuse 278 of the 9,272 gaps that the gap layer bridged on D20 (3.0 %). Limits: the sensitivity is unknown; the state of a swap is not observed, only its jumps; a whole-body swap cannot be told from a person who turns his back; all events are in one video; 24 to 30 fps lesson footage only
+- Tests: T-QLT-10a to 10i and the differential test (280 unit tests: SYN-08 exact, no event on SYN-05 to SYN-07, smooth crossings, the boundaries, the pairing, scale and clock, the result, bad input, 200 random layers against a slow rule; 5 contract tests: SYN-08 through mask, the flag, Hampel and the gap layer with `blocked`, the tracker chain); mutation 54 of 54 killed (2 dead-code mutants removed with the code); gate 10/10 PASS (236.1 s, 3372 passed, 1 skipped)
+- Bugs: none found in this task
+- Commit: not committed
+- Plan: Docs/tasks/P4.06.md
+
+## 2026-11-17 — P4.05 Butterworth low-pass, zero phase, on each continuous run of a joint (DONE)
+
+- Changed: `taiji_ai/src/taiji_ai/quality/filters.py` (the Butterworth stage added to the Hampel module), `taiji_ai/src/taiji_ai/quality/__init__.py` (docstring), `taiji_ai/tests/unit/test_quality_butterworth.py` and `taiji_ai/tests/contract/test_quality_butterworth_chain.py` (new), `Docs/TECH_WORKFLOW_V1.md` (W6 table row and note with the numbers of M-QLT-05), `Docs/IMPLEMENTATION_PLAN_V1.md` (P4.05 row, T-QLT-08 and T-QLT-09 sub-IDs, M-QLT-05), `Docs/DATASET_REGISTRY_TAIJI.md` (D20 use), `taiji_ai/README.md`, `Docs/tasks/P4.05.md`, `Docs/tracking/*`. **Not changed:** the mask, the gap layer, the uniform grid, Hampel, the reason codes (none added)
+- Behaviour: `lowpass_layer(keypoints, reason, interpolated, step_s, params)` and `lowpass_grid(layer)` read the grid layer (never change it) and return a new read-only `FilterResult` (`keypoints`, `filtered`, `reason`, `interpolated`, the run table, `params`, `sampling_hz`). A run is a maximal sequence of rows in which a joint has a value (observed or bridged), x and y together; **each run is filtered on its own** with `scipy.signal.sosfiltfilt` (order 4, design frequency 6 Hz, zero phase; forward and backward the gain at 6 Hz is 0.5 and the -3 dB point is 5.4 to 5.6 Hz), so no NaN is an input of the filter and nothing is filtered across a hole, a loss of the target or a pause. A run of at most `padlen` rows (15 at order 4) is **not filtered**: it keeps its input values, `filtered` is False, the run table says `too_short`. If the cutoff is not below Nyquist (a clip of 12 fps or less at 6 Hz) nothing is filtered and every run says `above_nyquist`. `reason` and `interpolated` are copied: a bridged cell that is filtered is still a bridged value
+- Result (DEC-0048; M-QLT-05, four D20 videos, N = 1, 22 chunks): 965 runs, 2,249,882 usable cells, of which 231 (0.010 %) are in runs that are too short. At 6 Hz a filtered cell moves p50 0.83 px, p95 3.76 px (1.53 % of the torso), p99 7.54 px; the jitter falls to 0.316 and the p99 speed to 0.769 of their value (4 Hz: 0.167 and 0.717; 8 Hz: 0.507 and 0.836). SYN-05 with truth: the noise-free movement is distorted by at most 0.046 px, 1 px and 2 px of noise fall to 0.605 of their rms error, and in the pauses (truth 0 px/s) the speed caused by 1 px of noise falls from p50 48.8 / p99 126.8 to 13.4 / 34.9 px/s; the edge cost is one cell per end of a run; a spike that Hampel removes leaves no trace, a lasting jump that Hampel does not flag (60 px for 6 rows) is smeared (error up to 66.8 px). Limits: the values are W6's and not yet judged against a metric (P5.08); no real VFR clip; 24 to 30 fps lesson footage only
+- Tests: T-QLT-08a to 08h, T-QLT-09a to 09f and the differential test (288 unit tests: each run against scipy bit for bit, the response, invariants, flags, results, the grid wrapper, short runs, `padlen`, Nyquist, the step, the run table, bad input, 200 random layers against a loop that calls scipy per run; 5 contract tests: SYN-05 and SYN-07 with truth through mask, Hampel, gaps, grid and filter, the tracker chain); mutation 43 of 43 killed; gate 10/10 PASS (246.6 s, 3087 passed, 1 skipped)
+- Bugs: none found in this task
+- Commit: not committed
+- Plan: Docs/tasks/P4.05.md
+
+## 2026-11-17 — P4.04 Uniform grid for variable-frame-rate video: resample to a regular clock, keep the map back (DONE)
+
+- Changed: `taiji_ai/src/taiji_ai/quality/resample.py` (new), `taiji_ai/src/taiji_ai/quality/_checks.py` (`check_layer` split into shared pieces, `check_times`, `check_gap_layer`), `quality/mask.py` (reason code `NO_FRAME = 6`, name `no_frame`), `quality/__init__.py` (docstring), `taiji_ai/tests/unit/test_quality_resample.py` and `taiji_ai/tests/contract/test_quality_resample_chain.py` (new), `taiji_ai/tests/unit/test_quality_mask.py` (names, the codes the mask never emits), `taiji_ai/tests/helpers/synth.py` (`truth_at`), `Docs/TECH_WORKFLOW_V1.md` (W6 note with the numbers of M-QLT-04), `Docs/IMPLEMENTATION_PLAN_V1.md` (P4.04 row, T-QLT-07 sub-IDs, M-QLT-04), `Docs/DATASET_REGISTRY_TAIJI.md` (D20 use), `taiji_ai/README.md`, `Docs/tasks/P4.04.md`, `Docs/tracking/*` (and the commit hashes of nine earlier entries). **Not changed:** the tracker, the pose stage, the behaviour of the gap layer, Hampel and the mask
+- Behaviour: `resample_layer(keypoints, reason, interpolated, t_sec, params)` and `resample_gaps(result, t_sec)` read the gap layer (never change it) and return a new read-only `GridLayer`; `GridMap` keeps the map between the grid and the source rows (`to_source` is the way back, `GridLayer.to_source` also gives no value to a source cell that was not usable). **The timeline decides**: if every row time is within 1 ms of the least-squares straight line the stage is the identity (the grid is the rows, nothing is touched, `resampled` false; every constant frame rate video, including 29.97 fps on a time base of 1 ms); otherwise a regular grid from the first real row time with the median interval (or `grid_hz`), never beyond the last row. A grid time that is a row is a bit-for-bit copy; between two usable cells a cell is the flagged linear mix `a + w (b - a)` (`interpolated` inherited, the reason keeps the cause, the row flag `mixed`); a cell next to an unusable cell is NaN, never filled, with that cell's reason; a pause in the timestamps of more than 0.150 s is not bridged: NaN with the new reason `no_frame`
+- Result (DEC-0047; M-QLT-04, four D20 videos, N = 1, 22 chunks): the plan is the **identity in 22 of 22 chunks** (24 fps in 13, 30 fps in 9; largest deviation 3e-9 s), so on the footage we have the stage changes nothing. Round trip on real motion at every phase (grid rate 1 % above and below the source rate, 4,458,884 observed cells, torso 191 px): p50 0.43 px, p95 2.21 px (0.94 % of the torso), p99 4.30 px; by phase p95 from 0.66 px to 2.93 px (1.23 % of the torso) at the worst phase; 0.070 % of the usable source cells lost at the edges of holes. SYN-07 with 30 % jitter: largest error 0.21 to 0.35 px against an analytic bound of 2.35 to 2.41 px. Limits: no real VFR clip exists yet; 24 to 30 fps lesson footage only; the largest error (175 px) was not examined
+- Tests: T-QLT-07a to 07m, the differential test and the changed T-QLT-01 (292 unit tests: the identity, the regular grid, linear motion, SYN-07 with truth, holes, pauses, the reason and flag table, the way back, invariants, bad input, 200 random layers against a slow rule; 12 contract tests: SYN-07 through mask, Hampel, gaps and the grid, the tracker chain, the real PTS of four F-VID files); mutation 72 of 76 killed (4 equivalent); gate 10/10 PASS (229.7 s, 2794 passed, 1 skipped)
+- Bugs: none found in this task
+- Commit: not committed
+- Plan: Docs/tasks/P4.04.md
+
 ## 2026-11-17 — P4.03 Hampel filter: isolated spikes of a joint are flagged `outlier` and set to NaN (DONE)
 
 - Changed: `taiji_ai/src/taiji_ai/quality/filters.py` (new), `taiji_ai/src/taiji_ai/quality/_checks.py` (new: the number checks and the layer contract that `gaps.py` and `filters.py` share), `quality/gaps.py` (uses `_checks`), `quality/mask.py` (reason code `OUTLIER = 5`, name `outlier`), `quality/__init__.py` (docstring), `taiji_ai/tests/unit/test_quality_hampel.py` and `taiji_ai/tests/contract/test_quality_hampel_chain.py` (new), `taiji_ai/tests/unit/test_quality_mask.py` (names, a test that the mask never emits the code), `Docs/TECH_WORKFLOW_V1.md` (W6 note with the numbers of M-QLT-03), `Docs/IMPLEMENTATION_PLAN_V1.md` (P4.03 row, T-QLT-06 sub-IDs, M-QLT-03), `Docs/DATASET_REGISTRY_TAIJI.md` (D20 use), `taiji_ai/README.md`, `Docs/tasks/P4.03.md`, `Docs/tracking/*`. **Not changed:** the tracker, the pose stage, the behaviour of the gap layer
@@ -11,7 +41,7 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
 - Result (DEC-0046; M-QLT-03, four D20 videos, N = 1, `tau_kp` 0.3, 22 chunks; 170 frames confirmed right, 118 cells named as wrong in 34 ordinary pose failures of P3.08): the rule as written (no floor) flags 7.06 % of the judged cells and 6.87 % of those of the right frames, because the MAD of seven numbers is noisy (pure noise: 4.8 %) and a still joint has a MAD near 0; with the default floor of 2 px (about 1 % of the torso) 0.49 % and 1.14 %, and 34.8 % of the named wrong cells are found against 39.8 %; 313 more cells stay NaN after the gap layer against 5,780. The maintainer chose the floor with this table. Hampel finds `lr_swap` 26 of 58 cells, `joint_off` 13 of 37, `foot_error` 1 of 13, `flicker` 1 of 10: a cheap safety net, not a detector of what P3.08 found. Limits: 118 cells in frames chosen as suspect; 24 to 30 fps lesson footage only
 - Tests: T-QLT-06a to 06n and the changed T-QLT-01 (319 unit tests: spikes, smooth movements at both settings, the boundary and the 1.4826, MAD 0 and the floor, NaN and the count, the time cut, the result, invariants, blocks, a differential test against a slow rule on 200 layers, bad input, the torso; 8 contract tests: SYN-05 with spikes through mask, Hampel and the gap layer, the chain with the tracker); mutation 57 of 57 killed; gate 10/10 PASS (227.0 s, 2490 passed, 1 skipped)
 - Bugs: none found in this task
-- Commit: not committed
+- Commit: bad1c45
 - Plan: Docs/tasks/P4.03.md
 
 ## 2026-11-17 — P4.02 Short-gap interpolation: bridge holes of up to 150 ms in real time, flag them (DONE)
@@ -22,7 +52,7 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
 - Tests: T-QLT-03, 04, 05 (273 tests in 2 files: constructed arrays, a differential test against a slow cell-by-cell rule on 200 layers, SYN-06 in both gap modes, the chain with the tracker); mutation 38 of 38 killed; gate 10/10 PASS (350.8 s, 2162 passed, 1 skipped)
 - Decisions: DEC-0045 (the length of a gap is the bridged span, the order of the rules, what is never bridged, `blocked` instead of a detector, the 150 ms evaluated and kept)
 - Bugs: BUG-0074 (S3: the D20 registry row did not name the use of P4.01; found and fixed here)
-- Commit: not committed
+- Commit: bad1c45
 - Plan: Docs/tasks/P4.02.md
 
 ## 2026-11-17 — P3.09 Quick comparison of the detector: YOLOX (shipping) against YOLO11, measure only (DONE)
@@ -34,7 +64,7 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
 - Tests: T-DET-01..10, 116 tests in 8 files (6 on the GPU); mutation 40 of 40 and 9 of 9 killed; gate 10/10 PASS (323.6 s, 1889 passed, 1 skipped = the YOLO11 smoke, file deleted)
 - Decisions: DEC-0043 (licence reading, rule, shipping NMS limit corrected to 0.65), DEC-0044 (result)
 - Bugs: BUG-0072 (S3, `prepare_onnxruntime` after a CPU call; found here, fix = X.30, worked around in `bench/yolo_onnx.py`), BUG-0073 (S3, stale NMS default 0.45; found in the self-review, fixed and closed here)
-- Commit: not committed
+- Commit: bad1c45
 - Plan: Docs/tasks/P3.09.md
 
 ## 2026-11-16 — P3.08 Failure cases of the pose on real footage (DONE)
@@ -45,7 +75,7 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
 - Tests: T-AUDIT-01..06 and 04c (131 test cases in the nine audit files); mutation 62 of 62 killed; gate 10/10 PASS (316.4 s, 1774 tests)
 - Decisions: DEC-0039 (rules of the review), DEC-0041 (the markers, the person's `ok`)
 - Bugs: none
-- Commit: not committed
+- Commit: 8fc1cfb
 - Plan: Docs/tasks/P3.08.md
 
 ## 2026-11-16 — P4.01 The mask layer: low-confidence keypoints and invalid frames (DONE)
@@ -56,7 +86,7 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
 - Tests: T-QLT-01a..e and T-QLT-02a..b (106 tests, red first); mutation 33 of 34 killed (1 equivalent); gate 10/10 PASS (212.0 s, 1772 tests)
 - Decisions: DEC-0040 (reasons and their order, the 5-of-10 boundary, the precision of the comparison, parameters kept as W6 values, file format deferred to X.29)
 - Bugs: none
-- Commit: not committed
+- Commit: 8fc1cfb
 - Plan: Docs/tasks/P4.01.md
 
 ## 2026-11-16 — P3.07 Pose benchmark: speed, GPU memory and the detector cadence N (DONE)
@@ -69,7 +99,7 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
 - Tests: T-BENCH-01..09 (124 tests; GPU: the real NVML and the real models on a short clip); mutation 63 of 63 killed; gate 10/10 PASS (200.8 s, 1537 tests)
 - Decisions: DEC-0038 (D20 as the stand-in for P1.09 and the reading of `benchmark`; NVML through ctypes; the rule for N; the optional callback)
 - Bugs: BUG-0071 (S3) found by the read-back and fixed in this task
-- Commit: not committed
+- Commit: 8fc1cfb
 - Plan: Docs/tasks/P3.07.md
 
 ## 2026-11-16 — P3.06 The target over time: lost, re-attached, `target_lost`; and `track.parquet` (DONE)
@@ -81,7 +111,7 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
 - Tests: T-TRK-04a..d, 05a..h, 06a..d (93 + 66 + 48 + 6 `person_cost`), T-TRK-05g on two real clips (GPU); mutation 82 of 83 killed (1 equivalent); gate 10/10 PASS (187.8 s, 1413 tests)
 - Decisions: DEC-0037 (the rules and the two provisional limits with their evidence)
 - Bugs: none
-- Commit: not committed
+- Commit: 8fc1cfb
 - Plan: Docs/tasks/P3.06.md
 
 ## 2026-11-16 — P3.05 Hungarian association of persons: track ids and match margin (DONE)
@@ -93,7 +123,7 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
 - Tests: T-TRK-02a..d, 03a..m (39) and geometry (7); SYN-12: 0 swaps (10 seeds and 6 variations); real clips (GPU): the presenter keeps one track over 289 frames; mutation 25 of 25; gate 10/10 PASS (178.3 s, 1198 tests)
 - Decisions: the values of step 2 are in the task file (no DEC: provisional parameters of one module)
 - Bugs: BUG-0070 (S3) found by the read-back and fixed in this task
-- Commit: not committed
+- Commit: 8fc1cfb
 - Plan: Docs/tasks/P3.05.md
 
 ## 2026-11-16 — P3.04 Choose the target person on the first frame (DONE)
@@ -106,7 +136,7 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
 - Tests: T-TRK-01a..m (40 unit tests; mutation 22 of 22) and T-TRK-01g on a real frame with two people (GPU); gate 10/10 PASS (163.3 s, 1150 tests)
 - Decisions: none new (the maintainer's answers to Q1 to Q7 are in the task file)
 - Bugs: none
-- Commit: not committed
+- Commit: 8fc1cfb
 - Plan: Docs/tasks/P3.04.md
 
 ## 2026-11-16 — P3.03 pose_raw.npz: strict, atomic save and load (schema pose_raw/1) (DONE)
