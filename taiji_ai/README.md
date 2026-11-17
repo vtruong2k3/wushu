@@ -78,6 +78,7 @@ src/taiji_ai/
   bench/compare.py     compare two pose runs (persons, distances, entry delay) and their target tracks (P3.07)
   bench/decision.py    the rule, written before the measurement, that recommends the detector cadence N (P3.07)
   bench/{clips,worker,orchestrate,report}.py  the D20 clips, the worker of one N, the run, the report tables (P3.07)
+  bench/{yolo_onnx,detector_metrics,detector_compare,detector_worker}.py  offline: the detector comparison YOLOX against YOLO11, the adapter, the metrics and the written rule, the tables, one worker per detector (P3.09; nothing of the product imports them)
   audit/scan.py        the pose pass over the D20 videos in chunks of 300 s, resumable (P3.08)
   audit/{signals,select,labels,summary}.py  per-frame measures of the target's pose, the choice of the frames to look at, the review file, the numbers and tables (P3.08)
   audit/{render,analyse}.py  skeleton overlays and contact sheets, the analysis of two passes into candidates (P3.08)
@@ -99,11 +100,13 @@ src/taiji_ai/
   store/sync.py        queries and upsert/delete of the `sync` table (P2.06)
   cli.py               command line: `taiji participant add, set, show`, `taiji ingest`, `taiji proxy`, and `taiji sync`
   quality/mask.py      the mask layer: low_conf, non_finite, not_tracked, frame_invalid, with a reason for every NaN (P4.01)
+  quality/gaps.py      `interpolate_gaps` / `interpolate_track`: holes of at most 150 ms (anchor to anchor, real time) are bridged and flagged, the rest stays NaN; a gap gets a table row and an outcome (P4.02)
+  quality/filters.py   `hampel_outliers` / `hampel_track`: a cell further than 3 robust sigma (floor 2 px) from the median of its 7-row window is set to NaN with the reason `outlier`; `torso_length_px` (P4.03)
   metrics/ compare/ report/   (to be implemented)
   api/                 FastAPI app (`python -m taiji_ai.api`, 127.0.0.1 only): /api/health, SPA serving
 config/                ontology_v0.yaml: the 24-form actions, sides, views, flags (draft until the coach signs)
 web/                   React + Vite + TypeScript UI: src/{api,components,pages}, tests/ (Vitest)
-tools/                 check.ps1, repo_hygiene.py, fetch_models.py, env_check.py, render_ontology_review.py, bench_pose.py, pose_audit.py
+tools/                 check.ps1, repo_hygiene.py, fetch_models.py, env_check.py, render_ontology_review.py, bench_pose.py, pose_audit.py, detector_compare.py
 tests/                 unit/, contract/ (synthetic FFmpeg fixtures; GPU smoke test), api/ (FastAPI TestClient)
 tests/helpers/         synth.py synthetic HALPE_26 skeleton generator (F-SYN, SYN-01..12)
 ```
@@ -128,8 +131,10 @@ tests/helpers/         synth.py synthetic HALPE_26 skeleton generator (F-SYN, SY
 | manifests (schemas/_base, recording, sync) | done, tested (T-SCH-01a..i); `recording.json` and `proxy.json` are written by ingest and P2.03, `sync.json` by P2.06 |
 | participants + CLI (store/participants.py, cli.py) | done, tested (T-DATA-05a..j); the consent form maps to it (`Docs/consent_form.md` B1) |
 | bench (`tools/bench_pose.py`, `bench/*`) | done, tested (T-BENCH-01..09); measured on D20 (not P1.09): RTF 1.23 / 0.335 / 0.259 for N = 1 / 5 / 10, peak VRAM 1.8 to 2.0 GB, report `Docs/reports/p3_pose_benchmark.md`; the written rule recommends N = 1, the default stays 5 until the maintainer decides |
+| detector comparison (`tools/detector_compare.py`, `bench/{yolo_onnx,detector_*}.py`) | done, tested (T-DET-01..10); offline measurement only, the stack is unchanged: on D20 YOLO11m is not materially better than the shipping YOLOX by the rule written before the numbers (recall 100.0 % against 98.2 % on 169 labelled frames, p = 0.25; no run to review in 3,785 clip frames), so DEC-0005 stands (DEC-0044); YOLO11m has tighter and steadier boxes and is 1.65 times faster end to end; Ultralytics and the YOLO11 weights are AGPL-3.0: used once in an isolated environment, now deleted, never imported or registered; report `Docs/reports/p3_pose_benchmark.md` appendix A |
 | track (target choice, association, target over time, `track.parquet`) | done, tested (T-TRK-01a..m, T-TRK-02, T-TRK-03, T-TRK-04, T-TRK-05, T-TRK-06); the thresholds (`reattach_cost`, `max_reattach_s`) are provisional: no real clip with a real absence yet |
-| quality (mask: `quality/mask.py`) | mask done, tested (T-QLT-01, T-QLT-02; reasons `low_conf`, `non_finite`, `not_tracked`, `frame_invalid`); `tau_kp` 0.3 and the ten essential joints are the W6 values, evaluated by P3.08, not tuned; no file format yet (X.29); gaps, filters, swap flag and coverage not started |
+| audit (`tools/pose_audit.py`, `audit/*`) | done, tested (T-AUDIT-01..06, 04c); run over the four D20 videos at N = 1 and N = 5, 250 frames reviewed by agents and the maintainer; report `Docs/reports/p3_failure_cases.md`; images and keypoint files stay in `data/` (ignored by git) |
+| quality (mask, gaps and Hampel: `quality/mask.py`, `quality/gaps.py`, `quality/filters.py`) | mask done, tested (T-QLT-01, T-QLT-02; reasons `low_conf`, `non_finite`, `not_tracked`, `frame_invalid`, and `outlier` from the Hampel stage); `tau_kp` 0.3 and the ten essential joints are the W6 values, evaluated by P3.08, not tuned; gap bridging done, tested (T-QLT-03..05): a gap of at most 150 ms between its two observed anchors is filled linearly in real time and flagged `interpolated`; nothing is extrapolated, held or zero-filled; a gap with a cell of a frame that is not the target's is never bridged; `blocked` input for P4.06; on D20 the 150 ms is kept (leave-gap-out p95 error 2.6 to 3.1 % of the torso for 1 to 3 missing frames, DEC-0045); Hampel done, tested (T-QLT-06): window 7, 3 sigma from 1.4826 x MAD, sigma never under 2 px (the rule as written flagged 7.1 % of the D20 cells, the floor gives 0.49 %, DEC-0046), an outlier is NaN with the reason `outlier` and only the gap layer repairs it, flagged; Hampel is a cheap safety net and finds about a third of the cells that P3.08 named as wrong, not a detector of swaps or lasting errors; no file format yet (X.29); resampling, filter, swap flag and coverage not started |
 | metrics, compare, pipeline, report | not started |
 
 ## Command line

@@ -1,8 +1,9 @@
 # P3.08 — Failure cases of the pose on real footage
 
-**Status: provisional. Reviewed by the agent only; the maintainer (H) has not yet confirmed or corrected the labels.**
-The numbers are regenerated from `review.csv` by `tools/pose_audit.py report`; when H has looked, the tables, and the
-sentences that quote them, must be checked again (the agreement table is empty until then). Date of the review: 2026-11-16.
+**Status: reviewed by the agent and then by the maintainer (H), who looked at all 250 rows, agreed with 249 and changed one
+(`fc-161`, failure to ok).** The numbers are regenerated from `review.csv` by `tools/pose_audit.py report`. The agreement of
+99.6 % says that H and the agent saw the same frames the same way; it does not say that both are right (one second person
+would be needed for that). Date of the review: 2026-11-16.
 Task file: `Docs/tasks/P3.08.md`. Decisions: DEC-0039 (rules of the review), DEC-0041 (the two markers).
 
 ## 1. What was done
@@ -20,12 +21,15 @@ Task file: `Docs/tasks/P3.08.md`. Decisions: DEC-0039 (rules of the review), DEC
   wrong side, on another body part, or no person; S2 a joint visibly off; S3 minor or not checkable, listed and **not
   counted**), the view, the situation and the cadence (`both`, `n5_only`, `n1_only`, `unknown`). The vocabulary was fixed before
   looking (DEC-0039). The score of the wrong joints comes from the data, never from the reviewer.
-- **Who looked (the agent's part):** six agent reviewers each labelled about 42 frames on tiles of 520 px with both skeletons
-  drawn; the lead agent then re-checked at that size every one of the 62 counted failures, the frames the reviewers called
+- **Who looked:** first the agent's part: six agent reviewers each labelled about 42 frames on tiles of 520 px with both skeletons
+  drawn; the lead agent then re-checked at that size every one of the 62 failures counted at that time, the frames the reviewers called
   `back`, and a sample of `ok` frames, and added two **markers** in the note (DEC-0041): `[track]` (the performer is in the
   picture with 25 to 26 valid keypoints in the raw pose, but the target link is lost: a tracker event, not a pose failure; the
   numbers of the raw pose were read for each of those frames) and `[edit]` (a fade, a dissolve or a title of the video
-  editing: not a capture). Nothing was dropped: the tables keep every frame and show the markers apart.
+  editing: not a capture). Nothing was dropped: the tables keep every frame and show the markers apart. Then the maintainer
+  (H) went through all 250 rows on a local page (the picture, the agent's label and the scores of the wrong joints; Agree or
+  Change): 249 agreed, one changed (`fc-161`: the agent had seen the left foot drawn on the front foot at N = 1; H found the
+  skeleton right). The agreement table is in section 6.
 - Left and right: a frame in which the person faces the camera has the person's **right** side on the **left** of the
   image, and a person seen from behind has it on the **right** (checked on frames where the person was clearly front or back).
   In profile, the side of a limb was judged from the neighbouring frames of the same stance; those labels are the least certain.
@@ -37,33 +41,34 @@ All figures are in the tables of section 4. Each sentence names the table it com
 1. **How often the pose fails on this footage.** In the 40 blind frames, 2 failed (5.0 %, Wilson 95 % interval 1.4 % to
    16.5 %); none of the blind frames is an `[edit]` frame, so the rate is the same without them. With 40 frames the interval is
    wide: it says the rate is probably below one frame in six, nothing more.
-2. **Where the failures are.** 62 frames are counted failures (S1, S2); 15 of them are `[track]` events and 13 are in `[edit]`
-   frames; **35 are pose failures of ordinary frames** (12 S1, 23 S2). They are concentrated: 24 of the 35 are in `d20-v4`
+2. **Where the failures are.** 61 frames are counted failures (S1, S2); 15 of them are `[track]` events and 13 are in `[edit]`
+   frames; **34 are pose failures of ordinary frames** (11 S1, 23 S2). They are concentrated: 23 of the 34 are in `d20-v4`
    (105 of the 250 frames: a performer in white doing lunges seen from the side, in front of a wall and a hedge), 7 in `d20-v2`,
-   2 in `d20-v1`, 2 in `d20-v3`. The types of the 62: `joint_off` 22, `lr_swap` 12, `foot_error` 8, `flicker` 4,
+   2 in `d20-v1`, 2 in `d20-v3`. The types of the 61: `joint_off` 22, `lr_swap` 11, `foot_error` 8, `flicker` 4,
    `missed_person` 1 (a dark frame at N = 1 only), `other` 15 (the `[track]` frames). Seventeen more frames are `hidden_guess`
    (a joint hidden behind the body or another limb, drawn on a plausible spot that cannot be checked): S3, listed, not counted.
 3. **The four situations of the plan.** The frames of a hand over the trunk, a turning trunk, one leg and the back to the
    camera were found and reviewed, and they were **not** where the failures are: `occlusion` 35 frames and 2 failures,
    `orientation_change` 7 and 0, `one_leg` 36 and 3, `back` 37 and 5 (tables "by situation" and "by view"). The finders for
    them had a precision of 0 to 5 % (`find_occlusion` 0 of 20, `find_rotation` 0 of 20, `find_back` 1 of 20, `find_one_leg` 1
-   of 20). The rules that did find failures were `target_event` (17 of 20, mostly the tracker), `cadence_diff` (13 of 20),
-   `jump` (9), `bone` (8), `swap_pair` (8), `low_essential` (7). **This does not show that those situations are safe**: 20 to 37
+   of 20). The rules that did find failures were `target_event` (17 of 20, mostly the tracker), `cadence_diff` (12 of 20),
+   `jump` (8), `bone` (8), `swap_pair` (8), `low_essential` (7). **This does not show that those situations are safe**: 20 to 37
    frames each, one kind of footage, and a hidden joint is not a failure here but a `hidden_guess` that nobody can check.
-4. **The score does not warn.** Of the 35 failures of ordinary frames that name joints, **none** would have been removed by a
+4. **The score does not warn.** Of the 34 failures of ordinary frames that name joints, **none** would have been removed by a
    mask at `tau_kp = 0.3`: in every one, at least one wrong joint scores 0.3 or more (table "Does the score warn?"). The
-   highest score of a wrong joint is 0.3 to 0.5 in 10 failures, 0.5 to 0.7 in 14, 0.7 to 0.9 in 10 and 0.9 or more in 1; the
-   median is 0.67. All 17 `hidden_guess` rows also score high (the case table). Over all 46 failures that name joints, the
+   highest score of a wrong joint is 0.3 to 0.5 in 10 failures, 0.5 to 0.7 in 13, 0.7 to 0.9 in 10 and 0.9 or more in 1; the
+   median is 0.67. All 17 `hidden_guess` rows also score high (the case table). Over all 45 failures that name joints, the
    mask would have removed 3, all of them in `[edit]` frames.
-5. **Left and right.** 12 failures are `lr_swap` (9 in ordinary frames). They are legs in side and oblique lunge frames of
-   `d20-v4` (7 of the 9), one pair of legs in `d20-v1` and one ankle in `d20-v2`, and the labels flip between frames 0.3 s apart in the same stance (for
+5. **Left and right.** 11 failures are `lr_swap` (8 in ordinary frames). They are legs in side and oblique lunge frames of
+   `d20-v4` (6 of the 8), one pair of legs in `d20-v1` and one ankle in `d20-v2`, and the labels flip between frames 0.3 s apart in the same stance (for
    example `fc-216` and `fc-217`, `fc-227` and `fc-228`), so a swap can be seen in time, not in the score. Four more
    frames are `flicker`. Eleven of the 37 back-view frames were re-checked by the lead for a whole-body swap and none showed
    one; the other 26 rest on the reviewers.
-6. **The detector cadence.** Among the 62 counted failures: `both` 36, `n1_only` 11, `n5_only` 5, `unknown` 10. Failures
+6. **The detector cadence.** Among the 61 counted failures: `both` 36, `n1_only` 10, `n5_only` 5, `unknown` 10. Failures
    that appear only at N = 1 are more numerous than those that appear only at N = 5, so this review gives **no evidence that
    N = 1 removes failures** (the rule of P3.07 recommends N = 1 from keypoint differences; this review looked at labelled
    frames). The sample is biased by construction (the rules look at N = 1 and at the difference) and 10 cases are `unknown`.
+   The maintainer kept the default N = 5 (DEC-0042).
 7. **The tracker.** In 15 of the 20 `target_event` frames the performer is in the picture with 25 to 26 valid keypoints and the
    target is lost in both passes (two frames only at N = 1). They are after cuts and close-ups, or with the performer far from
    the camera. It is the behaviour designed in DEC-0037 (no re-attachment when the cost is over the limit, ask the user), not a
@@ -77,14 +82,14 @@ All figures are in the tables of section 4. Each sentence names the table it com
   (task file P4.01, M-QLT-01 at other values, nothing tuned): at 0.5 it excludes 0.5 % to 1.7 % of the joint cells and makes 22
   of 86 303 tracked frames invalid; at 0.7 it excludes 8 % to 19 % of the joint cells and makes 3.95 % of the tracked frames
   invalid (7.3 % in `d20-v4`); at 0.9 it blanks almost everything (the scores of this performer mostly lie between 0.7 and
-  0.9). A threshold of 0.7 would take the highest wrong score under it in 24 of the 35 failures, **and** exclude 8 % to 19 %
+  0.9). A threshold of 0.7 would take the highest wrong score under it in 23 of the 34 failures, **and** exclude 8 % to 19 %
   of all joint cells, almost all of them right. **No
-  change of `tau_kp` or of the essential joints is proposed**: the labels are not yet confirmed, and the choice is the
-  maintainer's. No frame is `frame_invalid` at 0.3, so the essential list is not stressed by this footage.
+  change of `tau_kp` or of the essential joints is proposed**: the maintainer kept 0.3 as a hygiene threshold
+  (DEC-0042). No frame is `frame_invalid` at 0.3, so the essential list is not stressed by this footage.
 - **P4.06 (left/right swap flag):** the swaps that were found are legs in side lunges, flipping between neighbouring
   frames; a detector on the time series of the pairs (the `swap_pair` signal of this review had a precision of 40 %) is the
   base, and the score cannot replace it. The metrics of W7 use mid-points and symmetric groups, so a leg swap changes them
-  little; `joint_off` of the feet matters more (25 failures name the feet group; the hip-height
+  little; `joint_off` of the feet matters more (24 failures name the feet group; the hip-height
   variant with a ground reference uses the lowest foot point). To be checked when P5 is written, not claimed here.
 - **P3.06 / P7 / P8 (target):** on footage with cuts, the performer is lost at a cut and must be chosen again; the UI of P8
   must ask. The `[track]` frames list the moments (case table, type `other`).
@@ -98,12 +103,13 @@ All figures are in the tables of section 4. Each sentence names the table it com
 
 ## 4. Limits and what was not found
 
-- Agent-only labels, until H confirms; eye judgement at 520 px, a joint "visibly off" means more than about a hand width; a
-  hidden joint cannot be judged and is `hidden_guess`; left and right in profile views are judged from neighbouring frames.
+- Labels by the agent and one person (H); H agreed with 249 of 250, so the two opinions are not independent evidence of each
+  other's errors. Eye judgement at 520 px, a joint "visibly off" means more than about a hand width; a hidden joint cannot be
+  judged and is `hidden_guess`; left and right in profile views are judged from neighbouring frames.
 - One kind of footage (lessons, three or more performers, cuts and fades), 250 frames chosen to find failures: only the blind
   sample estimates a rate, and it has 40 frames. No accuracy is given and no threshold is set.
-- Of the frames the reviewers called `ok`, the lead looked at a sample, not at all of them; 49 `ok` rows carry an `unsure:`
-  note and are the first ones for H to look at.
+- Of the frames the reviewers called `ok`, the lead looked at a sample, not at all of them; H looked at all of them, including
+  the 49 `ok` rows that carry an `unsure:` note.
 - The target is the review's rule (most persistent large person), not the product's default; only `tracked` frames can be
   candidates of a pose rule, so frames of the performer after a loss are not in the sample (44 % to 62 % of the frames are
   tracked per video).
@@ -131,7 +137,7 @@ The tables below are the output of `report` (`report_tables.md`), unchanged.
 
 | Frames | Failures (S1, S2) | Minor (S3) | Ok |
 | --- | --- | --- | --- |
-| 250 | 62 | 17 | 171 |
+| 250 | 61 | 17 | 172 |
 
 ### Frames that are not an ordinary pose question (markers in the notes; nothing is dropped)
 
@@ -140,7 +146,7 @@ The tables below are the output of `report` (`report_tables.md`), unchanged.
 | [track] | performer in the picture with a good skeleton, target link lost (tracker event) | 15 | 15 |
 | [edit] | fade, dissolve or title of the video editing (not a capture) | 19 | 13 |
 
-Failures (S1, S2) without the [track] frames: 47. Pose failures of ordinary frames (neither marker): 35.
+Failures (S1, S2) without the [track] frames: 46. Pose failures of ordinary frames (neither marker): 34.
 
 ### Frames and failures by video (frames reviewed in the sample, not a rate)
 
@@ -149,20 +155,20 @@ Failures (S1, S2) without the [track] frames: 47. Pose failures of ordinary fram
 | d20-v1 | 42 | 5 | 2 |
 | d20-v2 | 40 | 10 | 7 |
 | d20-v3 | 63 | 7 | 2 |
-| d20-v4 | 105 | 40 | 24 |
+| d20-v4 | 105 | 39 | 23 |
 
 ### Agreement of the person with the agent (over the rows the person looked at)
 
 | Field | Rows looked at | Agree | Share |
 | --- | --- | --- | --- |
-| verdict | 0 | 0 | n/a |
-| type | 0 | 0 | n/a |
-| joints | 0 | 0 | n/a |
-| severity | 0 | 0 | n/a |
-| view | 0 | 0 | n/a |
-| situation | 0 | 0 | n/a |
-| cadence | 0 | 0 | n/a |
-| note | 0 | 0 | n/a |
+| verdict | 250 | 249 | 99.6 % |
+| type | 250 | 250 | 100.0 % |
+| joints | 250 | 250 | 100.0 % |
+| severity | 250 | 250 | 100.0 % |
+| view | 250 | 250 | 100.0 % |
+| situation | 250 | 250 | 100.0 % |
+| cadence | 250 | 250 | 100.0 % |
+| note | 250 | 250 | 100.0 % |
 
 ### Precision of each rule (failures among the frames the rule took)
 
@@ -170,12 +176,12 @@ Failures (S1, S2) without the [track] frames: 47. Pose failures of ordinary fram
 | --- | --- | --- | --- |
 | blind | 40 | 2 | 5.0 % |
 | bone | 20 | 8 | 40.0 % |
-| cadence_diff | 20 | 13 | 65.0 % |
+| cadence_diff | 20 | 12 | 60.0 % |
 | find_back | 20 | 1 | 5.0 % |
 | find_occlusion | 20 | 0 | 0.0 % |
 | find_one_leg | 20 | 1 | 5.0 % |
 | find_rotation | 20 | 0 | 0.0 % |
-| jump | 20 | 9 | 45.0 % |
+| jump | 20 | 8 | 40.0 % |
 | low_essential | 20 | 7 | 35.0 % |
 | structure | 20 | 3 | 15.0 % |
 | swap_pair | 20 | 8 | 40.0 % |
@@ -192,7 +198,7 @@ Failures (S1, S2) without the [track] frames: 47. Pose failures of ordinary fram
 
 | Type | Failures |
 | --- | --- |
-| lr_swap | 12 |
+| lr_swap | 11 |
 | joint_off | 22 |
 | hidden_guess | 0 |
 | foot_error | 8 |
@@ -206,7 +212,7 @@ Failures (S1, S2) without the [track] frames: 47. Pose failures of ordinary fram
 | Value | Frames | Failures |
 | --- | --- | --- |
 | front | 62 | 11 |
-| side | 81 | 26 |
+| side | 81 | 25 |
 | oblique | 58 | 12 |
 | back | 37 | 5 |
 | unknown | 12 | 8 |
@@ -215,7 +221,7 @@ Failures (S1, S2) without the [track] frames: 47. Pose failures of ordinary fram
 
 | Value | Frames | Failures |
 | --- | --- | --- |
-| none | 172 | 57 |
+| none | 172 | 56 |
 | occlusion | 35 | 2 |
 | orientation_change | 7 | 0 |
 | one_leg | 36 | 3 |
@@ -227,15 +233,15 @@ Failures (S1, S2) without the [track] frames: 47. Pose failures of ordinary fram
 | head | 5 |
 | trunk | 5 |
 | arms | 20 |
-| legs | 21 |
-| feet | 25 |
+| legs | 20 |
+| feet | 24 |
 
 ### Does the score warn? (a mask at tau_kp = 0.3 would remove every wrong joint)
 
 | Failures | That name joints | Removed by the mask | Kept by the mask | Share kept |
 | --- | --- | --- | --- | --- |
-| all failures | 46 | 3 | 43 | 93.5 % |
-| ordinary frames only | 35 | 0 | 35 | 100.0 % |
+| all failures | 45 | 3 | 42 | 93.3 % |
+| ordinary frames only | 34 | 0 | 34 | 100.0 % |
 
 ### How high is the score of the wrong joints? (ordinary failures that name joints)
 
@@ -243,7 +249,7 @@ Failures (S1, S2) without the [track] frames: 47. Pose failures of ordinary fram
 | --- | --- |
 | under 0.3 | 0 |
 | 0.3 to 0.5 | 10 |
-| 0.5 to 0.7 | 14 |
+| 0.5 to 0.7 | 13 |
 | 0.7 to 0.9 | 10 |
 | 0.9 or more | 1 |
 | median | 0.67 |
@@ -255,7 +261,7 @@ A mask removes every wrong joint of a failure only if `tau_kp` is above its high
 | Cadence label | Failures |
 | --- | --- |
 | both | 36 |
-| n1_only | 11 |
+| n1_only | 10 |
 | n5_only | 5 |
 | unknown | 10 |
 
@@ -301,7 +307,6 @@ A mask removes every wrong joint of a failure only if `tau_kp` is above its high
 | fc-154 | d20-v4 | 336.97 | 10109 | hidden_guess | LWrist, RWrist | S3 | back | none | both | no | find_occlusion |
 | fc-158 | d20-v4 | 345.33 | 10360 | joint_off | LElbow | S2 | back | none | both | no | bone |
 | fc-159 | d20-v4 | 346.57 | 10397 | hidden_guess | LElbow, LWrist | S3 | back | none | both | no | find_back |
-| fc-161 | d20-v4 | 363.93 | 10918 | lr_swap | LKnee, LAnkle, LHeel, LBigToe, LSmallToe | S1 | side | none | n1_only | no | jump, cadence_diff |
 | fc-167 | d20-v4 | 443.10 | 13293 | joint_off | head | S2 | front | none | both | no | find_back |
 | fc-175 | d20-v4 | 1091.63 | 32749 | joint_off | LWrist, LElbow | S2 | oblique | occlusion | both | no | blind |
 | fc-176 | d20-v4 | 1120.63 | 33619 | hidden_guess | LAnkle, LBigToe, LSmallToe, LHeel | S3 | front | none | unknown | no | structure |

@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>P3.09 review of the disagreements</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --ink:#1b1f24; --mute:#5b6572; --line:#d9dee5; --acc:#1a56db; --ok:#e6f4ea; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#14171b; --card:#1d2227; --ink:#e8ebef; --mute:#97a1ae; --line:#323a43; --acc:#7aa7ff; --ok:#17301c; } }
+  body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.45 system-ui, sans-serif; }
+  header { position:sticky; top:0; z-index:5; background:var(--card); border-bottom:1px solid var(--line); padding:8px 16px; }
+  h1 { font-size:16px; margin:0 0 4px; } .meta { color:var(--mute); }
+  main { max-width:900px; margin:0 auto; padding:12px 16px 80px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:10px; margin:12px 0; } .card.done { background:var(--ok); }
+  img { width:100%; border-radius:6px; display:block; cursor:zoom-in; }
+  label { margin-right:14px; cursor:pointer; } button { font:inherit; padding:5px 10px; border:1px solid var(--line); background:var(--card); color:var(--ink); border-radius:6px; cursor:pointer; }
+  button.primary { background:var(--acc); color:#fff; border-color:var(--acc); }
+  #zoom { position:fixed; inset:0; background:rgba(0,0,0,.85); display:none; align-items:center; justify-content:center; z-index:9; cursor:zoom-out; } #zoom img { max-width:96vw; max-height:96vh; cursor:zoom-out; }
+</style>
+</head>
+<body>
+<header>
+  <h1>P3.09: is the performer in the picture? <span id="progress" class="meta"></span></h1>
+  <div class="meta">In each picture two detectors drew boxes (green and magenta); only one of them found a person. Judge the <b>picture</b>, not the boxes: is there a person (the performer, the large person doing the movement) in it? Answers are kept in this browser; nothing is sent anywhere.</div>
+  <p><button class="primary" id="export">Download dc_labels_h.json</button></p>
+</header>
+<main id="list"></main>
+<div id="zoom"><img alt=""></div>
+<script>
+const DATA = __DATA__;
+const AGENT = __LABELS__;
+const KEY = "p309_dc_review_v1";
+let state = {}; try { state = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) { state = {}; }
+function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+function render() {
+  const list = document.getElementById("list"); list.innerHTML = "";
+  const done = DATA.filter(d => state[d.id]).length;
+  document.getElementById("progress").textContent = "· answered " + done + " of " + DATA.length;
+  DATA.forEach(d => {
+    const card = document.createElement("div"); card.className = "card" + (state[d.id] ? " done" : "");
+    const img = document.createElement("img"); img.loading = "lazy"; img.src = "discordant/" + d.id + ".jpg"; img.alt = d.id;
+    img.onclick = () => { const z = document.getElementById("zoom"); z.firstElementChild.src = img.src; z.style.display = "flex"; };
+    const row = document.createElement("div"); row.style.marginTop = "8px";
+    [["yes", "A person is there"], ["no", "No person"], ["unsure", "Cannot tell"]].forEach(([v, text]) => {
+      const l = document.createElement("label"); const r = document.createElement("input"); r.type = "radio"; r.name = d.id; r.value = v; r.checked = state[d.id] === v;
+      r.onchange = () => { state[d.id] = v; save(); render(); };
+      l.append(r, " " + text); row.append(l);
+    });
+    if (AGENT[d.id]) { const a = document.createElement("span"); a.className = "meta"; a.textContent = " · agent: " + AGENT[d.id]; row.append(a); }
+    card.append(img, row); list.append(card);
+  });
+}
+document.getElementById("export").onclick = () => {
+  const blob = new Blob([JSON.stringify(state, null, 1)], { type: "application/json" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "dc_labels_h.json"; a.click();
+};
+document.getElementById("zoom").onclick = () => { document.getElementById("zoom").style.display = "none"; };
+render();
+</script>
+</body>
+</html>

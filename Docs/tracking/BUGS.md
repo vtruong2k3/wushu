@@ -4,12 +4,15 @@ Rules: `AGENTS.md` §3. IDs are sequential (`BUG-NNNN`), never reused. Every bug
 Severity: **S1** critical · **S2** major · **S3** minor.
 Lifecycle: `OPEN → PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED` (or `WONT_FIX` with maintainer approval).
 
-**Next free ID:** `BUG-0072`
+**Next free ID:** `BUG-0075`
 
 ## Summary
 
 | ID       | Title                                                                                                                      | Sev | Status | Found in                                                                   | Fix task | Regression test                                                  | Opened     | Closed     |
 | -------- | -------------------------------------------------------------------------------------------------------------------------- | --- | ------ | -------------------------------------------------------------------------- | -------- | ---------------------------------------------------------------- | ---------- | ---------- |
+| BUG-0074 | The allowed-use text of D20 in `Docs/DATASET_REGISTRY_TAIJI.md` does not list the look at the mask layer of P4.01 (M-QLT-01, counts only on the P3.08 pose files): AGENTS.md 9.4 item 3 asks for the use to be written there before it happens | S3 | CLOSED | `Docs/DATASET_REGISTRY_TAIJI.md` (D20 row), found by the agent while adding M-QLT-02 for P4.02 | P4.02 | Manual check: the row names P4.01 and P4.02 and their limits (2026-11-17) | 2026-11-17 | 2026-11-17 |
+| BUG-0073 | The detector tool (P3.09) and its rule kept the NMS limit **0.45** as the default for YOLO11 ("YOLOX uses 0.45") after the limit of the shipping graph was read as **0.65**: running `detector_compare.py run` without `--nms-iou` measures a different operating point than DEC-0043 and the report state; `DetectorRule.matched_nms_iou` (unused) and its test hold the same stale 0.45 | S3 | CLOSED | `taiji_ai/tools/detector_compare.py`, `bench/detector_metrics.py` (P3.09, found by the agent in the self-review read-back) | P3.09 | `test_t_det_08_the_default_nms_limit_of_the_tool_is_the_one_of_the_shipping_graph` | 2026-11-17 | 2026-11-17 |
+| BUG-0072 | `prepare_onnxruntime` (P3.02) remembers that it ran for **any** device: a call for the CPU stops a later call for CUDA from loading the DLLs of the nvidia packages, and the CUDA session then falls back to the CPU or fails | S3 | PLANNED | `taiji_ai/src/taiji_ai/pose/rtm.py` `prepare_onnxruntime` (P3.02), found while writing P3.09 | X.30 | to be written with the fix (a subprocess test, `gpu` marker); the workaround in `bench/yolo_onnx.py` has `test_t_det_09_a_cpu_session_before_a_cuda_session_does_not_break_cuda` | 2026-11-17 | |
 | BUG-0071 | The benchmark orchestrator (P3.07, first version) handed an unknown loss of the tracked share (no clip had a target in both runs) to the rule for N as 0.0, so a missing measurement counted as "no loss" and could let an N pass | S3 | CLOSED | `taiji_ai/src/taiji_ai/bench/orchestrate.py`, `bench/decision.py` (P3.07, first version) | P3.07 | `test_t_bench_06_an_unknown_tracked_share_is_not_acceptable_and_is_not_taken_as_zero` | 2026-11-16 | 2026-11-16 |
 | BUG-0070 | `associate_tracks` (first version, P3.05) divided the keypoint distance by the height of the hull of the *common* keypoints instead of the height of the whole track: when only a few keypoints are common (the head, two rows of the body) the term was inflated (a 20 px move: 0.14 instead of 0.03), so a partly visible person could be refused and split into two tracks | S3 | CLOSED | `taiji_ai/src/taiji_ai/track/associate.py` `_pair_cost`, found by the agent when reading the file back before closing P3.05 | P3.05 | T-TRK-03e (the height test) | 2026-11-16 | 2026-11-16 |
 | BUG-0069 | `store/artifacts.atomic_write_bytes` leaves `<name>.tmp` behind when the write or `os.replace` fails, and creates missing parent folders silently: a failed save litters the run folder and a typo in a path creates a new tree | S3 | CLOSED | `taiji_ai/src/taiji_ai/store/artifacts.py`, found by the agent while planning the atomic test of P3.03 | P3.03 | T-ART-01 (3 tests) | 2026-11-16 | 2026-11-16 |
@@ -85,6 +88,64 @@ Lifecycle: `OPEN → PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED` 
 ---
 
 ## Details
+
+### BUG-0074 — The D20 allowed use does not name the look at the mask layer (P4.01)
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3 (a record, no data was copied or committed; the maintainer had approved the plan of P4.01 with M-QLT-01 in it) |
+| Status          | CLOSED                                                                                     |
+| Found in        | `Docs/DATASET_REGISTRY_TAIJI.md`, the D20 row, allowed use (written for P3.07, P3.08 and P3.09 only) |
+| Found by / date | agent (Claude Code), 2026-11-17, checking the row before adding M-QLT-02 to P4.02            |
+
+**Description:** M-QLT-01 (P4.01, 2026-11-16) applied the mask to the target tracks of the D20 pose pass and reported counts; the D20 row lists the uses that are allowed and does not list it. AGENTS.md 9.4 item 3 says each dataset is tagged with what it may be used for and another use needs a registry update.
+**Steps to reproduce:** read the D20 row: P3.07, P3.08, P3.09 and the technical smoke tests are named; the mask check is not.
+**Expected:** the row names every use made of D20. **Actual:** two uses missing (P4.01 and, now, P4.02). **Root cause:** the registry was not re-read when the plan of P4.01 added a look at real footage.
+**Fix plan:** add to the row "the mask layer and the gap layer (P4.01 M-QLT-01, P4.02 M-QLT-02): counts of holes and errors of a bridge computed on the existing pose files of P3.08, numbers and labels only, no image and no pose file in git (DEC-0040, DEC-0045)". Regression: none possible (a record); the check is manual.
+**Fix task / commit:** P4.02 (this task), not committed. **Regression test:** manual check. **Verified:** agent, 2026-11-17: the row reads the two uses with their limits.
+
+**History:**
+
+- 2026-11-17 OPEN → PLANNED → FIXED → VERIFIED → CLOSED — found and fixed in P4.02.
+
+### BUG-0073 — The detector tool keeps a stale NMS default (0.45) after the shipping limit was read as 0.65
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3 (found before the task closed; the final run passed `--nms-iou 0.65` explicitly, so no number of the report is affected) |
+| Status          | CLOSED                                                                                     |
+| Found in        | `taiji_ai/tools/detector_compare.py` (`--nms-iou` default and help text), `taiji_ai/src/taiji_ai/bench/detector_metrics.py` (`DetectorRule.matched_nms_iou`), `tests/unit/test_detector_rule.py` (P3.09) |
+| Found by / date | agent (Claude Code), 2026-11-17, read-back of the changed files in the self-review of P3.09 |
+
+**Description:** after the first run, the NonMaxSuppression node of the shipping graph was read: its IoU limit is 0.65, not the 0.45 of the plan (DEC-0043 was corrected, the final run used 0.65). The code kept the old value in three places: the default of `--nms-iou` ("YOLOX uses 0.45" in its help), the field `DetectorRule.matched_nms_iou` (not used by `decide`, so a dead field with a wrong value) and the unit test that pins that value.
+**Steps to reproduce:** `python tools/detector_compare.py run --video-dir ... --yolo11 ...` without `--nms-iou` → `detector.json` `settings.nms_iou` is 0.45.
+**Expected:** the default is the limit of the shipping graph (0.65), from one place that the rule and the tool share. **Actual:** 0.45 in the tool, 0.45 in the rule. **Root cause:** the correction was made in the records and in the command line of the final run, not in the defaults.
+**Fix plan:** `DetectorRule.matched_nms_iou = 0.65` with a comment on where the number comes from; the tool builds its parser in `build_parser()` and takes the default of `--nms-iou` from `DetectorRule().matched_nms_iou`, with a help text that states the source; the unit test pins 0.65; a contract test checks that the parser default equals the rule's value and 0.65 (it fails on the old code).
+**Fix task / commit:** P3.09 (this task), not committed. **Regression test:** `test_t_det_08_the_default_nms_limit_of_the_tool_is_the_one_of_the_shipping_graph`. **Verified:** agent, 2026-11-17: the test fails on the old value (0.45 against 0.65, after `build_parser` was split out so that it fails for the right reason) and passes after the fix; the mutant "default back to 0.45" is killed; the fixed lines were read again (the rule's field and its comment, the tool's `default=DetectorRule().matched_nms_iou`); gate 10/10 on the closing tree.
+
+**History:**
+
+- 2026-11-17 OPEN → PLANNED → IN_PROGRESS — found in the read-back; fixed in P3.09 before the close.
+- 2026-11-17 IN_PROGRESS → FIXED → VERIFIED → CLOSED — regression test red then green, mutant killed, gate 10/10.
+
+### BUG-0072 — `prepare_onnxruntime` ignores a CUDA request that comes after a CPU one
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3 (latent: the product always asks for the same device in one process; found by a tool that read a model file on the CPU and then built a CUDA session) |
+| Status          | PLANNED                                                                                    |
+| Found in        | `taiji_ai/src/taiji_ai/pose/rtm.py` `prepare_onnxruntime` (P3.02); found while writing P3.09 |
+| Found by / date | agent (Claude Code), 2026-11-17, the first script of the detector comparison               |
+
+**Description:** `prepare_onnxruntime(device)` sets the module flag `_ORT_READY` on its first call whatever the device, and returns at once on every later call. `ort.preload_dlls()`, which makes the CUDA provider find the DLLs shipped by the `nvidia-*` pip packages, is called only when the **first** call is for `"cuda"`.
+**Steps to reproduce:** in a fresh process: `prepare_onnxruntime("cpu")`, then `prepare_onnxruntime("cuda")`, then `onnxruntime.InferenceSession(<any model>, providers=["CUDAExecutionProvider"])` → `Error loading ...onnxruntime_providers_cuda.dll which depends on "cublasLt64_13.dll" which is missing` and the session uses the CPU (reproduced 2026-11-17 with the exported detector of P3.09).
+**Expected:** the DLLs are preloaded whenever CUDA is asked for, once. **Actual:** only if CUDA was the first device asked for. **Root cause:** one boolean for two different preparations.
+**Fix plan:** keep a set of the devices already prepared (or two flags); `prepare_onnxruntime("cuda")` preloads once even after a call for `"cpu"`; the logger severity is set once. Regression test: a subprocess (the DLL search path is per process) that calls the CPU first and then builds a CUDA session on the registry's detector and asserts the provider (`gpu` marker). P3.09 does not touch `rtm.py` (its acceptance says so) and works around it in `bench/yolo_onnx.py`; the fix is the ad-hoc task X.30 (about 0.25 day).
+**Fix task / commit:** X.30, not yet. **Regression test:** to be written with the fix. **Verified:** —
+
+**History:**
+
+- 2026-11-17 OPEN → PLANNED — found in P3.09; fix scheduled as X.30; the task's own code does not depend on it.
 
 ### BUG-0071 — An unknown tracked-share loss was passed to the rule for N as zero
 

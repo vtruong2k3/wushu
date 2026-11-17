@@ -84,6 +84,7 @@ vulnerabilities.
 |---|---|---|---|
 | FFmpeg / ffprobe | 9.0.1 (Gyan "essentials" Windows build) | GPL build (FFmpeg itself LGPL/GPL depending on configuration) | Invoked via CLI only. Do not bundle a GPL build with the product without review |
 | NVML (`nvml.dll` of the NVIDIA driver) | driver 596.49 | NVIDIA proprietary, installed with the driver | Loaded at run time through `ctypes` by `taiji_ai.bench.gpu` to read the device memory (P3.07); not a dependency, not bundled, not redistributed; without it the benchmark reports VRAM as not measured |
+| Ultralytics (`ultralytics` package, `yolo` command line) with PyTorch (CUDA build) and `onnx` | ultralytics 8.4.215, PyTorch 2.11.0+cu128, torchvision 0.26.0+cu128, onnx 1.23.2 (P3.09) | Ultralytics AGPL-3.0; PyTorch BSD-style; onnx Apache-2.0 | **Strong copyleft, offline only (P3.09).** Installed in an isolated environment outside the repository and outside `taiji_ai/.venv`; called as a separate process only to export YOLO11 weights to ONNX for a detector measurement; never imported by our code, not in `pyproject.toml` or `uv.lock`; the environment was **deleted on 2026-11-17** when the task closed (nothing of it is installed any more) |
 
 ## 4. Model weights (`models/registry.json`)
 
@@ -93,6 +94,12 @@ vulnerabilities.
 | RTMPose-m body7 HALPE_26 (`rtmpose-m_simcc-body7_pt-body7-halpe26_700e-256x192-4d3e73dd_20230605.onnx`) | OpenMMLab ONNX SDK export (via rtmlib 0.0.16 URL list) | Apache-2.0 (MMPose) | Trained on body7 (includes research-only datasets); weights terms not stated | Research-only or unclear |
 
 Both are acceptable for the internal MVP; a weights/data license audit is required before commercial use.
+
+**Offline measurement only, not in `models/registry.json`** (P3.09):
+
+| Model | Source | Code license | Weights / training data | Tier |
+|---|---|---|---|---|
+| YOLO11m (`yolo11m.pt`, and the ONNX export of it) | Ultralytics official release assets, tag v8.3.0 (`yolo11m.pt` SHA-256 `d5ffc1a674953a08e11a8d21e022781b1b23a19b730afc309290bd9fb5305b95`; the ONNX export `499595aec4e0339c0edaa92ef7574c9bfa7e3b77dea950d2079bd52623d206f5`; the vendor publishes no checksum, pinned at the first download) | AGPL-3.0 (Ultralytics) | COCO; weights under AGPL-3.0 | Strong copyleft: used only to measure a detector against the shipping one, was kept in the ignored `data/bench/p3_09/`, not loadable by the pipeline, never shipped; both files (`.pt` and ONNX) were **deleted on 2026-11-17** when the task closed, the hashes above stay as the record |
 
 ## 5. Code copied or adapted from third parties
 

@@ -181,6 +181,8 @@ The recommendation of the written rule is **N = 1**. The choice is the maintaine
 
 My reading: wait for the P3.08 review, which compares the two cadences on the frames that look wrong and says whether the large differences are N = 5 errors; decide then. If a decision is needed before, keep N = 5 and say in every report that the target keypoints carry this consistency limit.
 
+**Decision (2026-11-16, DEC-0042):** the maintainer kept **N = 5**. The review of P3.08 found no evidence that N = 1 has fewer failures (of 61 counted failures: 36 at both cadences, 10 only at N = 1, 5 only at N = 5, 10 unknown), and N = 5 is about 3.7 times faster. To be looked at again with clips of our own (X.27, X.28); an N between 1 and 5 can be measured with `--ns 1,2,3,5`.
+
 ## Limits
 
 - D20 only: a large presenter, a steady camera, lecture lighting, AV1 and H.264 at 24 and 30 fps. Phone clips (the capture protocol: 30 fps H.264, 1080p) can differ; the tool is made to be rerun on them (follow-up X.27, blocked by P1.09) and on the target machine (P11.03).
@@ -200,3 +202,141 @@ From `taiji_ai/`, with the GPU free of other jobs (about 28 minutes at the defau
 ```
 
 It writes `bench.json` (every number, including the per-frame latencies) and `report_tables.md` (the tables above) into `--out`, prints labels and a short summary only, and removes the throwaway folder of copies of the videos.
+
+## Appendix A. The detector: YOLOX (shipping) against YOLO11m (P3.09)
+
+Measured on 2026-11-17, same machine and the same footage as above; **nothing in the stack changes**. YOLO11 and its weights are
+AGPL-3.0 (Ultralytics) and were used offline for this one measurement (DEC-0043): the ONNX file was exported by the vendor's
+command line in an isolated environment, nothing of the repository imports Ultralytics, and the files were deleted afterwards.
+Task file: `Docs/tasks/P3.09.md`. A is the shipping YOLOX-m (the registry file, through ONNX Runtime with the scores kept, its own
+NMS inside the graph: 0.65, then a score strictly above 0.3 as rtmlib applies); B is YOLO11m exported at 640 x 640 (80 classes,
+fp32, person class, score strictly above 0.3, NMS 0.65 in our NumPy code). Both on the CUDA provider, batch 1.
+
+**What was measured** (the rule was written before any number, DEC-0043):
+
+- *Recall on labelled frames:* the 169 frames of P3.08 that the maintainer and the agent labelled `ok` and that have a skeleton
+  (its hull, grown by 5 %, is the reference box); a detector finds the performer when one of its boxes has IoU of 0.5 or more with
+  it; paired, exact McNemar test. Two more frames without a person test false alarms. These frames come from the pool of P3.08,
+  which only held frames the shipping pipeline had followed, so recall here **flatters the shipping detector**.
+- *The five clips of P3.07* (3 785 frames): every frame, both detectors; a frame "has the performer" when there is a box of at
+  least 20 % of the image height; the stretches (runs) where only one detector has it were to be reviewed; stability of the box
+  between consecutive frames; dropouts in seconds.
+- *Speed and memory:* a fresh process per detector, 300 frames of clip c1 decoded once, 30 warm-up frames, three repeats.
+
+**The result by the rule: not materially better; DEC-0005 stands** (YOLOX stays, no Ultralytics). R: recall A 98.2 %, B 100.0 %,
+gain 1.8 points (needs 3), exact McNemar p 0.25 (needs under 0.05): not met. C: the two detectors have a performer-sized box in
+**every one of the 3 785 frames** of the five clips, so there is no run to review (0 of 0): not met. No false alarm on the two
+frames without a person.
+
+What the tables say beyond the rule:
+
+1. **Both detectors find the performer.** There is no frame of the clips in which one has them and the other not, and on the
+   labelled frames the three that A "misses" at IoU 0.5 are boxes that are **too loose** (IoU 0.46 to 0.50), not absent: at IoU 0.3
+   both find 100 % (table "Box agreement").
+2. **YOLOX's boxes are looser and less steady than YOLO11's.** The best IoU with the skeleton's hull has a median of 0.76 for A and
+   0.87 for B, and at IoU 0.7 A finds 63.3 % and B 95.3 % (the hull of the joints is itself tighter than a box, so absolute values
+   are low for both; the difference between them is the finding). Between consecutive frames `1 - IoU` has a p95 of 0.131 for A
+   and 0.063 for B (B at 0.48 of A), and the change of the box height against its neighbours has a p95 of 0.047 for A and 0.006
+   for B. By the rule this is **a note and not a criterion**: between detector calls the box comes from the keypoints, so at N = 5
+   the detector's box reaches the pose on one frame in five. Whether a looser box costs accuracy of the keypoints was **not
+   measured here**.
+3. **YOLO11m is about 1.6 times faster end to end** (22.4 ms against 36.8 ms per frame, p50; model alone 16.2 ms against 32.0 ms)
+   on the same GPU, with a little more memory above the baseline (652 MiB against 516 MiB). The in-graph NMS of the shipping file
+   and its opset-11 graph are part of the model time of A, so the model-only times are not a like-for-like speed of the networks.
+   For the pipeline the point is that the detector is **not a small part of the time**, as the plan had assumed: in the
+   P3.07 runs it took 145 s of 198 s (73 %) over the five clips at N = 1 and 24 s of 54 s (44 %) at N = 5 (`bench.json`,
+   `phases_s`). A detector with YOLO11m's end-to-end time (22.4 ms for 36.8 ms) would remove about 39 % of that part, which by
+   arithmetic (not measured in the pipeline) is about 29 % of the total time at N = 1 and 17 % at N = 5.
+4. **The score limit does not matter here:** recall is the same at 0.3, 0.5 and 0.7 for both (the scores of a performer are high,
+   median 0.89 and 0.91), and the same at two NMS limits (0.45 and 0.7 gave the same recall in the first run).
+
+**Limits.** Lesson footage of one large performer, three or more performers, not our capture (P1.09 and X.27 repeat it); the
+labelled set flatters the shipping detector; frames where **both** miss cannot be seen (the clips had none, and only 1 of the
+250 frames of P3.08 had no person detected at N = 1, a dark fade); the reference boxes come from skeleton hulls; the clips are five
+stretches of 30 s; a single GPU (RTX 3060); the detector is measured alone, not its effect on the keypoints. The first run (NMS
+0.45 for YOLO11, the limit written in the plan before the graph was read) gave the same recall, the same decision and the same
+stability.
+
+**What this means.** There is no case for changing the detector on the grounds of finding the performer. If the looseness of the
+boxes or the time at N = 1 matter later, the question to ask is not "YOLO11 or YOLOX" (YOLO11 cannot be shipped under AGPL-3.0) but
+whether a **permissive** detector with tighter boxes and the speed of YOLO11 exists (RTMDet, a larger YOLOX, others) and whether the
+keypoints improve with it: a follow-up for the maintainer, not started.
+
+### Tables (generated by `tools/detector_compare.py`, unchanged)
+
+#### Speed and memory (median over the repeats, ms per frame, 640 x 640, batch 1, fp32, CUDA)
+
+| Detector | Model p50 | Model p95 | End-to-end p50 | p95 | p99 | VRAM above baseline [MiB] |
+| --- | --- | --- | --- | --- | --- | --- |
+| YOLOX (shipping) | 31.96 | 34.27 | 36.83 | 40.35 | 43.84 | 516 |
+| YOLO11m | 16.20 | 17.45 | 22.35 | 24.12 | 27.86 | 652 |
+
+#### Recall of the performer on the labelled frames (score limit 0.3; 169 frames with a reference box)
+
+| Recall A | Recall B | Both | Only A | Only B | Neither | McNemar p (exact) |
+| --- | --- | --- | --- | --- | --- | --- |
+| 98.2 % | 100.0 % | 166 | 0 | 3 | 0 | 0.2500 |
+
+Negative frames (no person): 2; false alarms A 0, B 0. Frames without a usable reference box: 79.
+
+#### Recall when the score limit is raised
+
+| Score limit | Frames | Recall A | Recall B |
+| --- | --- | --- | --- |
+| 0.3 | 169 | 98.2 % | 100.0 % |
+| 0.5 | 169 | 98.2 % | 100.0 % |
+| 0.7 | 169 | 98.2 % | 100.0 % |
+
+#### Box agreement with the reference box (best IoU per labelled frame; the rule uses IoU 0.5)
+
+| Detector | IoU p10 | p25 | median |
+| --- | --- | --- | --- |
+| YOLOX (shipping) | 0.61 | 0.66 | 0.76 |
+| YOLO11m | 0.76 | 0.80 | 0.87 |
+
+| IoU limit | Recall A | Recall B |
+| --- | --- | --- |
+| 0.3 | 100.0 % | 100.0 % |
+| 0.5 | 98.2 % | 100.0 % |
+| 0.7 | 63.3 % | 95.3 % |
+
+#### The clips: frames with a performer-sized box (at least 20 % of the image height)
+
+| Clip | Frames | Both | Only A | Only B | Neither |
+| --- | --- | --- | --- | --- | --- |
+| c1 | 721 | 721 | 0 | 0 | 0 |
+| c2 | 721 | 721 | 0 | 0 | 0 |
+| c3 | 721 | 721 | 0 | 0 | 0 |
+| c4 | 721 | 721 | 0 | 0 | 0 |
+| c5 | 901 | 901 | 0 | 0 | 0 |
+| all | 3785 | 3785 | 0 | 0 | 0 |
+
+Runs of frames where only one detector has the performer: only A 0, only B 0. Frames where both miss cannot be seen by this method.
+
+#### Stability of the performer's box (consecutive frames)
+
+| Detector | Pairs | Jumps (IoU < 0.5) | 1 - IoU p50 | p95 | p99 | Height change p95 |
+| --- | --- | --- | --- | --- | --- | --- |
+| YOLOX (shipping) | 3780 | 0 | 0.0143 | 0.1307 | 0.2942 | 0.0465 |
+| YOLO11m | 3780 | 0 | 0.0110 | 0.0625 | 0.1354 | 0.0059 |
+
+#### Dropouts: seconds in which one detector loses the performer while the other has them
+
+| Detector that loses | Runs | Total [s] | Longest [s] | Runs over 0.5 s |
+| --- | --- | --- | --- | --- |
+| YOLOX (shipping) | 0 | 0.00 | n/a | 0 |
+| YOLO11m | 0 | 0.00 | n/a | 0 |
+
+#### The reviewed runs of the clips (one representative frame per run)
+
+| Runs | Reviewed | B right, A wrong | A right, B wrong | Unsure |
+| --- | --- | --- | --- | --- |
+| 0 | 0 | 0 | 0 | 0 |
+
+#### The decision by the rule written before the measurement (DEC-0043)
+
+**not_materially_better**
+
+- R: recall A 98.2 %, B 100.0 % on 169 frames, gain 1.8 points (needs 3), exact McNemar p 0.250 (needs under 0.05): not met
+- C: reviewed 0 of 0 runs (stretches where only one detector finds a person): B right in 0, A right in 0, difference 0 (needs 5): not met
+- stability supports a gap but never decides alone: p95 of 1 - IoU A 0.131, B 0.063 (B at 0.48 of A, needs 0.7 or less)

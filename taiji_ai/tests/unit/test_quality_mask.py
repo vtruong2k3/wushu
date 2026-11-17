@@ -19,6 +19,7 @@ from taiji_ai.quality.mask import (
     NON_FINITE,
     NOT_TRACKED,
     OK,
+    OUTLIER,
     REASON_NAMES,
     TAU_KP,
     MaskParams,
@@ -49,8 +50,20 @@ def test_t_qlt_01_the_defaults_are_the_values_of_w6():
     p = MaskParams()
     assert (p.tau_kp, p.essential, p.min_essential_fraction) == (0.3, ESSENTIAL, 0.5)
     assert len(ESSENTIAL) == 10 and TAU_KP == 0.3
-    assert REASON_NAMES == ("ok", "low_conf", "non_finite", "not_tracked", "frame_invalid")
-    assert [REASON_NAMES[c] for c in (OK, LOW_CONF, NON_FINITE, NOT_TRACKED, FRAME_INVALID)] == list(REASON_NAMES)
+    assert REASON_NAMES == ("ok", "low_conf", "non_finite", "not_tracked", "frame_invalid", "outlier")
+    codes = (OK, LOW_CONF, NON_FINITE, NOT_TRACKED, FRAME_INVALID, OUTLIER)
+    assert [REASON_NAMES[c] for c in codes] == list(REASON_NAMES) and OUTLIER == 5
+
+
+def test_t_qlt_01_the_mask_never_emits_the_outlier_code_that_the_hampel_stage_adds():
+    rng = np.random.default_rng(4)
+    for _ in range(20):
+        kp = rng.uniform(0, 1000, (30, NUM_JOINTS, 2)).astype(np.float32)
+        sc = rng.uniform(-0.5, 1.5, (30, NUM_JOINTS)).astype(np.float32)
+        kp[rng.random(kp.shape) < 0.05] = np.nan
+        sc[rng.random(sc.shape) < 0.05] = np.inf
+        out = apply_mask(kp, sc, rng.random(30) < 0.7)
+        assert out.reason.max() <= FRAME_INVALID and not (out.reason == OUTLIER).any()
 
 
 def test_t_qlt_01e_the_audit_evaluates_the_values_the_product_ships():

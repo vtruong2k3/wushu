@@ -166,6 +166,18 @@ def test_t_audit_03b_a_person_who_finds_the_frame_fine_clears_the_failure_fields
     assert row.a.type == "lr_swap" and row.a.joints == ("LWrist", "RWrist")  # the agent's opinion is kept as it was
 
 
+def test_t_audit_03b_a_person_who_repeats_failure_keeps_the_agents_fields(tmp_path: Path):
+    write_rows(tmp_path / "r.csv", [base("fc-001", **{**FAIL, "h_verdict": "failure", "h_confirmed": "yes"})])
+    final = final_label(read_review(tmp_path / "r.csv")[0])
+    assert (final.verdict, final.type, final.joints, final.severity, final.cadence) == (
+        "failure",
+        "lr_swap",
+        ("LWrist", "RWrist"),
+        "S1",
+        "both",
+    )  # only an ``ok`` clears the failure fields
+
+
 def test_t_audit_03b_the_final_label_must_be_whole_even_after_the_override(tmp_path: Path):
     # ok, but the person also gives a severity: still not a whole label
     write_rows(tmp_path / "r.csv", [base("fc-001", **{**FAIL, "h_verdict": "ok", "h_severity": "S2"})])
