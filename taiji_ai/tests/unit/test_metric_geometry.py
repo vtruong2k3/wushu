@@ -1,8 +1,8 @@
 """T-MET-01a..c, T-MET-02a..c and 02e: the geometry that every metric starts from (``metrics/geometry.py``, P5.02).
 
 Arrays are made by hand with numbers that can be checked on paper; the generator's scenarios are in
-``tests/golden/test_metric_geometry_syn.py``. Pixels of the upright image, x right, y down; angles in degrees with the sign
-of Appendix B2 (0 is vertical, positive leans to the image right).
+``tests/golden/test_metric_geometry_syn.py``. Pixels of the upright image, x right, y down; angles in degrees with the
+sign of Appendix B2 (0 is vertical, positive leans to the image right).
 """
 
 from __future__ import annotations
@@ -52,7 +52,7 @@ def torso(n: int, hip=(100.0, 200.0), shoulder=(100.0, 100.0), half=10.0, dtype=
     return kp
 
 
-# --- T-MET-01a: midpoints ------------------------------------------------------------------------------------------------
+# --- T-MET-01a: midpoints -------------------------------------------------------------------------------------------
 def test_t_met_01a_the_middle_of_the_hips_and_of_the_shoulders_are_the_means_of_their_two_joints():
     kp = blank(3)
     kp[0, LS], kp[0, RS], kp[0, LH], kp[0, RH] = (10, 20), (30, 40), (100, 200), (120, 220)
@@ -61,7 +61,10 @@ def test_t_met_01a_the_middle_of_the_hips_and_of_the_shoulders_are_the_means_of_
     hip, shoulder = mid_hip(kp), mid_shoulder(kp)
     assert np.allclose(hip[[0, 1, 2]], [[110, 210], [110, 210], [51, 62]])
     assert np.allclose(shoulder[0], [20, 30]) and np.isnan(shoulder[1]).all() and np.allclose(shoulder[2], [-2, 4])
-    assert HIP_JOINTS == (11, 12) and SHOULDER_JOINTS == (5, 6)  # Appendix B: not the model's own Hip (19) and Neck (18)
+    assert HIP_JOINTS == (11, 12) and SHOULDER_JOINTS == (
+        5,
+        6,
+    )  # Appendix B: not the model's own Hip (19) and Neck (18)
     assert np.allclose(midpoint(kp, [LS, RS, LH, RH])[0], [65, 120])  # any list of joints
 
 
@@ -89,7 +92,7 @@ def test_t_met_01a_float32_in_float64_out_new_read_only_arrays_and_the_input_is_
     assert not out.flags.writeable
     with pytest.raises(ValueError, match="read-only"):
         out[0, 0] = 0.0
-    assert out[0, 0] == pytest.approx(float(np.float32(100.1) - np.float32(10.0)) / 2 + float(np.float32(100.1) + np.float32(10.0)) / 2)
+    assert out[0, 0] == pytest.approx(100.1, abs=1e-4)  # float32 positions, a float64 mean
 
 
 def test_t_met_01a_no_rows_give_no_rows():
@@ -97,9 +100,7 @@ def test_t_met_01a_no_rows_give_no_rows():
     assert mid_hip(kp).shape == (0, 2) and mid_shoulder(kp).shape == (0, 2) and trunk_length(kp).shape == (0,)
 
 
-@pytest.mark.parametrize(
-    "joints", [[], [26], [-1], [5, 5], [True, 6], [1.5], "ab", None, [[5, 6]], [np.int64(5), 26]]
-)
+@pytest.mark.parametrize("joints", [[], [26], [-1], [5, 5], [True, 6], [1.5], "ab", None, [[5, 6]], [np.int64(5), 26]])
 def test_t_met_01a_bad_joint_lists_are_refused_naming_the_argument(joints: Any):
     with pytest.raises(MetricError, match="joints"):
         midpoint(torso(2), joints)
@@ -121,7 +122,7 @@ def test_t_met_01a_a_bad_keypoint_array_is_refused_naming_the_argument(kp: Any, 
         mid_hip(kp)
 
 
-# --- T-MET-01b: which joint has no value, and which rows lean on a bridge ----------------------------------------------------
+# --- T-MET-01b: which joint has no value, and which rows lean on a bridge -------------------------------------------
 def layer(n: int = 4):
     """A final layer of ``n`` rows, every joint observed; the tests then take cells away."""
     kp = np.zeros((n, NUM_JOINTS, 2), dtype=np.float32) + np.arange(NUM_JOINTS, dtype=np.float32)[None, :, None]
@@ -180,7 +181,11 @@ def test_t_met_01b_a_flag_on_a_cell_that_has_no_value_is_refused():
 
 UNUSABLE_BAD = [
     ("NaN where the reason is ok", lambda kp, r: kp.__setitem__((1, LH), np.nan), "reason"),
-    ("a NaN whose reason is not a quality reason", lambda kp, r: (kp.__setitem__((1, LH), np.nan), r.__setitem__((1, LH), 16)), "reason"),
+    (
+        "a NaN whose reason is not a quality reason",
+        lambda kp, r: (kp.__setitem__((1, LH), np.nan), r.__setitem__((1, LH), 16)),
+        "reason",
+    ),
     ("half a cell", lambda kp, r: (kp.__setitem__((1, LH, 0), np.nan), r.__setitem__((1, LH), 1)), "keypoints"),
     ("an infinity", lambda kp, r: kp.__setitem__((1, LH, 0), np.inf), "infinite"),
 ]
@@ -208,7 +213,7 @@ def test_t_met_01b_the_arrays_must_have_the_shapes_and_dtypes_of_a_layer():
         unusable_reason(kp, reason, [])
 
 
-# --- T-MET-01c: the trunk and its scale --------------------------------------------------------------------------------------
+# --- T-MET-01c: the trunk and its scale -----------------------------------------------------------------------------
 def test_t_met_01c_the_length_is_the_distance_from_the_middle_of_the_hips_to_the_middle_of_the_shoulders():
     kp = torso(3, hip=(100.0, 200.0), shoulder=(100.0, 100.0))
     kp[1, [LS, RS]] += (30.0, 0.0)  # the shoulders move 30 px right: 100 px up and 30 across
@@ -294,9 +299,9 @@ def test_t_met_01c_the_scale_of_a_layer_is_the_scale_of_the_quality_stage_on_a_l
         assert got.scale_px == pytest.approx(want, rel=1e-12) and got.n_rows > 0
 
 
-# --- T-MET-02a: the roll from the user's line --------------------------------------------------------------------------------
+# --- T-MET-02a: the roll from the user's line -----------------------------------------------------------------------
 def line_at(beta_deg: float, centre=(960.0, 540.0), half=200.0):
-    """A line through ``centre`` that leans by ``beta_deg`` from the vertical: (top, bottom), the top to the right if beta > 0."""
+    """A line through ``centre`` leaning ``beta_deg`` from the vertical: (top, bottom), beta > 0 to the right."""
     b = math.radians(beta_deg)
     dx, dy = half * math.sin(b), half * math.cos(b)
     return (centre[0] + dx, centre[1] - dy), (centre[0] - dx, centre[1] + dy)
@@ -345,7 +350,7 @@ def test_t_met_02a_the_limit_is_forty_five_degrees():
     assert MAX_ROLL_DEG == 45.0
 
 
-# --- T-MET-02b: taking the roll out of the coordinates -----------------------------------------------------------------------
+# --- T-MET-02b: taking the roll out of the coordinates --------------------------------------------------------------
 def test_t_met_02b_a_roll_of_zero_changes_nothing():
     p = np.random.default_rng(1).uniform(-500, 500, (7, 2))
     assert np.array_equal(correct_roll(p, 0.0), p)
@@ -356,7 +361,9 @@ def test_t_met_02b_a_roll_of_zero_changes_nothing():
 def test_t_met_02b_the_rotation_keeps_every_distance(beta: float):
     p = np.random.default_rng(2).uniform(0, 1000, (30, 2))
     q = correct_roll(p, beta)
-    assert np.allclose(np.linalg.norm(q[1:] - q[:-1], axis=1), np.linalg.norm(p[1:] - p[:-1], axis=1), rtol=0, atol=1e-9)
+    assert np.allclose(
+        np.linalg.norm(q[1:] - q[:-1], axis=1), np.linalg.norm(p[1:] - p[:-1], axis=1), rtol=0, atol=1e-9
+    )
 
 
 @pytest.mark.parametrize("beta", [5.0, -12.5, 30.0])
@@ -414,7 +421,7 @@ def test_t_met_02b_bad_arguments_are_refused_naming_them(points, roll, origin, m
         correct_roll(points, roll, origin=origin)
 
 
-# --- T-MET-02c: the lean angle ------------------------------------------------------------------------------------------------
+# --- T-MET-02c: the lean angle --------------------------------------------------------------------------------------
 def pair(*hip_shoulder: tuple[tuple[float, float], tuple[float, float]]):
     hip = np.array([h for h, _ in hip_shoulder], dtype=np.float64)
     shoulder = np.array([s for _, s in hip_shoulder], dtype=np.float64)
@@ -450,7 +457,9 @@ def test_t_met_02c_the_roll_is_subtracted_and_the_result_is_wrapped_to_minus_180
 
 
 def test_t_met_02c_a_missing_midpoint_and_coincident_midpoints_give_nan_not_a_guess():
-    hip, shoulder = pair(((100, 200), (100, 100)), ((100, 200), (np.nan, 100)), ((np.nan, 200), (100, 100)), ((7, 7), (7, 7)))
+    hip, shoulder = pair(
+        ((100, 200), (100, 100)), ((100, 200), (np.nan, 100)), ((np.nan, 200), (100, 100)), ((7, 7), (7, 7))
+    )
     out = lean_angle_deg(hip, shoulder)
     assert out[0] == 0.0 and np.isnan(out[1:]).all()
 
@@ -470,7 +479,17 @@ def test_t_met_02c_the_arrays_have_two_columns_and_the_same_rows_and_the_roll_is
     assert lean_angle_deg(np.zeros((0, 2)), np.zeros((0, 2))).shape == (0,)
 
 
-# --- T-MET-02e: a rotation and a shift change what they should and nothing else ---------------------------------------------
+@pytest.mark.parametrize("bad", [np.inf, -np.inf])
+@pytest.mark.parametrize("which", ["mid_hip", "mid_shoulder"])
+def test_t_met_02c_an_infinite_midpoint_is_refused_not_turned_into_an_angle(which: str, bad: float):
+    # atan2(inf, dy) is 90 degrees: an angle made out of a broken input, so it must be an error, not a number
+    hip, shoulder = pair(((0, 0), (0, -100)))
+    (hip if which == "mid_hip" else shoulder)[0, 0] = bad
+    with pytest.raises(MetricError, match=f"{which}.*infinite"):
+        lean_angle_deg(hip, shoulder)
+
+
+# --- T-MET-02e: a rotation and a shift change what they should and nothing else -------------------------------------
 def wrap(angle: np.ndarray) -> np.ndarray:
     w = (angle + 180.0) % 360.0 - 180.0
     return np.where(w == -180.0, 180.0, w)
@@ -480,7 +499,13 @@ def wrap(angle: np.ndarray) -> np.ndarray:
 def test_t_met_02e_a_rotation_shifts_theta_by_the_roll_and_leaves_the_scale_alone(seed: int):
     rng = np.random.default_rng(seed)
     n = int(rng.integers(2, 25))
-    kp = torso(n, hip=tuple(rng.uniform(300, 1500, 2)), shoulder=tuple(rng.uniform(100, 900, 2)), half=float(rng.uniform(5, 60)), dtype=np.float64)
+    kp = torso(
+        n,
+        hip=tuple(rng.uniform(300, 1500, 2)),
+        shoulder=tuple(rng.uniform(100, 900, 2)),
+        half=float(rng.uniform(5, 60)),
+        dtype=np.float64,
+    )
     kp[..., :] += rng.normal(0.0, 3.0, kp.shape)  # a trunk that is not the same in every row
     kp[rng.random(n) < 0.2, LH] = np.nan  # some rows without a hip
     beta = float(rng.uniform(-45.0, 45.0))
@@ -493,5 +518,8 @@ def test_t_met_02e_a_rotation_shifts_theta_by_the_roll_and_leaves_the_scale_alon
     corrected = lean_angle_deg(mid_hip(rotated), mid_shoulder(rotated), roll_deg=beta)
     assert np.allclose(corrected, theta, rtol=0, atol=1e-8, equal_nan=True)
     assert np.array_equal(np.isnan(raw), np.isnan(theta))
-    assert trunk_scale(trunk_length(rotated)).scale_px == pytest.approx(trunk_scale(trunk_length(kp)).scale_px, rel=1e-9)
-    assert trunk_scale(trunk_length(rotated)).n_rows == trunk_scale(trunk_length(kp)).n_rows
+    a, b = trunk_scale(trunk_length(rotated)), trunk_scale(trunk_length(kp))
+    assert np.isclose(
+        a.scale_px, b.scale_px, rtol=1e-9, atol=0.0, equal_nan=True
+    )  # NaN when no row has the four joints
+    assert a.n_rows == b.n_rows

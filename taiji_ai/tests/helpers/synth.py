@@ -311,6 +311,73 @@ def truth_at(seq: SynthSequence, t: np.ndarray) -> np.ndarray:
     return _motion(times, seq.params, pauses=seq.params["pauses"])[0]
 
 
+_TEMPO_SCENARIOS: Final = ("SYN-05", "SYN-06", "SYN-07", "SYN-08")  # the scenarios that share ``_motion``
+
+
+def speed_at(seq: SynthSequence, t: np.ndarray) -> dict[str, np.ndarray]:
+    """The analytic group speed truth (Appendix B3: the median over the joints of ``|v| / Lambda``, Lambda/s) of a
+    SYN-05 to SYN-08 sequence's motion at any times ``t`` in ``[0, duration]``, as ``{group: (len(t),) float64}``.
+
+    ``seq.truth["speed"]`` is the same truth at the frames; this gives it where there is no frame, for example at the
+    times of the uniform grid that a variable-frame-rate video is resampled to. The speed is exactly 0 inside a pause.
+    """
+    if seq.scenario not in _TEMPO_SCENARIOS:
+        raise ValueError(f"speed_at needs a tempo scenario {_TEMPO_SCENARIOS}, got {seq.scenario}")
+    times = np.asarray(t, dtype=np.float64)
+    if times.ndim != 1 or not np.isfinite(times).all():
+        raise ValueError(f"t must be a one-dimensional array of finite times, got shape {times.shape}")
+    duration = float(seq.params["duration"])
+    if times.size and (times.min() < -1e-9 or times.max() > duration + 1e-9):
+        raise ValueError(f"t must lie inside [0, duration] = [0, {duration}] s, got [{times.min()}, {times.max()}]")
+    speed = _motion(np.clip(times, 0.0, duration), seq.params, pauses=seq.params["pauses"])[1]["speed"]
+    return {group: np.array(values, dtype=np.float64) for group, values in speed.items()}
+
+
+_SLOW_SCAN_S: Final = 2e-4  # the scan of ``slow_intervals``: a stretch shorter than this can be missed
+_SLOW_BISECTIONS: Final = 45  # 2e-4 s halved 45 times is far below a nanosecond
+
+
+def slow_intervals(seq: SynthSequence, group: str, tau: float) -> tuple[tuple[float, float], ...]:
+    """The maximal intervals ``(t0, t1)`` of ``[0, duration]`` where the analytic group speed is below ``tau``.
+
+    The truth of a pause (Appendix B3: ``V_G < tau``) for a SYN-05 to SYN-08 sequence: it is the stretches of
+    ``speed_at(seq, t)[group] < tau`` of the continuous motion, not the generator's exact pauses (``pause_intervals``,
+    where the speed is 0), which are shorter by the ramps and which leave out the turning point of the movement.
+    ``tau`` is in Lambda/s. The speed is scanned every 0.2 ms and each edge is refined by bisection, so an edge is
+    exact to far below a nanosecond; a stretch shorter than the scan (a threshold the speed barely goes under) can be
+    missed. An interval that reaches the start or the end of the clip ends there.
+    """
+    if group not in GROUPS:
+        raise ValueError(f"group must be one of {tuple(GROUPS)}, got {group!r}")
+    if isinstance(tau, bool) or not isinstance(tau, int | float) or not math.isfinite(tau) or tau <= 0:
+        raise ValueError(f"tau must be a finite number above 0, got {tau!r}")
+
+    def below(times: np.ndarray) -> np.ndarray:
+        return speed_at(seq, times)[group] < tau
+
+    duration = float(seq.params["duration"])
+    grid = np.linspace(0.0, duration, int(math.ceil(duration / _SLOW_SCAN_S)) + 1)
+    flags = below(grid)
+    crossing = np.flatnonzero(flags[1:] != flags[:-1])  # the edge lies between grid[i] and grid[i + 1]
+    lo, hi, was_below = grid[crossing].copy(), grid[crossing + 1].copy(), flags[crossing]
+    for _ in range(_SLOW_BISECTIONS):
+        middle = 0.5 * (lo + hi)
+        same = below(middle) == was_below  # still on the side of ``lo``
+        lo, hi = np.where(same, middle, lo), np.where(same, hi, middle)
+    edges = 0.5 * (lo + hi)
+    out: list[tuple[float, float]] = []
+    start: float | None = 0.0 if flags[0] else None
+    for edge, leaves in zip(edges, was_below, strict=True):
+        if leaves:  # the speed was below and now is not: an interval ends
+            out.append((float(start), float(edge)))  # type: ignore[arg-type]
+            start = None
+        else:
+            start = float(edge)
+    if start is not None:
+        out.append((start, duration))
+    return tuple(out)
+
+
 # --- modifiers --------------------------------------------------------------------------------------------------
 def add_noise(kp: np.ndarray, sigma_px: float, rng: np.random.Generator) -> np.ndarray:
     """Add i.i.d. Gaussian noise (px) to every finite coordinate; NaN stays NaN. Returns a float64 copy."""

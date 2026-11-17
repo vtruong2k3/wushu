@@ -4,6 +4,72 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
 
 ---
 
+## 2026-11-17 — P5.07 Pauses of a joint group: `V_G < τ` for at least `d_min`, from the profile of P5.06 (DONE)
+
+- Changed: `taiji_ai/src/taiji_ai/metrics/tempo.py` (`Pause`, `find_pauses`, the optional arguments `pause_tau` and `pause_min_s` of `group_speed`, the pause statistics and events, two new entries of `parameters`), `tests/helpers/synth.py` (`slow_intervals`), `tests/unit/test_synth.py`, `tests/unit/test_metric_pauses.py` and `tests/golden/test_metric_pauses_syn.py` (new), `tests/unit/test_metric_tempo.py` (the parameters test gets the two entries and the asked case), `Docs/tasks/P5.07.md` (new), W7 of `Docs/TECH_WORKFLOW_V1.md`, the P5.07 row, T-MET-09 and T-MET-10 of `Docs/IMPLEMENTATION_PLAN_V1.md`, `taiji_ai/README.md`
+- Behaviour: a pause is a maximal run of measured rows with `V < τ` (strict) lasting `n × step >= d_min`, the interval `[t_first, t_last + step)`; a row that is not measured ends a run and is never bridged; a pause next to a row the pose lost (1 to 6) is cut and counted in `pause_cut_count`, the edge of the segment and the reasons 16, 18, 19, 22 do not cut; a slow stretch cut below `d_min` is not counted (a stated limit); `τ` (body lengths per second) and `d_min` (seconds) are optional arguments given together, with no default (none given: the profile only, as P5.06); one `pause` event per pause and the statistics `pause_count`, `pause_total_s`, `pause_longest_s`, `pause_cut_count`, null when no measured run lasts `d_min` and with no evidence, labelled `unsigned_config`, `experimental`; the profile and the four statistics of P5.06 are identical to P5.06's on 1200 runs; the generator gets `slow_intervals` (the analytic stretches below `τ`) with its own test
+- Result (DEC-0060): 90 new tests (14 of the generator helper, 50 unit, 26 golden); SYN-05 and SYN-07 at noise 0, `τ` = 10 % of the true peak and `d_min` 0.3 s: the right number of pauses (2 and 1) with boundaries within 0.51 and 0.53 steps of the true crossings (1 frame allowed), 1.05 and 1.07 steps at 5 %; the turning point of a movement is a pause unless `d_min` removes it; at 1 px of noise a still joint reads up to 0.18 Λ/s and `τ` = 0.3 Λ/s gives exactly one pause on the still clip SYN-01 in 9 of 9 cases; a hole inside a pause cuts it (two cut pieces at `d_min` 0.1 s, gone at 0.3 s); 57 mutants, all caught; gate 10/10 PASS (304.9 s, 5315 tests)
+- Tests: T-MET-09a to 09d, T-MET-09 (golden), 09e, T-MET-10
+- Bugs: none
+- Decisions: DEC-0060
+- Commit: not committed
+- Plan: Docs/tasks/P5.07.md
+
+## 2026-11-17 — P5.06 Speed of a joint group on the real clock: the central difference, in body lengths per second (DONE)
+
+- Changed: `taiji_ai/src/taiji_ai/metrics/tempo.py` (new), `metrics/rows.py` (`Neighbours`, `neighbour_rows`, `ScaleEstimate`, `scale_of`), `metrics/hip_height.py` (onto the shared `scale_of`, `ReferenceScale` is a name for `ScaleEstimate`, output unchanged), `tests/helpers/synth.py` (`speed_at`), `tests/unit/test_synth.py`, `tests/unit/test_metric_rows.py` (T-MET-08a), `tests/unit/test_metric_tempo.py` and `tests/golden/test_metric_tempo_syn.py` (new), `Docs/tasks/P5.06.md` (new), W7 of `Docs/TECH_WORKFLOW_V1.md`, the P5.06 row and T-MET-08 of `Docs/IMPLEMENTATION_PLAN_V1.md`, `taiji_ai/README.md`
+- Behaviour: `V_G(t_k)` = median over the usable joints of `‖p_j(k+1) − p_j(k−1)‖ / (t_{k+1} − t_{k−1}) / Λ` on the real clock of the grid, in body lengths per second, three metrics `speed_hands`, `speed_hips`, `speed_feet`; the neighbours are rows of the layer (the 1 s margins included), so only a row with no neighbour in the grid is 22; a joint is usable when both neighbour cells have a value (its own cell is not read, a bridge counts and is reported); one usable joint is enough; `Λ` is the median trunk of the segment (`scale_of`, lifted from hip height B with no change of output); reasons 16 (coach's intervals, optional), 18 (`perspective_shift`), 1 to 6, 19, 22, 21, never 17 or 20; statistics `segment_duration_s`, `speed_median`, `speed_cv` (null at a mean of 0), `bridged_rows`; no event, no pause (P5.07), no cut-off ablation (P5.08); `experimental`; the generator gets `speed_at(seq, t)` with its own test
+- Result (DEC-0059): 78 new tests (9 of the glue, 43 unit, 18 golden, 8 of the generator helper); SYN-07 and SYN-05 at noise 0: median relative error of the group speed 0.00085 and 0.00025 on the valid frames (5 % allowed), the feet read exactly 0; at 1 px of noise the hands are within 0.074 and a still joint reads a floor of 0.063 to 0.070 body lengths per second (the finding P5.07 has to put its threshold above); 51 mutants, all caught (3 survivors of the first run were gaps of my tests, fixed); hip height identical to P5.05 on 864 runs; gate 10/10 PASS (281.6 s, 5225 tests)
+- Tests: T-MET-08a to 08e, T-MET-08 (golden), 08f
+- Bugs: none
+- Decisions: DEC-0059
+- Commit: not committed
+- Plan: Docs/tasks/P5.06.md
+
+## 2026-11-17 — P5.05 Trunk lean in the image plane: `θ(t)`, only where the view fits (DONE)
+
+- Changed: `taiji_ai/src/taiji_ai/metrics/trunk_lean.py` (new), `metrics/rows.py` (`VIEWS`, the view gate and `intervals=None` in `eligibility`, `check_view`, `check_supported_views`, `assemble_series`, `evidence_reason`), `metrics/series.py` (`MetricResult`), `metrics/hip_height.py` (onto the shared glue, output unchanged; refuses `stable_intervals=None` itself), `tests/unit/test_metric_rows.py` (T-MET-06a; one test of P5.03 now uses another bad value), `tests/unit/test_metric_trunk_lean.py` and `tests/golden/test_metric_trunk_lean_syn.py` (new), `Docs/tasks/P5.05.md` (new), W7 of `Docs/TECH_WORKFLOW_V1.md`, the P5.05 row, T-MET-06 and T-MET-07 of `Docs/IMPLEMENTATION_PLAN_V1.md`, `taiji_ai/README.md`
+- Behaviour: `θ = atan2(x_S - x_H, y_H - y_S) - roll` in degrees, positive to the image right; two metrics, `trunk_lean_lr` (front view) and `trunk_lean_fb` (side view); the view is the segment's: a view that does not fit gives every row 17 and `insufficient_evidence` with no number, `orientation_change` gives 18; the coach's intervals are optional (`None` = the whole segment); reasons 16, 17, 18, pose (hips then shoulders), 4 for coincident middle points, 21 for short runs, never 19 or 20; statistics: the signed median, the median and the P95 of `|θ|`, `bridged_rows`; no event, no duration over a threshold; `experimental`; the view gate, the series assembly and the reason without evidence are shared with hip height, whose output is identical to P5.04's on 864 runs
+- Result (DEC-0058): 113 new tests (25 + 59 unit, 29 golden); SYN-03 at 1 px noise: median error of `θ` per row up to 0.14 degree (0.5 allowed), of the statistics up to 0.25 and 0.41 for the P95 (noise floor); SYN-04 within 0.14 degree with the roll; 41 mutants caught and one equivalent; gate 10/10 PASS (268.6 s, 5147 tests)
+- Tests: T-MET-06a to 06e, T-MET-06 (golden), 06f, T-MET-07
+- Bugs: none (a regression of hip height's refusal of `stable_intervals=None`, two gaps of my tests and a too strong demand of the mutation runner were found and fixed in the task)
+- Decisions: DEC-0058
+- Commit: not committed
+- Plan: Docs/tasks/P5.05.md
+
+## 2026-11-17 — P5.04 Hip height, variant B: `h_B = (g - y_H) / Λ_segment`, and A against B on the pinhole model (DONE)
+
+- Changed: `taiji_ai/src/taiji_ai/metrics/hip_height.py` (`hip_height_b`; the tail of A lifted into `_finish`, `_statistics`, `_scale_of`, A unchanged), `tests/unit/test_metric_hip_height_b.py` and `tests/golden/test_metric_hip_height_variants_syn.py` (new), `tests/helpers/metric_layers.py` (`layer_of_sequence`, also used by `tests/golden/test_metric_hip_height_syn.py`), `Docs/tasks/P5.04.md` (new), W7 of `Docs/TECH_WORKFLOW_V1.md`, the P5.04 row, T-MET-04 and T-MET-05 of `Docs/IMPLEMENTATION_PLAN_V1.md`, `taiji_ai/README.md`
+- Behaviour: `g` is the largest `y'` over the joints 15, 16, 24, 25 that have a value after the roll is taken out of each (the first of the list on a tie); the reason of the feet is 0 when one has a value, else the reason of the first of the four, after the hips; `Λ_segment` is the median trunk of all valid rows of the segment (`min_scale_s` optional, none invented); B is a true height (up is positive, the event `max` is the highest hip) and does not move under a vertical shift, a zoom or a corrected rotation; `bridged_rows` counts a bridged hip or the foot joint used; no reference, so no reason 20; everything else is A's, through one shared tail; no order between A and B is asserted
+- Result (DEC-0057): 70 new tests (47 unit, 23 golden); SYN-02 B within 2.1 % of 2A (5 % allowed); SYN-09 on six geometries B within 0.0018 Λ and A within 0.0051 Λ of their own truth (0.02 allowed), the numbers are in `Docs/tasks/P5.04.md` section 5; 40 mutants, all caught; A's output identical to P5.03's on 40 runs; gate 10/10 PASS (274.6 s, 5034 tests)
+- Tests: T-MET-04a to 04f, T-MET-04 (golden), 04g, T-MET-05
+- Bugs: none (a weak test of the tie rule and a redundant check were found by the mutation check and fixed)
+- Decisions: DEC-0057
+- Commit: not committed
+- Plan: Docs/tasks/P5.04.md
+
+## 2026-11-17 — P5.03 Hip height, variant A: `h_A = y_H / Λ_take`, its range, and the glue from a `PoseFiltered` to a metric (DONE)
+
+- Changed: `taiji_ai/src/taiji_ai/metrics/rows.py` and `metrics/hip_height.py` (new), `tests/helpers/metric_layers.py` (new), `tests/unit/test_metric_rows.py`, `tests/unit/test_metric_hip_height.py` and `tests/golden/test_metric_hip_height_syn.py` (new), `Docs/tasks/P5.03.md` (new), W7 of `Docs/TECH_WORKFLOW_V1.md`, the P5.03 row and T-MET-03 of `Docs/IMPLEMENTATION_PLAN_V1.md`, `taiji_ai/README.md`
+- Behaviour: a series row is a row of `grid_in_segment` (never the margins); `Λ_take` is the median trunk length of the segment rows of the `PoseFiltered` of the reference standing segment (same recording and `data_sources`, else refused); the reason of a row in the order of P5.01: 16 outside the coach's stable intervals, 18 `perspective_shift`, 1 to 6 first hip without a value, 20 no reference, 19 no scale, then a measured run shorter than `min_valid_s` is 21; `h_A = y'_H / Λ_take` with the roll taken out, y down; `hip_height_range` = P95 - P5 of the measured rows (two at least), `bridged_rows`, events `max` and `min`; no evidence gives no number (`no_frame`, `too_short`, or the most frequent reason); the minimums are arguments (`None` = none), no number is invented; the summary is `experimental`
+- Result (DEC-0056): 124 tests (57 + 54 unit, 13 golden); SYN-02 range -2.1 % against 2A at noise 0 and -0.5 % to -1.6 % at 1 px (5 % allowed); SYN-09 `Λ_take` within 0.3 px and range within 0.005 Λ (0.02 allowed); roll 30 degrees: -0.5 % with the roll, -13.7 % without; 55 mutants, all caught; gate 10/10 PASS (311.9 s, 4964 tests)
+- Tests: T-MET-03a to 03k
+- Bugs: none (a weak test of a tolerance and a missing early check of the roll were found by the mutation check and fixed in the tests)
+- Decisions: DEC-0056
+- Commit: not committed
+- Plan: Docs/tasks/P5.03.md
+
+## 2026-11-17 — P5.02 Geometry for the metrics: mid-hip, mid-shoulder, trunk length, scale Λ, camera roll (DONE)
+
+- Changed: `taiji_ai/src/taiji_ai/metrics/geometry.py` (new), `tests/unit/test_metric_geometry.py` and `tests/golden/test_metric_geometry_syn.py` (new), `Docs/tasks/P5.02.md` (new), W7 of `Docs/TECH_WORKFLOW_V1.md`, the P5.02 row and T-MET-01/T-MET-02 of `Docs/IMPLEMENTATION_PLAN_V1.md`, `taiji_ai/README.md`
+- Behaviour: the middle of the hips `(p11 + p12) / 2` and of the shoulders `(p5 + p6) / 2` (Appendix B, not the model's Hip and Neck), in pixels (x right, y down), float64, read-only; a joint is usable when its value is finite (a bridged cell counts and `bridged` reports it); `unusable_reason` gives the reason (1 to 6) of the first joint of a list that has no value; the trunk length is NaN for a missing midpoint and for a distance of 0; Λ is the median of L(t) over the rows given, NaN with 0 rows when none (equal to `quality.torso_length_px` on a layer without a bridged cell, tested); the roll comes from a user-drawn vertical line with the sign of θ, limited to 45 degrees; `correct_roll` and `lean_angle_deg` are pure arithmetic (θ = atan2(x_S - x_H, y_H - y_S) - roll, wrapped to (-180, 180])
+- Result (DEC-0055): 335 tests (304 unit, 31 golden); on the generator Λ is within the noise of `scale_px` (SYN-01 to SYN-07), the roll from SYN-04's line equals β to 1e-9 and the corrected θ is within 0.5 degree at 1 px noise, the correction inverts the generator's `apply_roll`, 200 random rotations change θ by exactly the roll; 44 mutants, all caught; gate 10/10 PASS (268.9 s, 4840 tests)
+- Tests: T-MET-01a to 01d, T-MET-02a to 02e
+- Bugs: BUG-0075 (S3, `lean_angle_deg` accepted an infinite midpoint; found in the self-review, fixed and verified in this task)
+- Decisions: DEC-0055
+- Commit: not committed
+- Plan: Docs/tasks/P5.02.md
+
 ## 2026-11-17 — P5.01 The types of a metric result: `MetricSeries`, `MetricSummary`, coverage and the reasons of a missing row (DONE)
 
 - Changed: `taiji_ai/src/taiji_ai/schemas/metric.py` (new), `taiji_ai/src/taiji_ai/metrics/series.py` (new), `metrics/__init__.py` (`MetricError`), `tests/unit/test_schemas_metric.py` and `tests/unit/test_metric_series.py` (new), `Docs/tasks/P5.01.md` (new), W7 of `Docs/TECH_WORKFLOW_V1.md`, the P5.01 row and T-SCH-02 of `Docs/IMPLEMENTATION_PLAN_V1.md`, `taiji_ai/README.md`

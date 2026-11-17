@@ -62,6 +62,14 @@ class MetricSeries:
         check_series(self)
 
 
+@dataclass(frozen=True, eq=False)
+class MetricResult:
+    """What a metric returns: its series and its summary, both consistent with the reasons of the rows."""
+
+    series: MetricSeries
+    summary: MetricSummary
+
+
 def _derive(
     reason: np.ndarray, t: np.ndarray, step_s: float | None
 ) -> tuple[dict[str, int], dict[str, int], list[dict[str, float]]]:

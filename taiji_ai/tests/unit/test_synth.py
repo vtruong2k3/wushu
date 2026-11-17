@@ -696,3 +696,158 @@ def test_t_syn_04_time_grid_errors():
     assert t[0] == 0.0 and np.all(np.diff(t) > 0) and t[-1] <= 4.0 and abs(np.diff(t)[0] - 1 / 30) < 1e-12
     with pytest.raises(ValueError, match="facing"):
         S.neutral_pose(facing="sideways")
+
+
+# --- speed_at: the speed truth at any time, not only at the frames (P5.06) -----------------------------------------
+def test_t_syn_02_speed_at_equals_the_speed_truth_at_the_frames_of_syn05_and_syn07():
+    for scenario in ("SYN-05", "SYN-07"):
+        seq = S.make_sequence(scenario, seed=4)
+        got = S.speed_at(seq, seq.t_sec)
+        assert set(got) == set(GROUPS)
+        for g in GROUPS:
+            assert got[g].dtype == np.float64 and got[g].shape == seq.t_sec.shape
+            assert np.allclose(got[g], seq.truth["speed"][g], rtol=0, atol=1e-12), (scenario, g)
+
+
+def test_t_syn_02_speed_at_between_the_frames_is_the_derivative_of_the_continuous_model():
+    seq = S.make_sequence("SYN-05", seed=5, duration=5.0, pauses=PAUSES, ramp_s=0.2)
+    dense = dense_motion(duration=5.0, pauses=PAUSES, ramp_s=0.2)
+    rng = np.random.default_rng(11)
+    idx = rng.integers(150, int(5.0 * DENSE_FPS) - 150, size=300)
+    idx = idx[idx % 100 != 0]  # a frame of the 30 fps clip is a multiple of 100 dense rows: these are between frames
+    t = idx / DENSE_FPS
+    assert np.allclose(dense.t_sec[idx], t)
+    got = S.speed_at(seq, t)
+    for g in GROUPS:
+        assert np.allclose(got[g], dense_group_speed(dense, idx, g), atol=3e-3), g
+    assert got["hands"].max() > 0.3  # not a vector of zeros
+
+
+def test_t_syn_02_speed_at_is_exactly_zero_inside_a_pause_even_between_frames():
+    seq = S.make_sequence("SYN-07", seed=6)  # default: one pause from 1.0 to 1.5 s
+    got = S.speed_at(seq, np.array([1.0123, 1.2, 1.2999, 1.4999]))
+    for g in GROUPS:
+        assert np.all(got[g] == 0.0), g
+
+
+@pytest.mark.parametrize(
+    ("times", "message"),
+    [
+        (np.array([-0.01, 1.0]), "duration"),
+        (np.array([1.0, 4.01]), "duration"),
+        (np.array([np.nan]), "finite"),
+        (np.zeros((2, 2)), "one-dimensional"),
+    ],
+)
+def test_t_syn_02_speed_at_refuses_times_outside_the_sequence_or_not_a_list_of_times(times, message):
+    with pytest.raises(ValueError, match=message):
+        S.speed_at(S.make_sequence("SYN-07", seed=1), times)
+
+
+def test_t_syn_02_speed_at_refuses_a_scenario_that_has_no_tempo_motion():
+    with pytest.raises(ValueError, match="SYN-02"):
+        S.speed_at(S.make_sequence("SYN-02", seed=1), np.array([1.0]))
+
+
+# --- slow_intervals: where the continuous group speed is below a threshold (P5.07) ----------------------------------
+def dense_group_speed_of(seq, group: str) -> tuple[np.ndarray, np.ndarray]:
+    """``(t, V)``: the group speed by a 3000 fps central difference of the float64 positions of the continuous model
+    (``truth_at``), not of the float32 ones of a sequence (their rounding would flicker at a threshold) and not of the
+    analytic derivative that ``speed_at`` gives."""
+    h = 1.0 / DENSE_FPS
+    t = np.arange(1, int(round(seq.params["duration"] * DENSE_FPS)) - 1) * h
+    v = (S.truth_at(seq, t + h) - S.truth_at(seq, t - h)) / (2.0 * h)
+    speed = np.hypot(v[..., 0], v[..., 1]) / seq.truth["scale_px"]
+    return t, np.median(speed[:, list(GROUPS[group])], axis=1)
+
+
+def dense_slow_intervals(seq, group: str, tau: float) -> list[tuple[float, float]]:
+    """The stretches below ``tau`` of that dense central-difference speed, as ``(first time, last time)``."""
+    t, v = dense_group_speed_of(seq, group)
+    out, start = [], None
+    for k, flag in enumerate(v < tau):
+        if flag and start is None:
+            start = float(t[k])
+        if not flag and start is not None:
+            out.append((start, float(t[k - 1])))
+            start = None
+    if start is not None:
+        out.append((start, float(t[-1])))
+    return out
+
+
+def test_t_syn_02_slow_intervals_at_a_very_small_tau_are_the_exact_pauses_and_the_apex_of_the_movement():
+    seq = S.make_sequence("SYN-05", seed=1, duration=5.0, pauses=PAUSES, ramp_s=0.2)
+    got = S.slow_intervals(seq, "hands", 1e-7)
+    assert len(got) == 3  # the two pauses, and between them the apex, where the speed is 0 for an instant (2.5 s)
+    for (t0, t1), (p0, p1) in zip((got[0], got[2]), PAUSES, strict=True):
+        assert p0 - 5e-4 < t0 <= p0 and p1 <= t1 < p1 + 5e-4  # the ramps leave the speed under 1e-7 a little outside
+    assert 2.5 - 1e-5 < got[1][0] <= 2.5 <= got[1][1] < 2.5 + 1e-5  # the apex: phi = 0.5, the speed crosses 0
+
+
+@pytest.mark.parametrize("group", ["hands", "hips"])
+def test_t_syn_02_slow_intervals_equal_the_stretches_of_a_dense_numerical_derivative(group):
+    seq = S.make_sequence("SYN-05", seed=2, duration=5.0, pauses=PAUSES, ramp_s=0.2)
+    tau = 0.10 * float(dense_group_speed_of(seq, group)[1].max())
+    want = dense_slow_intervals(seq, group, tau)
+    got = S.slow_intervals(seq, group, tau)
+    assert len(want) == 3 and len(got) == 3  # the two pauses and the turning point of the movement between them
+    for (g0, g1), (w0, w1) in zip(got, want, strict=True):
+        assert abs(g0 - w0) < 2e-3 and abs(g1 - w1) < 2e-3, (g0, g1, w0, w1)
+    assert got == tuple(sorted(got)) and all(a1 < b0 for (_, a1), (b0, _) in zip(got, got[1:], strict=False))
+
+
+def test_t_syn_02_slow_intervals_agree_with_speed_at_at_random_times_away_from_their_edges():
+    seq = S.make_sequence("SYN-07", seed=3)
+    tau = 0.1 * float(S.speed_at(seq, np.linspace(0.0, 4.0, 4001))["hands"].max())
+    got = S.slow_intervals(seq, "hands", tau)
+    t = np.random.default_rng(5).uniform(0.0, 4.0, size=2000)
+    edges = np.array([e for interval in got for e in interval])
+    t = t[np.min(np.abs(t[:, None] - edges[None, :]), axis=1) > 1e-6]
+    inside = np.array([any(a <= x <= b for a, b in got) for x in t])
+    assert np.array_equal(inside, S.speed_at(seq, t)["hands"] < tau)
+    assert 0 < inside.sum() < len(t)  # both outcomes are exercised
+
+
+def test_t_syn_02_slow_intervals_edges_are_exact_to_a_microsecond_not_to_the_scan_step():
+    seq = S.make_sequence("SYN-05", seed=1)
+    tau = 0.10 * float(S.speed_at(seq, np.linspace(0.0, 5.0, 5001))["hands"].max())
+    got = S.slow_intervals(seq, "hands", tau)
+    assert len(got) == 3
+    for t0, t1 in got:  # inside the interval the speed is below tau, a microsecond outside it is not (0.2 ms scan)
+        inside = S.speed_at(seq, np.array([t0 + 2e-6, t1 - 2e-6]))["hands"] < tau
+        outside = S.speed_at(seq, np.array([t0 - 2e-6, t1 + 2e-6]))["hands"] < tau
+        assert inside.all() and not outside.any()
+
+
+def test_t_syn_02_slow_intervals_above_the_peak_are_the_whole_clip_and_the_group_decides():
+    seq = S.make_sequence("SYN-05", seed=1)
+    peak = float(S.speed_at(seq, np.linspace(0.0, 5.0, 5001))["hands"].max())
+    assert S.slow_intervals(seq, "hands", 10 * peak) == ((0.0, 5.0),)
+    hips = S.slow_intervals(seq, "hips", 0.5 * peak)  # the hips move at a twentieth of the hands: below it all along
+    assert hips == ((0.0, 5.0),)
+    assert S.slow_intervals(seq, "feet", 1e-9) == ((0.0, 5.0),)  # the feet never move: 0 is below any tau
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "message"),
+    [
+        ({"group": "arms"}, "group"),
+        ({"tau": 0.0}, "tau"),
+        ({"tau": -1.0}, "tau"),
+        ({"tau": float("nan")}, "tau"),
+        ({"tau": float("inf")}, "tau"),
+        ({"tau": True}, "tau"),
+        ({"tau": "0.1"}, "tau"),
+    ],
+)
+def test_t_syn_02_slow_intervals_refuses_a_bad_group_or_threshold(kwargs, message):
+    args = {"group": "hands", "tau": 0.1}
+    args.update(kwargs)
+    with pytest.raises(ValueError, match=message):
+        S.slow_intervals(S.make_sequence("SYN-05", seed=1), args["group"], args["tau"])
+
+
+def test_t_syn_02_slow_intervals_refuses_a_scenario_that_has_no_tempo_motion():
+    with pytest.raises(ValueError, match="SYN-02"):
+        S.slow_intervals(S.make_sequence("SYN-02", seed=1), "hands", 0.1)

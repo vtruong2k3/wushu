@@ -4,12 +4,13 @@ Rules: `AGENTS.md` §3. IDs are sequential (`BUG-NNNN`), never reused. Every bug
 Severity: **S1** critical · **S2** major · **S3** minor.
 Lifecycle: `OPEN → PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED` (or `WONT_FIX` with maintainer approval).
 
-**Next free ID:** `BUG-0075`
+**Next free ID:** `BUG-0076`
 
 ## Summary
 
 | ID       | Title                                                                                                                      | Sev | Status | Found in                                                                   | Fix task | Regression test                                                  | Opened     | Closed     |
 | -------- | -------------------------------------------------------------------------------------------------------------------------- | --- | ------ | -------------------------------------------------------------------------- | -------- | ---------------------------------------------------------------- | ---------- | ---------- |
+| BUG-0075 | `lean_angle_deg` (P5.02) accepts an infinite midpoint and returns an angle made out of it (`atan2(inf, dy)` = 90 degrees), where `_keypoints`, `trunk_scale` and `correct_roll` refuse infinities | S3 | CLOSED | `taiji_ai/src/taiji_ai/metrics/geometry.py` (`_pair_array`), found by the agent in the self-review of P5.02 | P5.02 | `test_t_met_02c_an_infinite_midpoint_is_refused_not_turned_into_an_angle` | 2026-11-17 | 2026-11-17 |
 | BUG-0074 | The allowed-use text of D20 in `Docs/DATASET_REGISTRY_TAIJI.md` does not list the look at the mask layer of P4.01 (M-QLT-01, counts only on the P3.08 pose files): AGENTS.md 9.4 item 3 asks for the use to be written there before it happens | S3 | CLOSED | `Docs/DATASET_REGISTRY_TAIJI.md` (D20 row), found by the agent while adding M-QLT-02 for P4.02 | P4.02 | Manual check: the row names P4.01 and P4.02 and their limits (2026-11-17) | 2026-11-17 | 2026-11-17 |
 | BUG-0073 | The detector tool (P3.09) and its rule kept the NMS limit **0.45** as the default for YOLO11 ("YOLOX uses 0.45") after the limit of the shipping graph was read as **0.65**: running `detector_compare.py run` without `--nms-iou` measures a different operating point than DEC-0043 and the report state; `DetectorRule.matched_nms_iou` (unused) and its test hold the same stale 0.45 | S3 | CLOSED | `taiji_ai/tools/detector_compare.py`, `bench/detector_metrics.py` (P3.09, found by the agent in the self-review read-back) | P3.09 | `test_t_det_08_the_default_nms_limit_of_the_tool_is_the_one_of_the_shipping_graph` | 2026-11-17 | 2026-11-17 |
 | BUG-0072 | `prepare_onnxruntime` (P3.02) remembers that it ran for **any** device: a call for the CPU stops a later call for CUDA from loading the DLLs of the nvidia packages, and the CUDA session then falls back to the CPU or fails | S3 | PLANNED | `taiji_ai/src/taiji_ai/pose/rtm.py` `prepare_onnxruntime` (P3.02), found while writing P3.09 | X.30 | to be written with the fix (a subprocess test, `gpu` marker); the workaround in `bench/yolo_onnx.py` has `test_t_det_09_a_cpu_session_before_a_cuda_session_does_not_break_cuda` | 2026-11-17 | |
@@ -88,6 +89,26 @@ Lifecycle: `OPEN → PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED` 
 ---
 
 ## Details
+
+### BUG-0075 — `lean_angle_deg` turns an infinite midpoint into an angle (P5.02)
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3 (found before the task closed; no metric reads the function yet, and `mid_hip` and `mid_shoulder` never return an infinity because `midpoint` refuses one in the keypoints; the hole is in the direct use of `lean_angle_deg` on arrays from elsewhere) |
+| Status          | CLOSED                                                                                     |
+| Found in        | `taiji_ai/src/taiji_ai/metrics/geometry.py`, `_pair_array` / `lean_angle_deg` (P5.02)         |
+| Found by / date | agent (Claude Code), 2026-11-17, read-back of `geometry.py` in the self-review of P5.02      |
+
+**Description:** every function of the module that takes numbers from outside refuses an infinity (`_keypoints`, `trunk_scale`, `correct_roll`); `_pair_array`, which feeds `lean_angle_deg`, does not. With `x_S = inf` and a finite hip, `arctan2(inf, dy)` is 90 degrees: a finite angle that no observation gave (AGENTS.md 5.1).
+**Steps to reproduce:** `lean_angle_deg(np.array([[0., 0.]]), np.array([[np.inf, -100.]]))` returns `[90.]`.
+**Expected:** `MetricError` naming `mid_shoulder` and saying the values are infinite. **Actual:** 90.0. **Root cause:** the infinity check was written for the functions that read a layer and a length and not repeated in the helper of the angle; the 44 mutants of the review covered the checks that existed, not the one that was missing.
+**Fix plan:** `_pair_array` raises `MetricError(f"{name} has infinite values")` for any infinity (NaN stays allowed: it gives a NaN angle); regression test with the two midpoints and both signs of infinity (red on the old code: 4 cases did not raise).
+**Fix task / commit:** P5.02 (this task), not committed. **Regression test:** `test_t_met_02c_an_infinite_midpoint_is_refused_not_turned_into_an_angle`. **Verified:** agent, 2026-11-17: the test fails on the old code (4 of 4 did not raise) and passes after the fix; the two refusals were printed and read (`mid_shoulder has infinite values`, `mid_hip has infinite values`); the changed lines were read again; gate 10/10 on the closing tree (4840 tests).
+
+**History:**
+
+- 2026-11-17 OPEN → PLANNED → IN_PROGRESS — found in the read-back of P5.02; the regression test was written first and fails on the old code (4 of 4).
+- 2026-11-17 IN_PROGRESS → FIXED → VERIFIED → CLOSED — `_pair_array` refuses an infinity, test green, gate 10/10.
 
 ### BUG-0074 — The D20 allowed use does not name the look at the mask layer (P4.01)
 
