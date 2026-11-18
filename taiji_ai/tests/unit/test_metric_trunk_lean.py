@@ -294,7 +294,7 @@ def test_t_met_06d_the_parameters_say_what_was_used():
     p = run(layer, intervals=[(0.0, 5.0), (6.0, 7.0)], roll_deg=2.5, min_valid_s=0.1).summary.parameters
     assert p == {
         "plane": "lr", "roll_deg": 2.5, "supported_views": "front", "min_valid_s": 0.1, "percentile": 95,
-        "n_intervals": 2,
+        "n_intervals": 2, "filter_cutoff_hz": 6.0,
     }  # fmt: skip
     plain = run(layer).summary.parameters
     assert plain["n_intervals"] is None and plain["min_valid_s"] is None and plain["roll_deg"] == 0.0

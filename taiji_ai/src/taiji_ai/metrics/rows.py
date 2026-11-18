@@ -9,7 +9,9 @@ one row per row of the segment, so:
 * ``segment_rows`` cuts those rows out (copies, read-only) with the real clock ``t_sec`` (seconds from the stream
   start), the positions (float32 pixels, y down), the reasons and the ``interpolated`` flags. Its ``step_s`` is the
   layer's step, and ``None`` for fewer than two rows: a series of one row has no step (``MetricHeader``) and a single
-  row has no duration.
+  row has no duration. Its ``filter_cutoff_hz`` is the Butterworth cut-off that was applied to the layer (``None`` when
+  the filter could not be designed): ``assemble_series`` writes it into the ``parameters`` of every series, because a
+  signed ``metric_record`` binds it (P5.09, DEC-0061).
 * ``neighbour_rows`` gives, for every row of the segment, the grid row before and the grid row after it (positions,
   reasons, flags, time), margins included: a difference over time (a speed) needs them, and the pose pass reads one
   second of margin on each side for that. A row of the grid that does not exist (the segment touches the start or the
@@ -46,6 +48,7 @@ from taiji_ai.metrics.geometry import trunk_length, trunk_scale
 from taiji_ai.metrics.series import MetricSeries, build_series
 from taiji_ai.quality.layers_io import PoseFiltered
 from taiji_ai.schemas.metric import MissingReason
+from taiji_ai.schemas.metric_record import CUTOFF_KEY
 from taiji_ai.schemas.quality_layers import DataSource
 
 FLAGS: Final = (
@@ -101,7 +104,8 @@ class SegmentRows:
 
     ``t_sec`` ``(N,)`` float64 seconds from the stream start; ``keypoints`` ``(N, 26, 2)`` float32 pixels (y down);
     ``reason`` ``(N, 26)`` uint8 and ``interpolated`` ``(N, 26)`` bool as in the layer; ``step_s`` the step of the grid
-    in seconds, ``None`` for fewer than two rows.
+    in seconds, ``None`` for fewer than two rows; ``filter_cutoff_hz`` the cut-off [Hz] that the layer was filtered
+    with, ``None`` when the filter was skipped (the cut-off is not below half the sampling rate, or there is no rate).
     """
 
     t_sec: np.ndarray
@@ -111,6 +115,7 @@ class SegmentRows:
     step_s: float | None
     recording_id: str
     data_sources: tuple[DataSource, ...]
+    filter_cutoff_hz: float | None = None
 
 
 def _segment_slice(layer: PoseFiltered) -> tuple[int, int]:
@@ -124,6 +129,17 @@ def _segment_slice(layer: PoseFiltered) -> tuple[int, int]:
             "grid_in_segment must be one contiguous run of rows: the segment from its first to its last row"
         )
     return (int(rows[0]), int(rows[-1]) + 1) if n else (0, 0)
+
+
+def applied_cutoff_hz(layer: PoseFiltered) -> float | None:
+    """The cut-off [Hz] the layer was filtered with, ``None`` when the filter was skipped.
+
+    The filter stage designs the filter only below half the sampling rate (``cutoff_hz < fs / 2``; otherwise every run
+    says ``above_nyquist``, ``quality/filters.py``), and a layer of one row has no rate.
+    """
+    cutoff = layer.meta.params.filter.cutoff_hz
+    rate = layer.meta.timeline.sampling_hz
+    return float(cutoff) if rate is not None and cutoff < rate / 2.0 else None
 
 
 def segment_rows(layer: PoseFiltered) -> SegmentRows:
@@ -141,6 +157,7 @@ def segment_rows(layer: PoseFiltered) -> SegmentRows:
         step_s=None if step is None else float(step),
         recording_id=layer.meta.recording_id,
         data_sources=tuple(layer.meta.data_sources),
+        filter_cutoff_hz=applied_cutoff_hz(layer),
     )
 
 
@@ -379,8 +396,12 @@ def assemble_series(
 
     A measured run shorter than ``min_valid_s`` becomes ``too_short`` (``drop_short_runs``) and loses its value; the
     values of every row that is not measured are NaN; the header (intervals, coverage, counts) follows from the
-    reasons (``build_series``), with the clock, the recording and the provenance of ``rows``.
+    reasons (``build_series``), with the clock, the recording and the provenance of ``rows``. ``parameters`` gets the
+    cut-off of the layer under ``filter_cutoff_hz``; a metric that passes that key itself is refused (the echo is the
+    layer's, never the caller's).
     """
+    if CUTOFF_KEY in parameters:
+        raise MetricError(f"parameters must not contain {CUTOFF_KEY}: it is written from the layer by assemble_series")
     reason = drop_short_runs(reason, step_s=rows.step_s, min_valid_s=min_valid_s)
     values = np.where(reason == 0, values, np.nan)
     return build_series(
@@ -394,7 +415,7 @@ def assemble_series(
         values=values,
         reason=reason,
         step_s=rows.step_s,
-        parameters=parameters,
+        parameters={**parameters, CUTOFF_KEY: rows.filter_cutoff_hz},
         data_sources=rows.data_sources,
     )
 

@@ -10,6 +10,7 @@ Kinect row: ``timestamp [ms]`` then 25 joints x ``x y z`` [mm], 76 numbers; the 
 from __future__ import annotations
 
 import csv
+import dataclasses
 import io
 from pathlib import Path
 
@@ -346,6 +347,17 @@ def test_t_qlt_12f_a_stray_file_a_missing_license_and_another_license_are_refuse
         find_umons(tmp_path / "c")
 
 
+def test_bug_0082_a_stray_entry_is_refused_without_its_name(tmp_path: Path):
+    # the message of find_umons names no file name of the folder (a name is free text of the user's disk)
+    folder = make_dataset(tmp_path / "umons")
+    (folder / "SECRET_name.txt").write_text("x", encoding="ascii")
+    (folder / "SECRET_folder").mkdir()
+    with pytest.raises(UmonsError, match="unexpected entry") as err:
+        find_umons(folder)
+    assert "SECRET" not in str(err.value)
+    assert "PxxTxxCxx.txt" in str(err.value)  # it still says what is expected
+
+
 def test_t_qlt_12f_a_missing_folder_is_refused_without_its_path(tmp_path: Path):
     with pytest.raises(UmonsError) as err:
         find_umons(tmp_path / "private_folder_name")
@@ -442,11 +454,27 @@ def test_t_qlt_12g_distributions_and_the_named_files(small_folder: Path):
     assert summary.steps_pause == 1 and summary.steps_long == 1
 
 
-def test_t_qlt_12g_the_tables_are_deterministic_and_hold_only_numbers_and_ids(small_folder: Path):
+def _timeless(results):
+    """The results with the wall-clock ``seconds`` set to 0: the one number of a run that is not a function of the data
+    (BUG-0083)."""
+    return [dataclasses.replace(r, seconds=0.0) for r in results]
+
+
+def test_bug_0083_the_wall_clock_row_is_the_only_thing_that_differs_between_two_runs(small_folder: Path):
     results = run_folder(small_folder)
+    fast = render_tables({"default": aggregate([dataclasses.replace(r, seconds=0.0) for r in results])})
+    slow = render_tables({"default": aggregate([dataclasses.replace(r, seconds=7.0) for r in results])})
+    assert fast != slow  # the timing is in the tables ("Seconds, chain and report")
+    clock = "Seconds, chain and report"
+    without = [[ln for ln in text.splitlines() if clock not in ln] for text in (fast, slow)]
+    assert without[0] == without[1]  # and nothing else depends on it
+
+
+def test_t_qlt_12g_the_tables_are_deterministic_and_hold_only_numbers_and_ids(small_folder: Path):
+    results = _timeless(run_folder(small_folder))
     a = render_tables({"default": aggregate(results)})
-    b = render_tables({"default": aggregate(run_folder(small_folder))})
-    assert a == b
+    b = render_tables({"default": aggregate(_timeless(run_folder(small_folder)))})
+    assert a == b  # the wall clock is out of it: two runs of the same data differ in the rounding of the seconds
     assert "P01T01C02" in a and "P02T01C02" in a  # the notable file and the failed one, by id
     assert str(small_folder) not in a and "\\" not in a and "/tmp" not in a
     assert "default" in a and "provided" in a.lower()

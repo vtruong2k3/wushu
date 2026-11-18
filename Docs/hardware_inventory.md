@@ -1,5 +1,3 @@
-load D:\workspaces\wushu\taiji_ai\models\yolox_m_8xb8-300e_humanart-c2c7a14a.onnx with onnxruntime backend
-load D:\workspaces\wushu\taiji_ai\models\rtmpose-m_simcc-body7_pt-body7-halpe26_700e-256x192-4d3e73dd_20230605.onnx with onnxruntime backend
 # Environment inventory
 
 ## System

@@ -434,7 +434,7 @@ def test_t_met_04e_the_summary_is_experimental_never_conclusive_and_says_what_wa
     expected: dict[str, Any] = {
         "variant": "b", "roll_deg": 2.5, "min_scale_s": 0.2, "min_valid_s": 0.1, "percentile_low": 5,
         "percentile_high": 95, "scale_px": pytest.approx(150.0), "scale_rows": 10,
-        "scale_s": pytest.approx(10 / FPS), "n_stable_intervals": 2,
+        "scale_s": pytest.approx(10 / FPS), "n_stable_intervals": 2, "filter_cutoff_hz": 6.0,
     }  # fmt: skip
     assert s.parameters == expected
     plain = run(layer).summary.parameters

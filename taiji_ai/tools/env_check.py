@@ -9,6 +9,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import contextlib
 import importlib
 import platform
 import shutil
@@ -120,4 +121,9 @@ if __name__ == "__main__":
     ap.add_argument("--gpu-smoke", action="store_true")
     args = ap.parse_args()
     sys.stdout.reconfigure(encoding="utf-8")
-    print("\n".join(collect(args.gpu_smoke)))
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    # Third-party code writes on stdout too (rtmlib prints "load <model path> with ... backend" when a model is loaded),
+    # and the documented use is ``env_check.py > hardware_inventory.md``: only the Markdown may reach stdout (BUG-0076).
+    with contextlib.redirect_stdout(sys.stderr):
+        lines = collect(args.gpu_smoke)
+    print("\n".join(lines))

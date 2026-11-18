@@ -18,7 +18,7 @@ import numpy as np
 from helpers.quality_fixtures import static_pose
 from helpers.synth import SynthSequence
 from taiji_ai.pose.skeleton import IDX, NUM_JOINTS
-from taiji_ai.quality.chain import run_quality_arrays
+from taiji_ai.quality.chain import QualityParams, run_quality_arrays
 from taiji_ai.quality.layers_io import PoseFiltered, pose_filtered_from_result
 from taiji_ai.schemas.quality_layers import DataSource
 
@@ -51,12 +51,14 @@ def layer_of(
     in_segment: np.ndarray | None = None,
     recording_id: str = RECORDING_ID,
     data_sources: tuple[DataSource, ...] = SOURCES,
+    params: QualityParams | None = None,
 ) -> PoseFiltered:
-    """The final layer of ``keypoints`` through the real quality chain (``t_sec`` at 30 fps, scores 0.95 by default)."""
+    """The final layer of ``keypoints`` through the real quality chain (``t_sec`` at 30 fps, scores 0.95 by default;
+    ``params`` are the parameters of the chain, the defaults when ``None``)."""
     n = len(keypoints)
     t = np.arange(n) / FPS if t_sec is None else np.asarray(t_sec, dtype=np.float64)
     score = np.full((n, NUM_JOINTS), 0.95, dtype=np.float32) if scores is None else scores
-    result = run_quality_arrays(keypoints, score, t, in_segment=in_segment)
+    result = run_quality_arrays(keypoints, score, t, in_segment=in_segment, params=params)
     return pose_filtered_from_result(
         result, recording_id=recording_id, frame_index=np.arange(n, dtype=np.int64), data_sources=data_sources
     )
@@ -68,12 +70,13 @@ def layer_of_sequence(
     rows: np.ndarray | None = None,
     *,
     recording_id: str = RECORDING_ID,
+    params: QualityParams | None = None,
 ) -> PoseFiltered:
     """The final layer of a generator sequence through the real chain: its own keypoints or ``keypoints`` (for a rolled
     camera), all rows or only the boolean ``rows`` (the standing reference of SYN-09 is its own segment)."""
     kp = seq.kp if keypoints is None else keypoints
     kp, t, score = (kp, seq.t_sec, seq.score) if rows is None else (kp[rows], seq.t_sec[rows], seq.score[rows])
-    return layer_of(np.asarray(kp, dtype=np.float32), t, score, recording_id=recording_id)
+    return layer_of(np.asarray(kp, dtype=np.float32), t, score, recording_id=recording_id, params=params)
 
 
 def exact_layer(

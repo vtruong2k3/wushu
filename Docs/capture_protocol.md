@@ -197,11 +197,16 @@ Buổi quay thử dùng protocol này và ghi lại mọi chỗ khác đi. Cần
 - Kiểm tra file thật bằng `probe_video` và `scan_pts`: tốc độ khung hình cố định, không phải VFR, thông tin xoay đúng, có âm thanh.
 - Độ lệch giữa mốc âm thanh và mốc hình của tín hiệu đồng bộ.
 
+Buổi thử gồm hai phần: tập dượt không có người tập (P1.09a) và take thử (P1.09b); các bước và phiếu nằm trong
+`Docs/capture_trial_sheet.md`.
+
 Sau buổi thử: sửa các giá trị "(thử)" thành giá trị đo được, nâng protocol lên phiên bản 1.1, và ghi model điện thoại, hệ điều
-hành, phiên bản ứng dụng vào `Docs/hardware_inventory.md` (không ghi thông tin cá nhân).
+hành, phiên bản ứng dụng vào `Docs/capture_devices.md` (không ghi thông tin cá nhân; `Docs/hardware_inventory.md` do máy sinh ra và
+chỉ nói về máy phân tích).
 
 ## 12. Lịch sử phiên bản
 
 | Phiên bản | Ngày | Nội dung |
 | --------- | ---- | -------- |
 | 1.0 | 2026-11-15 | Bản nháp theo W0, quyết định 7 và task P1.05; chưa có buổi quay thử; khoảng cách và độ cao là giá trị khởi đầu |
+| 1.0 (chỉnh) | 2026-11-17 | Chỉ sửa chỗ tham chiếu ở mục 11: điện thoại ghi vào `Docs/capture_devices.md`, và buổi thử theo `Docs/capture_trial_sheet.md`; nội dung quay không đổi. Phiên bản 1.1 sẽ có sau P1.09b |

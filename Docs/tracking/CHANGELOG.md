@@ -4,6 +4,46 @@ Newest first. One entry per completed task or bug fix (format: `AGENTS.md` §4.2
 
 ---
 
+## 2026-11-17 — P5.09 Signed metric records: the table, the store and what a record does to a result (DONE)
+
+- Changed: `taiji_ai/migrations/0002_metric_record.sql` (new), `taiji_ai/src/taiji_ai/schemas/metric_record.py` (new), `taiji_ai/src/taiji_ai/metrics/records.py` (new), `taiji_ai/src/taiji_ai/store/metric_records.py` (new), `taiji_ai/src/taiji_ai/metrics/rows.py` (the cut-off echo: `SegmentRows.filter_cutoff_hz`, `applied_cutoff_hz`, `assemble_series`); tests `tests/contract/test_migration_0002.py`, `tests/unit/test_metric_record_schema.py`, `test_metric_records.py`, `test_store_metric_records.py`, `test_metric_cutoff_echo.py`, `tests/golden/test_metric_records_syn.py` (all new), the helpers `tests/helpers/metric_runs.py` and `metric_records.py` (new) and `metric_layers.py` (a `params` argument), five tests that compare a whole `parameters` dict (hip height A and B, tempo, trunk lean, rows) and `tests/api/test_api_core.py` (the migration list of `/api/health` is now `[1, 2]`)
+- Behaviour: a result is born `experimental`; `apply_record` makes it `conclusive` only with an enabled record of the same metric, metric version and units that supports the view, matches every value it binds exactly (minimum duration, cut-off, thresholds, arguments, the views of a trunk lean) and signs the thresholds it uses, and never changes a number; otherwise it says why (`no_record`, `record_experimental`, `retired`, `view_not_supported`, `parameters_differ`, `thresholds_not_signed`); migration 0002 rebuilds the empty table and the database itself refuses an enabled record without a signature or numbers, an error not below the smallest useful change, two enabled records of one metric version and any change to an enabled or retired record; the store writes a signed record only as its signer, audits with the SHA-256 of the coach's sentence, and every metric echoes `filter_cutoff_hz`
+- Tests: T-MET-11a to 11f and T-STORE-08 (181 new tests: 22 migration, 76 model, 39 registry and `apply_record`, 19 store, 18 cut-off echo, 7 on SYN-05 and SYN-03 through the real chain); 127 mutants of the five files, all caught (3 survivors of the first run were test gaps, closed); gate 10/10 PASS (351.6 s, 5567 tests; the first run found `tests/api/test_api_core.py` pinning the migration list `[1]` of `/api/health`, now `[1, 2]`)
+- Bugs: none
+- Decisions: DEC-0063
+- Commit: not committed
+- Plan: Docs/tasks/P5.09.md
+
+## 2026-11-17 — BUG-0077 Unescaped pipes in 17 table lines of 7 records (FIXED, found in the analysis of P1.09)
+
+- Changed: `Docs/tracking/TASK_STATUS.md`, `Docs/IMPLEMENTATION_PLAN_V1.md`, `Docs/tracking/DECISIONS.md` (DEC-0058, DEC-0052, DEC-0032, DEC-0031), `Docs/tasks/P5.05.md`, `Docs/tasks/P5.06.md`, `Docs/tasks/P3.03.md`, `Docs/tasks/P4.07.md`: 47 backslashes before pipes that are text (the absolute values `|θ|`, `|v|`, `|offset|`, `|x|` and the unions `X | None` inside code spans); escaping only, no wording changed
+- Behaviour: the 16 rows and 1 header that GFM split into too many cells show their whole text again, and the P5.05 table whose header had 11 cells against a delimiter of 7 renders as a table
+- Checks: a cell count of every table of `Docs/` (before 16 rows, after 0; a second run of the fixer finds nothing); on bytes, each file is identical to its backup without the backslashes and grew by exactly the number of backslashes, CR LF counts equal; the IDE shows no warning; check.ps1 pass
+- Bugs: BUG-0077 (S3, CLOSED); no durable check yet: a table-cell check in `tools/repo_hygiene.py` is proposed to the maintainer
+- Commit: not committed
+- Plan: Docs/tasks/P1.09.md (found while preparing it; the bug has its own entry in `Docs/tracking/BUGS.md`)
+
+## 2026-11-17 — BUG-0076 Library output in the hardware inventory (FIXED, found in the analysis of P1.09)
+
+- Changed: `taiji_ai/tools/env_check.py` (`collect` runs under `contextlib.redirect_stdout(sys.stderr)`, stderr set to UTF-8 with `errors="replace"`), `taiji_ai/tests/contract/test_env_check_tool.py` (new, 4 tests), `Docs/hardware_inventory.md` (the two stray `load ...` lines removed)
+- Behaviour: `env_check.py > hardware_inventory.md` writes only Markdown; what rtmlib prints when it loads a model goes to stderr; the GPU smoke test still runs and is reported
+- Tests: `test_bug_0076_*` (4; the first is red on the old code); mutation run of the fix 11 of 11 killed; the real tool run on this machine, exit 0, the file starts with `# Environment inventory`; check.ps1 pass
+- Bugs: BUG-0076 (S3, CLOSED)
+- Commit: not committed
+- Plan: Docs/tasks/P1.09.md (found while preparing it; the bug has its own entry in `Docs/tracking/BUGS.md`)
+
+## 2026-11-17 — P5.08 Ablation of the Butterworth cut-off (4, 6, 8 Hz) on the pauses and the hip amplitude (DONE)
+
+- Changed: `taiji_ai/src/taiji_ai/bench/filter_ablation.py` (new), `taiji_ai/tools/filter_ablation.py` (new), `tests/unit/test_filter_ablation.py`, `tests/contract/test_filter_ablation_tool.py`, `tests/golden/test_filter_ablation_syn.py` and `tests/golden/test_filter_ablation_real.py` (new), `tests/helpers/ablation_sweep.py` (new: the generator's truth tables, also a script), `Docs/reports/p5_filter_ablation.md` (new), `Docs/tasks/P5.08.md` (new), the D20 and D12 rows of `Docs/DATASET_REGISTRY_TAIJI.md`, W6 and W7 of `Docs/TECH_WORKFLOW_V1.md`, the P5.08 row, T-MET-12, T-MET-13 and M-MET-01 of `Docs/IMPLEMENTATION_PLAN_V1.md`, `taiji_ai/README.md`
+- Behaviour: the final layer of a run at 4, 6, 8 Hz and no filter (only `cutoff_hz` changes; the grid, reasons, flags and segment are checked to be identical and a difference raises), the speed quantiles, the pauses of a `(tau, d_min)` grid and the hip range per cut-off, and the agreement with 6 Hz (paused share, row-level IoU, count, matched boundary shift, pooled over runs); the tool runs the 22 D20 chunks (the performer by the P3.08 review rule) and the 111 UMONS files and writes numbers and ids only; nothing in `quality/`, `metrics/` or the pipeline changed, the default cut-off is still 6 Hz
+- Result (DEC-0061): 67 new tests (43 unit, 7 of the tool, 15 on the generator, 2 on real data behind `dataset`); the floor of the speed of a still joint at 1 px is 0.040 / 0.066 / 0.094 / 0.127 Λ/s at 4 / 6 / 8 Hz / no filter; at `tau` near the floor 4 Hz finds the right number of pauses in 5 of 5 seeds against 2 of 5 at 6 Hz (SYN-05), at `tau` 0.3 all four are right at 1 px; 4 Hz costs a step more at a sharp onset (0.1 s: 1.75 against 0.75); the hip range is within 3.1 % of its truth at every cut-off and moves by at most 1.5 % on real data; on real data the paused share moves by tens of percent between 4 and 8 Hz and the count of a run matches its 6 Hz count in about 1 run in 10; the invariants held on 133 real runs and every generator run; 68 mutants, all caught (one equivalent removed); gate 10/10 PASS (406.6 s, 5382 tests)
+- Tests: T-MET-12a to 12e, T-MET-13, 13b, M-MET-01 (the report)
+- Bugs: none
+- Decisions: DEC-0061
+- Commit: not committed
+- Plan: Docs/tasks/P5.08.md
+- Proposed, not done: a small task to echo the cut-off of the layer in the `parameters` of the speed summary (Q14)
+
 ## 2026-11-17 — P5.07 Pauses of a joint group: `V_G < τ` for at least `d_min`, from the profile of P5.06 (DONE)
 
 - Changed: `taiji_ai/src/taiji_ai/metrics/tempo.py` (`Pause`, `find_pauses`, the optional arguments `pause_tau` and `pause_min_s` of `group_speed`, the pause statistics and events, two new entries of `parameters`), `tests/helpers/synth.py` (`slow_intervals`), `tests/unit/test_synth.py`, `tests/unit/test_metric_pauses.py` and `tests/golden/test_metric_pauses_syn.py` (new), `tests/unit/test_metric_tempo.py` (the parameters test gets the two entries and the asked case), `Docs/tasks/P5.07.md` (new), W7 of `Docs/TECH_WORKFLOW_V1.md`, the P5.07 row, T-MET-09 and T-MET-10 of `Docs/IMPLEMENTATION_PLAN_V1.md`, `taiji_ai/README.md`

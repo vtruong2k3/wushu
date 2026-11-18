@@ -4,12 +4,20 @@ Rules: `AGENTS.md` §3. IDs are sequential (`BUG-NNNN`), never reused. Every bug
 Severity: **S1** critical · **S2** major · **S3** minor.
 Lifecycle: `OPEN → PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED` (or `WONT_FIX` with maintainer approval).
 
-**Next free ID:** `BUG-0076`
+**Next free ID:** `BUG-0084`
 
 ## Summary
 
 | ID       | Title                                                                                                                      | Sev | Status | Found in                                                                   | Fix task | Regression test                                                  | Opened     | Closed     |
 | -------- | -------------------------------------------------------------------------------------------------------------------------- | --- | ------ | -------------------------------------------------------------------------- | -------- | ---------------------------------------------------------------- | ---------- | ---------- |
+| BUG-0083 | `test_t_qlt_12g_the_tables_are_deterministic_and_hold_only_numbers_and_ids` (P4.08) is flaky: the tables of `bench/umons.py` hold the row "Seconds, chain and report" (`{seconds:.1f}`, from `time.perf_counter`), so two runs of the same data can differ at a rounding boundary (seen once: 0.5 against 0.4; 4 reruns passed) | S3 | FIXED | `taiji_ai/tests/unit/test_umons_adapter.py` (test of P4.08), found by the coordinator when running the tests of the BUG-0082 fix | P6 close-out | `test_bug_0083_the_wall_clock_row_is_the_only_thing_that_differs_between_two_runs` (and the determinism test now compares results with the wall clock set to 0) | 2026-11-18 | — |
+| BUG-0082 | `bench/umons.py::find_umons` printed the name of a stray entry of the dataset folder in its message (`unexpected entry 'x.txt'`), against the rule that a message names an ID and never a file name (the other messages of the function name no path); found by the P6.07 agent (observation O2) | S3 | FIXED | `taiji_ai/src/taiji_ai/bench/umons.py` (`find_umons`, P4.08) | P6 close-out | `test_bug_0082_a_stray_entry_is_refused_without_its_name` (red on the old code) | 2026-11-18 | — |
+| BUG-0081 | `align` gives `no_path` for a whole pair when one frame of either segment has fewer than `min_visible` valid units: `cost_matrix` makes the whole row `+inf` and `dtw` cannot skip a frame, so a pair that could be compared is refused with no reason, whatever the band and the step pattern; on UMONS (out of domain) 23 of 40 pairs of whole recordings and 438 of 3,412 pairs of segments (`symmetric1`) have no path, and every pair of recordings without a path contains a recording with such a row (up to 39 of them), no pair with a path has one; a real lesson with tracking drops will behave the same | S2 | PLANNED | `taiji_ai/src/taiji_ai/compare/cost.py`, `dtw.py` through `align.py` (design of P6.02 and P6.03); found by the P6.07 agent (observation O1), reproduced on the UMONS run (`Docs/reports/p6_umons_check.md` section 3) | X.32 (Option A chosen by the maintainer, 2026-11-18) | to be written with the fix: 30 rows, all units valid except one query row with none, `align(min_visible=2, band=1.0)` must give a path and name the dropped row | 2026-11-18 | — |
+| BUG-0080 | The error messages of `compare/cost.py` printed a huge integer in full: `cost_matrix(..., min_visible=10**400)`, a weight of `10**400` and `block_rows=-10**400` gave a `CompareError` of 450 characters or more with all 401 digits in it (the check was right, the message was not: the `_shown` of `cost.py` printed an integer as it is, and the message "min_visible (…) must be at most the number of units" printed it without `_shown`); the same defect as the message half of BUG-0079, in the one module that BUG-0079 left alone; seen by the P6.03b agent | S3 | FIXED | `taiji_ai/src/taiji_ai/compare/cost.py` (`_shown`, the `min_visible` upper-bound message); found by the P6.03b agent (observation in its report), reproduced by the coordinator | P6 (the code is P6.02) | `tests/unit/test_compare_overflow.py` (`test_bug_0080_*`, 5 cases; 3 red on the old code) | 2026-11-18 | — |
+| BUG-0079 | In the comparison modules an integer beyond the range of a float (`10**400`) given where a number is expected raised `OverflowError` instead of `CompareError`: `float(value)` ran before the value was judged, in `compare/dtw.py` (`band`, `band_mask`, and the message), `compare/features.py` (`roll_deg`, `min_scale_s`, `min_segment_length`) and `compare/guards.py` (`min_coverage`); `cost.py` and `reference_band.py` already turned such an integer into an infinity | S3 | CLOSED | `taiji_ai/src/taiji_ai/compare/dtw.py`, `features.py`, `guards.py`; found by the P6.02 agent, reproduced by the coordinator | P6 (found in P6.02, the code is P6.03a, P6.01 and P6.05) | `tests/unit/test_compare_overflow.py` (7 `test_bug_0079_*` cases; 6 red on the old code) | 2026-11-17 | 2026-11-17 |
+| BUG-0078 | The mutation scripts of the project's check (scratch scripts that write a mutant, run pytest, restore the file) can run the bytecode of the **previous** mutant: Python validates a `.pyc` by the source mtime in whole seconds and the size, so two consecutive mutants of the same size written within one second share bytecode, and a mutant is then reported killed (or survived) by the code of the one before it (proven on P6.06: a "colon allowed" mutant was reported killed by a test about a space, which cannot see a colon; under `-B` it is killed by the test of the ID with a colon) | S3 | PLANNED | the mutation scripts of every task so far (the evidence of "N of N mutants caught" in the task files); found by the P6.06 agent | with the close-out of Phase 6 | the same script run with `-B` gives the same verdicts | 2026-11-17 | — |
+| BUG-0077 | 17 Markdown table lines in 7 records contain a pipe that is text and not a cell separator (the absolute values `\|θ\|`, `\|v\|`, `\|offset\|`, `\|x\|`, `\|t_b - a_to_b(t_a)\|`, and the Python unions `X \| None` inside code spans): GFM splits the cell at every unescaped pipe, also inside a code span, so a row gets extra cells and the end of its text is hidden, and one header (P5.05) had 11 cells against a delimiter of 7, so its table did not render as a table (IDE: MD056 on `TASK_STATUS.md` row P5.05) | S3 | CLOSED | `Docs/tracking/TASK_STATUS.md`, `Docs/IMPLEMENTATION_PLAN_V1.md`, `Docs/tracking/DECISIONS.md` (DEC-0058, DEC-0052, DEC-0032, DEC-0031), `Docs/tasks/P5.05.md`, `P5.06.md`, `P3.03.md`, `P4.07.md`; found by the agent in the P1.09 analysis | P1.09 (small, under the bug's own lifecycle) | a cell count of every table of `Docs/` against its header and delimiter finds no row with more cells and no header that differs from its delimiter (scratch script, rerun in the fix: 0 rows; second run of the fixer: nothing left); markdownlint MD056 clean in the IDE | 2026-11-17 | 2026-11-17 |
+| BUG-0076 | `Docs/hardware_inventory.md` (in git since P0.04) starts with two lines that are not Markdown, `load <absolute model path> with onnxruntime backend`: rtmlib prints them on stdout while `tools/env_check.py --gpu-smoke` builds `PoseEstimator`, and the documented use `env_check.py > hardware_inventory.md` writes them into the file | S3 | CLOSED | `taiji_ai/tools/env_check.py` (`collect`, GPU smoke part), `Docs/hardware_inventory.md`; found by the agent in the P1.09 analysis | P1.09 (small, under the bug's own lifecycle) | `tests/contract/test_env_check_tool.py` (4 tests; red on the old code) | 2026-11-17 | 2026-11-17 |
 | BUG-0075 | `lean_angle_deg` (P5.02) accepts an infinite midpoint and returns an angle made out of it (`atan2(inf, dy)` = 90 degrees), where `_keypoints`, `trunk_scale` and `correct_roll` refuse infinities | S3 | CLOSED | `taiji_ai/src/taiji_ai/metrics/geometry.py` (`_pair_array`), found by the agent in the self-review of P5.02 | P5.02 | `test_t_met_02c_an_infinite_midpoint_is_refused_not_turned_into_an_angle` | 2026-11-17 | 2026-11-17 |
 | BUG-0074 | The allowed-use text of D20 in `Docs/DATASET_REGISTRY_TAIJI.md` does not list the look at the mask layer of P4.01 (M-QLT-01, counts only on the P3.08 pose files): AGENTS.md 9.4 item 3 asks for the use to be written there before it happens | S3 | CLOSED | `Docs/DATASET_REGISTRY_TAIJI.md` (D20 row), found by the agent while adding M-QLT-02 for P4.02 | P4.02 | Manual check: the row names P4.01 and P4.02 and their limits (2026-11-17) | 2026-11-17 | 2026-11-17 |
 | BUG-0073 | The detector tool (P3.09) and its rule kept the NMS limit **0.45** as the default for YOLO11 ("YOLOX uses 0.45") after the limit of the shipping graph was read as **0.65**: running `detector_compare.py run` without `--nms-iou` measures a different operating point than DEC-0043 and the report state; `DetectorRule.matched_nms_iou` (unused) and its test hold the same stale 0.45 | S3 | CLOSED | `taiji_ai/tools/detector_compare.py`, `bench/detector_metrics.py` (P3.09, found by the agent in the self-review read-back) | P3.09 | `test_t_det_08_the_default_nms_limit_of_the_tool_is_the_one_of_the_shipping_graph` | 2026-11-17 | 2026-11-17 |
@@ -89,6 +97,172 @@ Lifecycle: `OPEN → PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED` 
 ---
 
 ## Details
+
+### BUG-0083 — A determinism test of the UMONS tables depends on the wall clock
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3 (a test that fails now and then; no product number is wrong)                            |
+| Status          | FIXED                                                                                      |
+| Found in        | `taiji_ai/tests/unit/test_umons_adapter.py` (`test_t_qlt_12g_the_tables_are_deterministic_and_hold_only_numbers_and_ids`, P4.08) |
+| Found by / date | the coordinator, 2026-11-18, in a run of the tests next to the BUG-0082 fix: the test failed once and passed on four reruns |
+
+**Description:** the tables rendered by `render_tables` include the row "Seconds, chain and report" (`{s.seconds:.1f}`), the sum of the wall-clock time of the files (`run_sequence` measures it with `time.perf_counter`). The test runs the folder twice and compares the two renders for equality, so two runs of the same data can differ when the sum falls at a rounding boundary (0.5 against 0.4 in the failing run).
+**Expected:** a deterministic test. **Actual:** a failure now and then. **Root cause:** the one number of a run that is not a function of the data was part of the compared text.
+**Fix:** the determinism test compares results whose `seconds` is set to 0 (`_timeless`), and `test_bug_0083_the_wall_clock_row_is_the_only_thing_that_differs_between_two_runs` pins the cause (the renders of `seconds` 0 and 7 differ, and are equal once the lines of that row are left out). The failure could not be reproduced on demand (a time-dependent rounding), so there is no red-first run: the cause is shown by the pinning test and by the code; the determinism test no longer reads the clock. The tool's own tables keep the row (it is information for the reader).
+**Fix task / commit:** the close-out of Phase 6, not committed. **Regression test:** the two tests named above. **Verified:** —
+
+**History:**
+
+- 2026-11-18 OPEN → PLANNED → IN_PROGRESS → FIXED — found, cause read in the code, test changed; verified (second look and the gate) at the close-out.
+
+### BUG-0082 — `find_umons` names a file of the dataset folder in its message
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3 (a name of the user's disk can reach a terminal or a log; no number is wrong)           |
+| Status          | FIXED                                                                                      |
+| Found in        | `taiji_ai/src/taiji_ai/bench/umons.py` (`find_umons`, P4.08)                               |
+| Found by / date | the P6.07 agent (observation O2 of its task file), reproduced by the coordinator, 2026-11-18 |
+
+**Description:** a stray entry in the Kinect folder gave `UmonsError: unexpected entry 'x.txt'`; the module's other messages name no path and no file name (AGENTS.md section 6: log IDs, never file names).
+**Steps to reproduce:** a folder with the license, the 111 files and one more entry named `SECRET_name.txt`. **Expected:** a message without the name. **Actual:** the name in the message. **Root cause:** `entry.name!r` in the f-string.
+**Fix:** the message is now "unexpected entry in the Kinect folder: only PxxTxxCxx.txt and License.txt are expected". Test first: `test_bug_0082_a_stray_entry_is_refused_without_its_name` (a stray file and a stray folder, both named `SECRET...`, must not appear; the expected names still do), red on the old code, green after; the earlier test that matches "unexpected" still passes.
+**Fix task / commit:** the close-out of Phase 6, not committed. **Regression test:** the test named above. **Verified:** —
+
+**History:**
+
+- 2026-11-18 OPEN → PLANNED → IN_PROGRESS → FIXED — reported by the P6.07 agent, test first, fixed; verified (second look and the gate) at the close-out.
+
+### BUG-0081 — One frame without evidence makes a whole pair `no_path`
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S2 (wrong abstain: a pair that could be compared gets no result, and the result says nothing about why) |
+| Status          | PLANNED                                                                                    |
+| Found in        | `taiji_ai/src/taiji_ai/compare/cost.py` (`+inf` for a row below `min_visible`) and `dtw.py` (no step onto `+inf`), through `align.py`: the design of P6.02 and P6.03, not a deviation from a plan |
+| Found by / date | the P6.07 agent (observation O1 of its task file), checked by the coordinator against the report's measurements, 2026-11-18 |
+
+**Description:** `cost_matrix` writes `+inf` in every cell of a row whose frame has fewer than `min_visible` valid units (P6.02), and `dtw` never steps onto `+inf` and cannot skip a row (P6.03a), so one such frame in either segment leaves no path from corner to corner: `align` returns `status = "no_path"`, `distance` `None`, for any `band` and any `step`. The plan treated "no path" as a result for two segments of very different length; it did not foresee that it would also be the answer to a frame that tracking dropped. P6.05 (guards) can refuse a segment for low coverage but cannot repair this: a segment with 98 percent coverage still has a few such frames.
+**Steps to reproduce:** two `FrameFeatures` of 30 rows (`helpers/compare_cost_ref.make_features`) with every unit valid, except that row 15 of the query has no valid unit; `align(reference, query, min_visible=2, band=1.0)` gives `no_path`; without that row the status is `ok`.
+**Expected:** a path through the frames that have evidence, and a report of the frames that were left out (a frame with no observation is a fact to show, not a reason to refuse the pair). **Actual:** `no_path` and no reason.
+**Measured (UMONS, D12, out of domain, `Docs/reports/p6_umons_check.md` section 3):** 23 of 40 pairs of whole recordings have no path (the same 23 at band 0.1 and 0.2; only 3 of them are the 2 to 1 length limit), 18 of the 39 recordings used have at least one such row (up to 39); none of the 17 pairs with a path has one; for segments, 438 of 3,412 pairs have no path under `symmetric1`. The boundary results of P6.07 are therefore those of the recordings free of tracking drops, not of a random half.
+**Root cause:** no stage removes a frame that has no evidence before the cost and the path.
+**Fix plan (the choice is the maintainer's: it changes the contract of `P6_overview.md` section 3.4 and so needs confirmation before coding, AGENTS.md section 2 step 2):**
+
+- **Option A (recommended): `align` leaves out the rows with fewer than `min_visible` valid units before the cost.** It keeps the index map of the kept rows of each segment, aligns the rest, and the `Alignment` carries the dropped rows (their indices and real times) and the counts, so nothing is filled and the clock stays real: `matched_query_times()` is NaN on a reference row that was dropped (P6.04 already leaves NaN rows out of its fit, D3), and the cells of `result.path` are mapped back to the original row indices. `min_visible` is already echoed; the number of dropped rows joins `settings` or a field of the result so that two distances are comparable only when it is known. The guards of P6.05 stay the place that refuses a segment with too little coverage.
+- Option B: an open path through gaps (a path that may skip a block of rows at a cost); more general and a change of the algorithm of P6.03a.
+- Option C: keep the contract and report the reason (`no_path` with `reason = "row_without_evidence"` and the row), leaving the pair uncompared; the UMONS numbers would stay as they are.
+- Regression test (Option A): the reproduction above must give a path, the dropped row with its time, a distance equal to that of the segment without the row, and `matched_query_times()` NaN on that row if it is a reference row; plus the cases of two dropped rows at the ends and in a block, and of all rows dropped (a result with no path and the reason).
+- Effect on done work: P6.02, P6.03a and P6.03b stay as built until the decision; P6.04 needs no change (NaN rows are already handled); P6.07's report would be rerun with the same tool after the fix (its settings are arguments).
+
+**Fix task / commit:** X.32 (ad-hoc, registered 2026-11-18, waits for the maintainer's decision). **Regression test:** to be written with the fix. **Verified:** —
+
+**History:**
+
+- 2026-11-18 OPEN → PLANNED — reported by the P6.07 agent; the plan and the three options written by the coordinator; the maintainer is asked to choose.
+- 2026-11-18 — the maintainer chose Option A. The detailed plan is `Docs/tasks/X.32.md` (PLAN_READY); it is done before the gate of Phase 6.
+
+### BUG-0080 — The messages of `cost.py` print a huge integer in full
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3 (a long message; the refusal itself, its type and the argument it names are right)      |
+| Status          | FIXED                                                                                      |
+| Found in        | `taiji_ai/src/taiji_ai/compare/cost.py` (`_shown`; the `min_visible` message of `_weights_of`) |
+| Found by / date | the P6.03b agent (an observation in its report, not a bug of its task), reproduced by the coordinator, 2026-11-18 |
+
+**Description:** BUG-0079 made the comparison modules refuse a huge integer with a `CompareError` and keep the message short (`guards._shown` shows an integer of 10**15 or more as a float). `cost.py` refused such integers already, but its `_shown` printed an integer as it is, and one message (`min_visible (…) must be at most the number of units …`) put the integer in with a plain f-string.
+**Steps to reproduce:** `cost_matrix(f, f, min_visible=10**400)` (also `-10**400`), `cost_matrix(f, f, min_visible=1, weights={unit: 10**400})`, `cost_matrix(f, f, min_visible=1, block_rows=-10**400)`.
+**Expected:** a short `CompareError` naming the argument. **Actual:** a `CompareError` of 452 characters (the integer's 401 digits). **Root cause:** the integer branch of `_shown` and the unguarded f-string, in the one module that BUG-0079 treated as already correct.
+**Fix:** `_shown` shows an integer below 10**15 as it is and any other as a float (`inf` or `-inf` beyond the float range; the sign comes from the integer, because `cost._as_float` returns +inf for both signs), and the upper-bound message of `min_visible` uses `_shown`. The tests were written first in `test_compare_overflow.py`: the huge cases (both signs; the three arguments), a small integer still shown as it is (0, -3, -999999999999999), the sign and the float form at the limit (-10**15, -10**20, -10**400), and a huge *positive* `block_rows` still a valid block (the whole segment in one block, same cost as the default); 3 of the 5 cases fail on the old form of the two lines (the two huge cases when first written, the sign case when rerun on the old form after the fix: it was written after it). A mutation check of the new lines (10 mutants, `-B`): 9 caught, 1 equivalent (`number <= 0` against `number < 0` where `abs(number)` is at least 10**15).
+**Fix task / commit:** the close-out of Phase 6, not committed. **Regression test:** `tests/unit/test_compare_overflow.py::test_bug_0080_*`. **Verified:** —
+
+**History:**
+
+- 2026-11-18 OPEN → PLANNED → IN_PROGRESS → FIXED — reported by the P6.03b agent, test first, fixed; verified (second look and the gate) at the close-out.
+
+### BUG-0079 — A huge integer where a number is expected is an OverflowError, not a CompareError
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3 (a bad argument gives a crash with no argument name instead of the message; no number, file or status is wrong) |
+| Status          | CLOSED                                                                                     |
+| Found in        | `taiji_ai/src/taiji_ai/compare/dtw.py` (`_check_band`, `_shown`), `features.py` (`_roll`, `_minimum`, `_shown`), `guards.py` (`_check_min_coverage`) |
+| Found by / date | the P6.02 agent in its self-review (reported to the coordinator), reproduced by the coordinator, 2026-11-17 |
+
+**Description:** the checks of three comparison modules call `float(value)` on the caller's number before they judge it; for an integer beyond about 1.8e308 that raises `OverflowError`, so the caller gets a crash that names no argument. The modules' own convention is `CompareError` naming the argument. `cost.py` (`_as_float` for the weights) and `reference_band.py` already turned such an integer into an infinity that the next check refuses. The message builders (`_shown`) had the same conversion, and the integer branch of `guards._shown` would have printed all 400 digits.
+**Steps to reproduce:** `dtw(np.zeros((3, 3)), band=10**400, step="symmetric1")`; `frame_features(layer, roll_deg=10**400)` (and `min_scale_s`, `min_segment_length`); `check_comparable(None, None, None, None, min_visible=1, min_coverage=10**400)`, each also with `-10**400`.
+**Expected:** `CompareError` naming `band`, `roll_deg`, `min_scale_s`, `min_segment_length` or `min_coverage`, in a short message. **Actual:** `OverflowError: int too large to convert to float`. **Root cause:** the conversion came before the judgement, and the tests of the three modules never gave an integer that large.
+**Fix:** each of the three modules got the helper `_as_float` of `cost.py` (an integer beyond the range of a float is `inf` or `-inf`, which the checks already refuse: `0 < inf <= 1` is false, `isfinite(inf)` is false) and uses it in the check and in `_shown`; `guards._shown` shows an integer of 10**15 or more as a float. The regression tests are written first, in one file for the three modules (`tests/unit/test_compare_overflow.py`, both signs, the message shorter than 400 characters, and an ordinary large integer such as `10**9` still judged by its value): 6 of the 7 cases failed on the old code with the `OverflowError`, all pass after (the first record said 8 tests: a miscount, corrected 2026-11-18 from the collected list). Not covered, by choice: a huge *size* (`band_mask(10**400, ...)` raises the `ValueError` of NumPy): a size is bounded by memory, not by the range of a float, and is not an argument a caller computes.
+**Fix task / commit:** the close-out of Phase 6, not committed. **Regression test:** `tests/unit/test_compare_overflow.py`. **Verified:** coordinator, 2026-11-17: red on the old code, green after; the changed lines read again; all compare tests pass (dtw, features, cost, guards, reference band); GATE_P6.
+
+**History:**
+
+- 2026-11-17 OPEN → PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — reported by the P6.02 agent, reproduced, test first, fixed.
+- 2026-11-18 — the fifth module of the comparison chain, `align.py` (P6.03b), had the same defect in its first draft (`float()` of a feature minimum before it was judged): its author found it in the self-review and fixed it in the task before the first report, with its own regression test; the message half left in `cost.py` is BUG-0080.
+
+### BUG-0078 — A mutation run can test the bytecode of the previous mutant
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3 (a process defect of the evidence, outside the product: it can hide a test gap or credit a wrong test with a kill; no product number depends on it) |
+| Status          | PLANNED                                                                                    |
+| Found in        | the scratch mutation scripts of the project's practice, in every task with a mutation check; found in P6.06 |
+| Found by / date | the P6.06 subagent (reported to the coordinator), 2026-11-17                                |
+
+**Description:** a mutation script writes a mutant over the source, runs pytest, and restores the file. Python's source loader accepts a cached `.pyc` when the recorded source mtime (whole seconds) and size equal the file's. When two consecutive mutants have the same size and are written within one second of each other, the second run can execute the first one's bytecode. The effect needs a run shorter than about a second and same-size mutants (an operator swap, `0` for `1`), so a long suite is not affected, but a fast pure-Python suite is.
+**Steps to reproduce:** mutate a module, run pytest (a `.pyc` is written), write another mutant of the same size within the same second, run pytest again without `-B`: the second verdict can come from the first mutant's code. Seen on P6.06 (verdict of a "colon allowed in an ID" mutant).
+**Expected:** each run tests its own mutant. **Actual:** possibly the previous one. **Root cause:** the mtime-and-size check of the source loader (`importlib`) with a one-second mtime.
+**Fix plan:** (1) every mutation script runs `python -B -m pytest ...` with `PYTHONDONTWRITEBYTECODE=1` and deletes the cached `.pyc` of the mutated modules before the baseline and before each run (the coordinator's helper `make_bytecode_safe.py` turns an existing script into one that does); the three lanes still running were told, and the P6.06 agent's final runs (3 to 5) already did it; (2) rerun, with that fix, the mutation checks of this session's tasks whose script still exists (P5.07, P5.08, P5.09, P6.03a) and compare the verdicts with the recorded ones; a difference is a test gap to close in that task's records; (3) say the rule once where the practice lives (proposal for the maintainer: a line in `AGENTS.md` section 7 or in `Docs/tasks/_TEMPLATE.md`, which today do not mention the mutation check).
+**Fix task / commit:** the close-out of Phase 6 (the reruns are done before its gate). **Regression test:** none (a process); the check is that a script run twice, with and without the fix, gives the same verdicts. **Verified:** —
+
+**History:**
+
+- 2026-11-17 OPEN → PLANNED — reported by the P6.06 agent; the other lanes were told at once.
+- 2026-11-17 — the 89 mutants of P6.03a were rerun with the fix (`-B`, `PYTHONDONTWRITEBYTECODE=1`, the cached `dtw` bytecode deleted before every run): the verdict of every one of the 89 is the same as in the run without it (88 caught, one equivalent survivor), and `dtw.py` was restored byte for byte. Still to rerun: P5.07, P5.08, P5.09 (they mutate `metrics/` files that the comparison modules import, so after the lanes finish) and the final runs of the lanes still working.
+
+### BUG-0077 — Unescaped pipes break 17 table lines in 7 records (P5.05 and older)
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3 (display of the records: the text after the pipes is pushed into extra cells and hidden; no code, data or metric involved) |
+| Status          | CLOSED                                                                                     |
+| Found in        | 16 table rows and 1 header row: `Docs/tracking/TASK_STATUS.md` (P5.05), `Docs/IMPLEMENTATION_PLAN_V1.md` (P5.05), `Docs/tracking/DECISIONS.md` (DEC-0058, DEC-0052, DEC-0032, DEC-0031), `Docs/tasks/P5.05.md` (lines 41, 63, 165, 168, 220 and the header at 229), `P5.06.md` (164), `P3.03.md` (151), `P4.07.md` (63, 65, 228) |
+| Found by / date | agent (Claude Code), 2026-11-17: the IDE showed MD056 (11 cells instead of 9) on the P5.05 row of `TASK_STATUS.md` while the P1.09 analysis edited it; the scope was measured with a cell count of every table of `Docs/` |
+
+**Description:** a pipe that is text sits inside a table cell without a backslash. In GFM a pipe ends a cell unless it is escaped as `\|`, also inside a code span, so a row gets extra cells and renderers drop or misplace the end of it. Two kinds: absolute values (`|θ|` in the P5.05 records, which was the first symptom, but also `|v|`, `|offset|`, `|x|`, `|t_b - a_to_b(t_a)|` in older records) and the Python unions `X | None` inside code spans (P3.03, P4.07). One of them is a **header** (`P5.05.md`, 11 cells against a delimiter row of 7), so that table was not a table at all.
+**Steps to reproduce:** open `Docs/tracking/TASK_STATUS.md` in a Markdown preview: the P5.05 row's notes stop at "P95 of"; or run markdownlint (MD056) on the file; or count the unescaped pipes of each table row against its header (the scratch script of the fix).
+**Expected:** each row has the table's number of cells and shows its whole text. **Actual:** 11 cells instead of 9 in `TASK_STATUS.md`; up to 16 instead of 6 in DEC-0058. **Root cause:** a text pipe was copied into a table without escaping, and no markdownlint or cell count is part of the gate, so nothing caught it. The first version of this entry (written in the analysis of P1.09) counted nine rows and one cause: the measurement at fix time found 17 lines and two causes.
+**Fix:** a scratch script (outside the repository) went over every table of `Docs/`: in a row with more cells than its header (and the one header whose count differs from its delimiter) it put a backslash before every pipe that is inside a code span or is not a cell separator (a separator is at the start of the row or after a space, and is followed by a space or the end of the row). 47 backslashes in 7 files. Checked per line before writing: the number of cells equals the header's, and removing every `\|` gives the original text; checked after: on bytes, the text of each file is identical to its backup without the backslashes, the file grew by exactly the number of backslashes, the CR LF counts are equal, a second run of the fixer finds nothing, the cell count of all of `Docs/` finds 0 rows with too many cells, and the IDE shows no warning. Wording and history are unchanged (escaping only).
+**Fix task / commit:** P1.09 (this task), not committed. **Regression test:** the cell count of every table of `Docs/` (scratch script `p109_tablecheck.py` in the session scratchpad, not in the repository); a durable check belongs in `tools/repo_hygiene.py` and is proposed to the maintainer as a task of its own (it changes the quality gate). **Verified:** agent, 2026-11-17: the checks above; the changed lines were read again; gate 10/10 PASS on the closing tree (430.3 s, 5386 tests).
+
+**History:**
+
+- 2026-11-17 OPEN → PLANNED — found in the analysis of P1.09; fix plan written (nine `|θ|` rows).
+- 2026-11-17 PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — the scope was measured first (17 lines, 7 files, two causes), the fix applied with the checks above.
+- 2026-11-17 (later, still CLOSED) — the IDE showed MD056 on `taiji_ai/README.md` line 150, the P5.05 row with the same unescaped `|θ|`: the sweep of the fix had scanned `Docs/` only. The scan was widened to every Markdown file of the repository (113 files outside the one fixed, then 0 flagged lines), the one line fixed with the same checks (2 backslashes, the text identical without them, CR LF counts equal, no IDE warning). The scratch scanner `tablescan.py` takes any file or folder; a durable check in `tools/repo_hygiene.py` stays proposed.
+
+### BUG-0076 — Third-party stdout lines inside the hardware inventory
+
+| Field           | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Severity        | S3 (a documentation defect: two stray lines and two absolute local paths at the top of a tracked doc; no data, metric or person involved) |
+| Status          | CLOSED                                                                                     |
+| Found in        | `taiji_ai/tools/env_check.py` (`collect`, the `--gpu-smoke` part), `Docs/hardware_inventory.md` (both in HEAD since P0.04) |
+| Found by / date | agent (Claude Code), 2026-11-17, reading the inventory in the analysis of P1.09 (which adds the phones to it) |
+
+**Description:** the first two lines of `Docs/hardware_inventory.md` are `load <absolute path of the YOLOX model> with onnxruntime backend` and the same for the RTMPose model, before the `# Environment inventory` heading. They come from `rtmlib/tools/base.py` (a `print` when a model is loaded), which runs inside `collect()` while `PoseEstimator` is built for the GPU smoke test; the docstring of `env_check.py` documents `env_check.py > hardware_inventory.md`, so stdout of the library goes into the file with the Markdown.
+**Steps to reproduce:** `git show HEAD:Docs/hardware_inventory.md | head -3`; or run `.venv\Scripts\python.exe tools\env_check.py --gpu-smoke > inv.md` and read its first line.
+**Expected:** the file starts with `# Environment inventory` and holds only what the tool means to write. **Actual:** two lines of library output with absolute paths come first. **Root cause:** third-party output on stdout is not kept away from the Markdown the tool prints on stdout.
+**Fix plan:** in `env_check.py`, build and run `PoseEstimator` under `contextlib.redirect_stdout(sys.stderr)`, so library messages go to stderr and the Markdown alone to stdout; remove the two lines from `Docs/hardware_inventory.md` (or regenerate it on this machine and check the diff holds only those lines and the new values). Regression test (contract, written first, red on the old code): run `collect(gpu_smoke=True)` with a stub `PoseEstimator` that prints a line on construction, capture stdout of the tool's main path, assert the first line is `# Environment inventory` and the stub's line is on stderr only. Related, for P1.09: the inventory is a generated file, so a hand-written phones section in it would be erased by the next run; P1.09 decides where the phones go (its Q-list).
+**Fix:** `tools/env_check.py` runs `collect` inside `contextlib.redirect_stdout(sys.stderr)` and prints the Markdown afterwards, and stderr is switched to UTF-8 with `errors="replace"` (the redirect puts the library's text, which holds absolute paths, on stderr, and a legacy console code page would raise `UnicodeEncodeError` on a path with an accent). The whole of `collect` is under the redirect, so a print at construction, in `detect` or in `estimate` (and any other library print) cannot reach the file. `Docs/hardware_inventory.md`: the two lines removed, nothing else changed (the run on this machine differs from the tracked file only by those two lines and one speed figure, 29.1 → 37.7 ms/frame, which is run to run and was not copied).
+**Fix task / commit:** P1.09 (this task), not committed. **Regression test:** `tests/contract/test_env_check_tool.py` (4 tests, `test_bug_0076_*`: the real `__main__` block run in process with a stub estimator that prints at construction and at every call; stdout holds only the Markdown, every library line is on stderr and none is lost, the smoke part still runs and reports, no model is loaded without `--gpu-smoke`, an accent and a lone surrogate in a library line do not stop the tool). The first test is red on the old code (the first line of stdout was the library line). **Verified:** agent, 2026-11-17: the first test fails on the old code and the four pass after the fix; a mutation run on a copy of the tool, 11 of 11 killed (one survivor of the first run, `errors="strict"`, was a test gap: utf-8 holds every character but a lone surrogate, so the test now has one); the real tool run on this machine with `--gpu-smoke > file`: exit 0, the file starts with `# Environment inventory`, the two `load` lines are on stderr; the changed lines were read again; gate 10/10 PASS on the closing tree (430.3 s, 5386 tests).
+
+**History:**
+
+- 2026-11-17 OPEN → PLANNED — found in the analysis of P1.09; fix plan written; no code changed.
+- 2026-11-17 PLANNED → IN_PROGRESS → FIXED → VERIFIED → CLOSED — regression test first (red), then the fix; the inventory file corrected.
 
 ### BUG-0075 — `lean_angle_deg` turns an infinite midpoint into an angle (P5.02)
 

@@ -443,7 +443,8 @@ def test_t_met_06a_a_series_has_values_only_where_a_row_is_measured_and_a_header
         (float(rows.t_sec[7]), float(rows.t_sec[7]) + rows.step_s),
     ]
     assert h.recording_id == rows.recording_id and h.data_sources == rows.data_sources and h.step_s == rows.step_s
-    assert h.parameters == {"a": 1}
+    assert rows.filter_cutoff_hz == 6.0  # the layer of the helper was filtered at the default 6 Hz at 30 fps
+    assert h.parameters == {"a": 1, "filter_cutoff_hz": 6.0}  # the caller's parameters and the echo of the layer
 
 
 def test_t_met_06a_a_run_shorter_than_the_minimum_becomes_21_and_loses_its_value_and_the_inputs_are_not_changed():

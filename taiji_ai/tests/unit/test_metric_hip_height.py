@@ -378,7 +378,7 @@ def test_t_met_03g_the_parameters_say_what_was_used():
     expected: dict[str, Any] = {
         "variant": "a", "roll_deg": 2.5, "min_reference_s": 0.5, "min_valid_s": 0.1, "percentile_low": 5,
         "percentile_high": 95, "scale_px": pytest.approx(150.0), "reference_rows": 60,
-        "reference_s": pytest.approx(60 / FPS), "n_stable_intervals": 2,
+        "reference_s": pytest.approx(60 / FPS), "n_stable_intervals": 2, "filter_cutoff_hz": 6.0,
     }  # fmt: skip
     assert p == expected
     q = run(layer, ref).summary.parameters

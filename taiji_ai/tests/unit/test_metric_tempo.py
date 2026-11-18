@@ -392,7 +392,7 @@ def test_t_met_08d_the_parameters_say_what_was_used():
     assert p == {
         "group": "hands", "min_valid_s": 0.1, "min_scale_s": 0.5, "scale_px": pytest.approx(150.0), "scale_rows": 30,
         "scale_s": pytest.approx(30 * layer.meta.timeline.step_s), "n_intervals": 2, "pause_tau": None,
-        "pause_min_s": None,
+        "pause_min_s": None, "filter_cutoff_hz": 6.0,
     }  # fmt: skip
     plain = run(layer).summary.parameters
     assert plain["n_intervals"] is None and plain["min_valid_s"] is None and plain["min_scale_s"] is None

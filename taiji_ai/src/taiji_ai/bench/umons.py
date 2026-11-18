@@ -208,7 +208,10 @@ def find_umons(root: str | Path) -> Path:
         if entry.name == _LICENSE_FILE:
             continue
         if not (entry.is_file() and _FILE.fullmatch(entry.name)):
-            raise UmonsError(f"unexpected entry {entry.name!r}: only PxxTxxCxx.txt and {_LICENSE_FILE} are expected")
+            # the name of an entry is free text of the user's disk: it is not echoed (BUG-0082)
+            raise UmonsError(
+                f"unexpected entry in the Kinect folder: only PxxTxxCxx.txt and {_LICENSE_FILE} are expected"
+            )
         count += 1
     if count != EXPECTED_FILES:
         raise UmonsError(f"expected {EXPECTED_FILES} files PxxTxxCxx.txt, found {count}")

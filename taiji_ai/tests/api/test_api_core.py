@@ -71,7 +71,7 @@ def test_t_api_01_health_ok(tmp_path):
     assert body["models"]["ok"] and body["models"]["verified_at_startup"]
     assert {m["role"] for m in body["models"]["entries"]} == {"det", "pose"}
     assert all(len(m["sha256_prefix"]) == 12 for m in body["models"]["entries"])
-    assert body["database"] == {"ok": True, "migrations": [1], "error": None}
+    assert body["database"] == {"ok": True, "migrations": [1, 2], "error": None}  # 0002: the metric records (P5.09)
     assert body["web_build"] is False
 
 
